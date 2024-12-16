@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LerpIt</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap');
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 50% 50%; }
+            50% { background-position: 100% 50%; }
+            75% { background-position: 50% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes noise-overlay {
+            0% { opacity: 0.6; }
+            50% { opacity: 0.7; }
+            100% { opacity: 0.6; }
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Merriweather', serif;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            line-height: 1.6;
+            letter-spacing: 0.5px;
+        }
+
+        header {
+            position: relative;
+            font-family: 'Merriweather', serif;
+            background: linear-gradient(90deg, #2a3b4d, #243442, #3b2e2e, #2a3b4d);
+            background-size: 300% 300%;
+            animation: gradient-shift 20s ease infinite;
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        header nav {
+            display: flex;
+            z-index: 1000;
+            gap: 20px;
+        }
+
+        header nav a {
+            color: white;
+            text-decoration: none;
+            font-family: 'Ariel', sans-serif;
+            font-size: .6em;
+        }
+
+        header nav a:hover {
+            text-decoration: underline;
+        }
+
+        .burger {
+            display: none;
+            cursor: pointer;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            header nav {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                right: 0;
+                background: #1e1e1e;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+                z-index: 1000;
+            }
+
+            header nav.show {
+                display: flex;
+            }
+
+            .burger {
+                display: block;
+            }
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            height: calc(100vh - 140px);
+            transition: all 0.5s ease;
+        }
+
+        .article {
+            flex: 1;
+            padding: 40px;
+            position: relative;
+            overflow-y: auto;
+            background: #fdf6e3;
+            color: #000;
+            line-height: 2;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            font-family: 'Ariel', sans-serif;
+            background-image: url('https://www.transparenttextures.com/patterns/paper-fibers.png');
+            text-shadow: .2px .2px .2px rgba(1, 0, 1, 0.5); /* Add a subtle shadow */
+        }
+
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Merriweather', serif; /* Merriweather for all headings */
+            font-weight: bold;
+        }
+
+
+
+        .demo {
+            flex: 1;
+            background: #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .canvas-container {
+            flex: 1; /* Take 50% of the vertical space */
+            background: #1e1e1e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas#bezierCanvas {
+            width: 100%; /* Dynamically scale to the container */
+            height: 100%; /* Dynamically scale to the container */
+        }
+
+
+        .editor-container {
+            flex: 1; /* Take 50% of the vertical space */
+            background: #2a2a2a;
+            padding-top: 5px;
+        }
+
+        textarea#jsEditor {
+            width: 100%;
+            height: 100%;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            font-family: monospace;
+            font-size: 14px;
+            border: none;
+            resize: none;
+            outline: none;
+        }
+
+
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .demo {
+                transform: translateY(0);
+                max-height: 50%;
+            }
+
+            .demo.hidden {
+                transform: translateY(150%);
+                max-height: 0;
+                overflow: hidden;
+                display: none;
+            }
+
+            .toggle-button {
+                display: block;
+                position: sticky;
+                bottom: 10px;
+                margin-left: auto;
+                background: #444;
+                color: #fff;
+                border: none;
+                padding: 10px;
+                border-radius: 5px;
+                cursor: pointer;
+                z-index: 10;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .toggle-button {
+                display: none;
+            }
+        }
+
+        footer {
+            background: linear-gradient(90deg, #2a3b4d, #243442, #3b2e2e, #2a3b4d);
+            background-size: 300% 300%;
+            animation: gradient-shift 20s ease infinite;
+            color: #ddd;
+            font-family: Arial, sans-serif;
+            padding: 20px 30px;
+            text-align: center;
+        }
+
+
+        .footer-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .footer-logo {
+            font-family: 'Merriweather', serif;
+        }
+
+        .footer-links a {
+            color: #ddd;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 0.95em;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-social a {
+            color: #ddd;
+            font-size: 1.2em;
+            margin: 0 8px;
+            transition: color 0.3s ease;
+        }
+
+        .footer-social a:hover {
+            color: #fff;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 10px 0;
+        }
+
+        .footer-bottom {
+            font-size: 0.85em;
+            color: #aaa;
+        }
+
+        .footer-note {
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+
+    </style>
+</head>
+<body>
+    <header>
+        <span>∑</span>
+        <div class="burger" onclick="document.querySelector('header nav').classList.toggle('show')">☰</div>
+        <nav>
+            <a href="#">Home</a>
+            <a href="#">Articles</a>
+            <a href="#">Demos</a>
+            <a href="#">About</a>
+        </nav>
+    </header>
+    <div class="container">
+        <!-- Article Section -->
+        <div class="article">
+        <h1>Bezier Curves</h1>
+        <section id="introduction">
+            <h2>1. Introduction</h2>
+
+            <h3>What Are Bezier Curves?</h3>
+            <p>
+                Bezier curves are mathematical constructs used to model smooth curves that can be scaled indefinitely.
+                They are defined using control points and are a cornerstone of computer graphics, animation, and design.
+                A Bezier curve allows you to transition smoothly between points, making them ideal for rendering paths, shapes, and even animations.
+            </p>
+            <p>
+                These curves were first developed by Pierre Bézier, a French engineer, while working at Renault for designing automobile bodies.
+                They have since become indispensable tools in the world of graphics, from creating scalable vector graphics (SVGs) to animating character movements.
+            </p>
+
+            <h3>Why Are Bezier Curves Important in Computer Graphics?</h3>
+            <ul>
+                <li>
+                    <strong>Precision and Control:</strong> Bezier curves offer unparalleled precision. Designers and developers can manipulate the shape of the curve by adjusting its control points, enabling smooth transitions and intricate shapes.
+                </li>
+                <li>
+                    <strong>Scalability:</strong> Bezier curves are resolution-independent, meaning they can scale to any size without losing quality. This makes them ideal for applications like logos, illustrations, and scalable fonts.
+                </li>
+                <li>
+                    <strong>Wide Range of Applications:</strong>
+                    From animation paths in movies to generating procedural landscapes in games, Bezier curves are a universal tool. They are widely used in:
+                    <ul>
+                        <li><em>Graphics design software</em> (e.g., Adobe Illustrator, Figma)</li>
+                        <li><em>UI animations</em> (e.g., smooth transitions between states)</li>
+                        <li><em>Game development</em> (e.g., pathfinding and terrain generation)</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Ease of Implementation:</strong> The mathematical foundation of Bezier curves, although powerful, is surprisingly straightforward.
+                    With basic linear interpolation as the building block, even higher-order curves can be easily implemented.
+                </li>
+            </ul>
+
+            <h3>How This Article Helps</h3>
+            <p>
+                This article introduces the concept of Bezier curves, dives into their mathematical foundations, and demonstrates how they can be implemented procedurally.
+                Whether you're a graphics enthusiast, a developer looking to add dynamism to your projects, or simply curious about how smooth curves are made,
+                this guide provides a comprehensive introduction.
+            </p>
+        </section>
+
+        <section id="mathematics">
+            <h2>2. The Mathematics Behind Bezier Curves</h2>
+
+            <h3 id="linear-interpolation">Linear Interpolation: The Building Block</h3>
+            <p>
+                At the heart of every Bezier curve lies a simple concept: <strong>linear interpolation</strong>. Linear interpolation, often abbreviated as "lerp," 
+                is a method of finding a point between two given points based on a parameter <code>t</code>, where <code>t ∈ [0, 1]</code>. 
+                When <code>t = 0</code>, the interpolated point is at the first point, and when <code>t = 1</code>, it is at the second point. 
+                Intermediate values of <code>t</code> (e.g., <code>t = 0.5</code>) produce points between the two.
+            </p>
+            <p>The formula for linear interpolation between two points <code>A</code> and <code>B</code> in space is:</p>
+            <pre><code>L(t) = (1 - t) * A + t * B</code></pre>
+            <p>
+                This formula ensures that:
+                <ul>
+                    <li>The interpolated point lies on the straight line segment connecting <code>A</code> and <code>B</code>.</li>
+                    <li>The result depends smoothly on the parameter <code>t</code>, making it ideal for animations and transitions.</li>
+                </ul>
+            </p>
+            <p>Linear interpolation is the simplest form of a Bezier curve, often referred to as a <strong>degree-1 Bezier curve</strong>.</p>
+
+            <h3 id="higher-order-curves">Generalizing to Higher-Order Bezier Curves</h3>
+            <p>
+                Linear interpolation serves as the foundation for constructing <strong>higher-order Bezier curves</strong>. These curves are defined recursively using interpolation between multiple points.
+            </p>
+
+            <h4>Degree-2 Bezier Curves: The Quadratic Case</h4>
+            <p>
+                A quadratic Bezier curve is defined using three control points: <code>P₀</code>, <code>P₁</code>, and <code>P₂</code>. 
+                The curve is generated by performing two linear interpolations to find intermediate points, and then interpolating between those intermediate points.
+            </p>
+            <p>The formula for a quadratic Bezier curve is:</p>
+            <pre><code>TBD</code></pre>
+            <p>
+                The weights <code>(1 - t)²</code>, <code>2(1 - t)t</code>, and <code>t²</code> ensure that the curve is influenced more by the control points closest to the current value of <code>t</code>.
+            </p>
+
+            <h4>Degree-3 Bezier Curves: The Cubic Case</h4>
+            <p>
+                Cubic Bezier curves are the most commonly used in computer graphics. They are defined by four control points: <code>P₀</code>, <code>P₁</code>, <code>P₂</code>, and <code>P₃</code>. 
+                The curve is generated by interpolating linearly between points to create intermediate points, then interpolating between those intermediate points to create the final curve.
+            </p>
+            <p>The formula for a cubic Bezier curve is:</p>
+            <pre><code>TBD</code></pre>
+
+            <h4>Recursive Construction</h4>
+            <p>
+                Higher-order Bezier curves can be constructed using <strong>De Casteljau's algorithm</strong>, which recursively interpolates between control points. 
+                This algorithm works for any number of control points and any degree of the curve.
+            </p>
+            <p>The algorithm follows these steps:</p>
+            <ol>
+                <li>Start with the set of control points.</li>
+                <li>Perform linear interpolation between consecutive points to generate a new set of intermediate points.</li>
+                <li>Repeat until only one point remains. This point is the location of the curve for the given value of <code>t</code>.</li>
+            </ol>
+
+            <h3>Visualization of Bezier Curves</h3>
+            <p>
+                When visualizing a Bezier curve:
+                <ul>
+                    <li>The control points act as "handles" that influence the shape of the curve.</li>
+                    <li>The curve itself does not pass through all the control points (except the first and last) but is "pulled" toward them based on the weights.</li>
+                </ul>
+            </p>
+            <p>This mathematical foundation ensures that Bezier curves are both powerful and versatile, making them indispensable in procedural graphics and interactive design.</p>
+        </section>
+
+
+
+
+            <button class="toggle-button" id="toggleButton">Show Demo</button>
+        </div>
+
+        <!-- Demo Section -->
+        <div class="demo hidden" id="demo">
+            <!-- Canvas Section -->
+            <div class="canvas-container">
+                <canvas id="bezierCanvas" width="0" height="0"></canvas>
+            </div>
+
+            <!-- Editor Section -->
+            <div class="editor-container">
+                <textarea id="jsEditor"></textarea>
+            </div>
+        </div>
+
+
+
+    </div>
+
+    <footer>
+        <div class="footer-top">
+            <div class="footer-logo">
+                <span>∑</span>
+            </div>
+            <div class="footer-links">
+                <a href="#">About</a> |
+                <a href="#">Archive</a> |
+                <a href="#">Contact Us</a> |
+                <a href="#">Terms & Conditions</a> |
+                <a href="#">Privacy Policy</a>
+            </div>
+            <div class="footer-social">
+                <a href="#" class="social-icon">●</a>
+                <a href="#" class="social-icon">●</a>
+                <a href="#" class="social-icon">●</a>
+                <a href="#" class="social-icon">●</a>
+            </div>
+        </div>
+        <hr />
+        <div class="footer-bottom">
+            <p>&copy; 2024 LerpIt. All Rights Reserved.</p>
+            <p class="footer-note">An interactive learning platform created by <strong>ins.pi.rho</strong>.</p>
+        </div>
+    </footer>
+
+
+    <script>
+        // Toggle demo visibility with animation
+        const toggleButton = document.getElementById('toggleButton');
+        const demo = document.getElementById('demo');
+
+        toggleButton.addEventListener('click', () => {
+            demo.classList.toggle('hidden');
+            toggleButton.textContent = demo.classList.contains('hidden') ? 'Show Demo' : 'Hide Demo';
+        });
+
+        // Get the canvas element and its context
+        const canvas = document.getElementById('bezierCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas dimensions dynamically based on its container
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawBezierCurve(); // Redraw after resizing
+        }
+
+
+
+        // Prefill JavaScript code for the editor
+        const defaultCode = `
+        // Bezier curve rendering logic
+        const canvas = document.getElementById('bezierCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const points = [
+            { x: 50, y: 350 },
+            { x: 150, y: 50 },
+            { x: 250, y: 350 },
+            { x: 350, y: 50 }
+        ];
+
+        function drawBezierCurve() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw control points
+            ctx.fillStyle = 'red';
+            points.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Bezier curve
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.bezierCurveTo(
+                points[1].x, points[1].y,
+                points[2].x, points[2].y,
+                points[3].x, points[3].y
+            );
+            ctx.stroke();
+        }
+
+        drawBezierCurve();
+        `;
+        eval(defaultCode);
+
+        // Set the default code into the editor
+        document.getElementById('jsEditor').value = defaultCode;
+
+        // Watch for editor changes and dynamically update the canvas
+        document.getElementById('jsEditor').addEventListener('input', () => {
+            const userCode = document.getElementById('jsEditor').value;
+
+            // Dynamically execute user-modified code
+            try {
+                eval(userCode);
+            } catch (error) {
+                console.error('Error in user code:', error);
+            }
+        });
+
+        // Resize the canvas on window resize
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initial setup
+        resizeCanvas();
+
+    </script>
+</body>
+</html>
