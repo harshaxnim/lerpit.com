@@ -1,0 +1,63 @@
+---
+import CollectionShowcase from '../components/CollectionShowcase.astro';
+import LerpettePlayer from '../components/LerpettePlayer.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollectionBySlug, getCollections, getMixtapeBySlugs } from '../lib/lerpettes/content';
+
+export async function getStaticPaths() {
+  const collections = await getCollections();
+  return [
+    ...collections.map((collection) => ({
+      params: { slug: collection.slug },
+      props: { kind: 'collection', collectionSlug: collection.slug }
+    })),
+    ...collections.flatMap((collection) =>
+      collection.mixtapes.map((mixtape) => ({
+        params: { slug: `${collection.slug}/${mixtape.slug}` },
+        props: { kind: 'mixtape', collectionSlug: collection.slug, mixtapeSlug: mixtape.slug }
+      }))
+    )
+  ];
+}
+
+const props = Astro.props as
+  | { kind: 'collection'; collectionSlug: string }
+  | { kind: 'mixtape'; collectionSlug: string; mixtapeSlug: string };
+
+let collection = null;
+let mixtape = null;
+
+if (props.kind === 'collection') {
+  collection = await getCollectionBySlug(props.collectionSlug);
+  if (!collection) {
+    throw new Error(`Unknown lerpette collection "${props.collectionSlug}".`);
+  }
+} else {
+  mixtape = await getMixtapeBySlugs(props.collectionSlug, props.mixtapeSlug);
+  if (!mixtape) {
+    throw new Error(`Unknown mixtape "${props.collectionSlug}/${props.mixtapeSlug}".`);
+  }
+}
+---
+
+{
+  collection ? (
+    <BaseLayout title={`${collection.title} · Lerpit`} description={collection.summary}>
+      <main class="site-shell">
+        <header class="collection-header">
+          <p class="site-badge">Collection</p>
+          <h1>{collection.title}</h1>
+          <p>{collection.summary}</p>
+        </header>
+
+        <CollectionShowcase collection={collection} />
+      </main>
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={`${mixtape!.title} · Lerpit`} description={mixtape!.summary}>
+      <main class="site-shell site-shell--lesson">
+        <LerpettePlayer lerpette={mixtape!} playerLabel={`Lerpit / ${mixtape!.collectionTitle ?? 'collection'}`} />
+      </main>
+    </BaseLayout>
+  )
+}

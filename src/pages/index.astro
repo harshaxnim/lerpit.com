@@ -1,0 +1,37 @@
+---
+import CassetteCard from '../components/CassetteCard.astro';
+import LerpettePlayer from '../components/LerpettePlayer.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollections, getIssueZeroLerpette } from '../lib/lerpettes/content';
+
+const issueZero = await getIssueZeroLerpette();
+const collections = await getCollections();
+const otherLerpettes = collections.flatMap((collection) => collection.mixtapes);
+---
+
+<BaseLayout title={`${issueZero.title} · Lerpit`} description={issueZero.summary}>
+  <main class="site-shell site-shell--lesson">
+    <LerpettePlayer
+      lerpette={issueZero}
+      playerLabel="Lerpit / issue zero"
+      headerTitle="LerpIt"
+      headerSubtitle="Interactive lessons on simulation, rendering, and animation."
+    />
+
+    <section class="lerpette-shelf" aria-labelledby="other-lerpettes-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Other lerpettes</p>
+          <h2 id="other-lerpettes-heading">More mixtapes in the library</h2>
+        </div>
+        <a class="button button--ghost" href={`${import.meta.env.BASE_URL}library/`}>Open the library</a>
+      </div>
+
+      <div class="cassette-grid">
+        {otherLerpettes.map((mixtape) => (
+          <CassetteCard mixtape={mixtape} />
+        ))}
+      </div>
+    </section>
+  </main>
+</BaseLayout>

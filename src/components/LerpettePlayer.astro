@@ -1,0 +1,232 @@
+---
+import type { LerpetteMixtape } from '../lib/lerpettes/types';
+
+interface Props {
+  lerpette: LerpetteMixtape;
+  playerLabel: string;
+  headerTitle?: string;
+  headerSubtitle?: string;
+}
+
+const { lerpette, playerLabel, headerTitle, headerSubtitle } = Astro.props as Props;
+const playerId = `lerpette-${(lerpette.collectionSlug ? `${lerpette.collectionSlug}-${lerpette.slug}` : lerpette.slug)
+  .replace(/[^a-z0-9-]/gi, '-')
+  .toLowerCase()}`;
+const displayTitle = headerTitle ?? lerpette.title;
+const displaySubtitle = headerSubtitle ?? playerLabel;
+const clientSteps = lerpette.steps.map((step) => ({
+  id: step.id,
+  title: step.title,
+  runtimeImportKey: step.runtimeImportKey,
+  assetBasePath: step.assetBasePath
+}));
+---
+
+<section class="lerpette-player" data-player-id={playerId}>
+  <div class="lerpette-player__bar">
+    <div>
+      <h1>{displayTitle}</h1>
+      <p class="lerpette-player__subtitle">{displaySubtitle}</p>
+    </div>
+  </div>
+
+  <div class="lerpette-player__grid">
+    <nav class="lerpette-player__rail" aria-label="Chapter rail">
+      <p class="eyebrow">Chapters</p>
+
+      <ol class="lerpette-player__chapters">
+        {lerpette.steps.map((step, index) => (
+          <li>
+            <button
+              class="lerpette-player__chapter"
+              type="button"
+              data-step-button={step.id}
+              aria-label={`Jump to ${step.title}`}
+            >
+              <span class="lerpette-player__chapter-index">{String(index + 1).padStart(2, '0')}</span>
+              <span>{step.title}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
+
+    <div class="lerpette-player__lesson">
+      <section class="lerpette-intro">
+        <p class="lerpette-intro__summary">{lerpette.summary}</p>
+        <div class="prose-block" set:html={lerpette.introHtml}></div>
+      </section>
+
+      {lerpette.steps.map((step, index) => (
+        <section
+          class="lerpette-step"
+          id={`${playerId}-${step.id}`}
+          data-step-id={step.id}
+          aria-labelledby={`${playerId}-${step.id}-title`}
+        >
+          <div class="lerpette-step__header">
+            <span class="lerpette-step__index">{String(index + 1).padStart(2, '0')}</span>
+            <h2 id={`${playerId}-${step.id}-title`}>{step.title}</h2>
+          </div>
+          <div class="prose-block" set:html={step.bodyHtml}></div>
+        </section>
+      ))}
+    </div>
+
+    <aside class="lerpette-stage">
+      <div class="lerpette-stage__canvas" data-stage-host>
+        <canvas data-stage-canvas aria-label={`Live render for ${lerpette.title}`}></canvas>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<script type="module" define:vars={{ playerId, steps: clientSteps }}>
+  import { loadLerpetteStepRuntime } from '../lib/lerpettes/runtimeLoader';
+
+  const root = document.querySelector(`[data-player-id="${playerId}"]`);
+
+  if (root instanceof HTMLElement) {
+    const stepsById = new Map(steps.map((step) => [step.id, step]));
+    const stepSections = Array.from(root.querySelectorAll('[data-step-id]'));
+    const stepButtons = Array.from(root.querySelectorAll('[data-step-button]'));
+    const stageHost = root.querySelector('[data-stage-host]');
+    const stageCanvas = root.querySelector('[data-stage-canvas]');
+
+    if (stageHost instanceof HTMLElement && stageCanvas instanceof HTMLCanvasElement && steps.length > 0) {
+      const mountedRuntimes = new Map();
+      const shared = new Map();
+      let activeStepId = steps[0].id;
+      let currentRuntime = null;
+      let activationToken = 0;
+
+      const setActiveChrome = (stepId) => {
+        const step = stepsById.get(stepId);
+        if (!step) {
+          return;
+        }
+
+        activeStepId = stepId;
+
+        stepSections.forEach((section) => {
+          section.classList.toggle('is-active', section.dataset.stepId === stepId);
+        });
+
+        stepButtons.forEach((button) => {
+          button.classList.toggle('is-active', button.dataset.stepButton === stepId);
+        });
+      };
+
+      const createRuntimeContext = (stepId) => {
+        const step = stepsById.get(stepId);
+        if (!step) {
+          throw new Error(`Unknown step id "${stepId}".`);
+        }
+
+        return {
+          canvas: stageCanvas,
+          host: stageHost,
+          currentStepId: stepId,
+          shared,
+          setStatus() {
+            return;
+          },
+          setRuntimeLabel() {
+            return;
+          },
+          resolveAssetUrl(relativePath) {
+            return new URL(relativePath, new URL(step.assetBasePath, window.location.origin)).toString();
+          }
+        };
+      };
+
+      const activateStep = async (stepId, options = { scroll: false }) => {
+        const step = stepsById.get(stepId);
+        if (!step) {
+          return;
+        }
+
+        const nextToken = ++activationToken;
+        const previousStepId = activeStepId;
+        const previousRuntime = currentRuntime;
+
+        setActiveChrome(stepId);
+
+        if (options.scroll) {
+          const target = document.getElementById(`${playerId}-${stepId}`);
+          target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        if (previousRuntime && previousStepId !== stepId && typeof previousRuntime.exit === 'function') {
+          await previousRuntime.exit(createRuntimeContext(previousStepId));
+        }
+
+        const runtime = await loadLerpetteStepRuntime(step.runtimeImportKey);
+        if (nextToken !== activationToken) {
+          return;
+        }
+
+        if (!mountedRuntimes.has(stepId)) {
+          await runtime.mount(createRuntimeContext(stepId));
+          mountedRuntimes.set(stepId, runtime);
+        }
+
+        if (typeof runtime.enter === 'function') {
+          await runtime.enter(createRuntimeContext(stepId));
+        }
+
+        currentRuntime = runtime;
+      };
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+
+          if (visible?.target instanceof HTMLElement) {
+            activateStep(visible.target.dataset.stepId);
+          }
+        },
+        {
+          rootMargin: '-20% 0px -55% 0px',
+          threshold: [0.15, 0.35, 0.6]
+        }
+      );
+
+      stepSections.forEach((section) => observer.observe(section));
+
+      stepButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const stepId = button.dataset.stepButton;
+          if (stepId) {
+            activateStep(stepId, { scroll: true });
+          }
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (currentRuntime && typeof currentRuntime.resize === 'function') {
+          currentRuntime.resize(createRuntimeContext(activeStepId));
+        }
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && currentRuntime && typeof currentRuntime.enter === 'function') {
+          currentRuntime.enter(createRuntimeContext(activeStepId));
+        }
+      });
+
+      window.addEventListener('beforeunload', () => {
+        observer.disconnect();
+        mountedRuntimes.forEach((runtime, stepId) => {
+          runtime.dispose?.(createRuntimeContext(stepId));
+        });
+      });
+
+      const hash = window.location.hash.replace('#', '');
+      const hashStep = hash.startsWith(`${playerId}-`) ? hash.slice(playerId.length + 1) : '';
+      activateStep(stepsById.has(hashStep) ? hashStep : steps[0].id);
+    }
+  }
+</script>

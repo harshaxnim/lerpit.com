@@ -1,0 +1,29 @@
+---
+import type { LerpetteCollection } from '../lib/lerpettes/types';
+import CassetteCard from './CassetteCard.astro';
+
+interface Props {
+  collection: LerpetteCollection;
+  showLink?: boolean;
+}
+
+const { collection, showLink = false } = Astro.props as Props;
+---
+
+<section class="archive-collection" aria-labelledby={`collection-${collection.slug}`}>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Collection</p>
+      <h2 id={`collection-${collection.slug}`}>{collection.title}</h2>
+    </div>
+    {showLink && <a class="button button--ghost" href={collection.href}>Open collection</a>}
+  </div>
+
+  <div class="collection-copy prose-block" set:html={collection.bodyHtml}></div>
+
+  <div class="cassette-grid">
+    {collection.mixtapes.map((mixtape) => (
+      <CassetteCard mixtape={mixtape} />
+    ))}
+  </div>
+</section>

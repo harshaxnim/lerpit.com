@@ -1,0 +1,26 @@
+---
+import type { LerpetteMixtape } from '../lib/lerpettes/types';
+
+interface Props {
+  mixtape: LerpetteMixtape;
+}
+
+const { mixtape } = Astro.props as Props;
+---
+
+<a class="cassette-card" href={mixtape.href}>
+  <span class="cassette-card__collection">{mixtape.collectionTitle ?? 'Lerpette'}</span>
+  <div class="cassette-card__label">
+    <div class="cassette-card__window">
+      <span></span>
+      <span></span>
+    </div>
+
+    <div class="cassette-card__copy">
+      <h3>{mixtape.title}</h3>
+      <p>{mixtape.summary}</p>
+    </div>
+  </div>
+
+  <span class="cassette-card__action">Open lerpette</span>
+</a>

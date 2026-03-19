@@ -1,0 +1,31 @@
+{
+  "name": "lerpit-wasm-blog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:wasm && astro dev",
+    "start": "npm run build:wasm && astro dev",
+    "build:wasm": "bash scripts/build-wasm.sh",
+    "build": "npm run build:wasm && astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.0.8",
+    "astro": "^5.10.2",
+    "katex": "^0.16.22",
+    "mdast-util-to-string": "^4.0.0",
+    "rehype-katex": "^7.0.1",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0"
+  }
+}
