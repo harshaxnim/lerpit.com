@@ -161,7 +161,7 @@ export function initLerpettePlayers() {
       const previousRuntime = currentRuntime;
 
       setActiveChrome(sectionId);
-      if (stepId === activeStepId) {
+      if (stepId === activeStepId && currentRuntime) {
         return;
       }
 
