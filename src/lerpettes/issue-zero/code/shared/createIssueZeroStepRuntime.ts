@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '../types';
-import { loadLerpModule } from '../../wasm/lerpLoader';
+import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '@/lib/lerpettes/types';
+import { loadLerpModule } from '@/lib/wasm/lerpLoader';
 
 type IssueZeroConfig = {
   target: number;
@@ -16,12 +16,14 @@ type IssueZeroSharedScene = {
 };
 
 export function createIssueZeroStepRuntime(config: IssueZeroConfig): LerpetteStepRuntime {
+  const sharedWasmPath = '../shared/wasm/lerp_demo.wasm';
+
   return {
     async mount(ctx) {
-      await ensureIssueZeroScene(ctx, ctx.resolveAssetUrl('../start/wasm/lerp_demo.wasm'));
+      await ensureIssueZeroScene(ctx, ctx.resolveAssetUrl(sharedWasmPath));
     },
     async enter(ctx) {
-      const scene = await ensureIssueZeroScene(ctx, ctx.resolveAssetUrl('../start/wasm/lerp_demo.wasm'));
+      const scene = await ensureIssueZeroScene(ctx, ctx.resolveAssetUrl(sharedWasmPath));
       ctx.setRuntimeLabel(config.runtimeLabel);
       ctx.setStatus(config.status);
       scene.setTarget(config.target);
@@ -56,16 +58,15 @@ async function ensureIssueZeroScene(ctx: LerpetteRuntimeContext, wasmUrl: string
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-6, 6, 4.5, -4.5, 0.1, 50);
+  const baseHalfWidth = 6;
+  const baseHalfHeight = 4.5;
+  const baseAspect = baseHalfWidth / baseHalfHeight;
+  const camera = new THREE.OrthographicCamera(-baseHalfWidth, baseHalfWidth, baseHalfHeight, -baseHalfHeight, 0.1, 50);
   camera.position.set(0, 0, 10);
   camera.lookAt(0, 0, 0);
 
   const pointA = new THREE.Vector3(-3.5, -1.25, 0);
   const pointB = new THREE.Vector3(3.75, 1.9, 0);
-  const grid = new THREE.GridHelper(12, 8, 0x7ea7c9, 0xb8cee1);
-  grid.rotation.x = Math.PI / 2;
-  grid.position.z = -0.1;
-  scene.add(grid);
 
   const lineMaterial = new THREE.LineBasicMaterial({ color: 0x2e6da4 });
   const lineGeometry = new THREE.BufferGeometry().setFromPoints([pointA, pointB]);
@@ -109,6 +110,18 @@ async function ensureIssueZeroScene(ctx: LerpetteRuntimeContext, wasmUrl: string
     const width = ctx.host.clientWidth;
     const height = Math.max(ctx.host.clientHeight, 320);
     renderer.setSize(width, height, false);
+
+    const safeHeight = Math.max(height, 1);
+    const aspect = width / safeHeight;
+    const isWiderThanBase = aspect >= baseAspect;
+    const halfWidth = isWiderThanBase ? baseHalfHeight * aspect : baseHalfWidth;
+    const halfHeight = isWiderThanBase ? baseHalfHeight : baseHalfWidth / Math.max(aspect, 0.0001);
+
+    camera.left = -halfWidth;
+    camera.right = halfWidth;
+    camera.top = halfHeight;
+    camera.bottom = -halfHeight;
+    camera.updateProjectionMatrix();
   };
 
   const renderFrame = () => {

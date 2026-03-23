@@ -193,7 +193,7 @@ while IFS= read -r step_src_dir; do
 done < <(find "$LERPETTE_ROOT" -type d -path '*/code/*/wasm-src' | sort)
 
 if [[ $found_step_src_dir -eq 0 ]]; then
-  echo "No step-local wasm-src directories found."
+  echo "No wasm-src directories found under src/lerpettes/**/code/**."
   exit 0
 fi
 

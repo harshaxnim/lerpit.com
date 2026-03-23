@@ -290,6 +290,10 @@ function validateCodeDirectory(mixtapeDir: string, steps: LerpetteStep[]) {
     }
 
     const entryId = entry.name;
+    if (entryId === 'shared') {
+      continue;
+    }
+
     if (!stepIds.has(entryId)) {
       throw new Error(`Runtime directory "${entryId}" does not match any H2 step id in ${mixtapeDir}`);
     }

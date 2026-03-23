@@ -33,10 +33,11 @@ src/lerpettes/
   issue-zero/
     mixtape.md
     code/
-      start/
-        js/index.ts
+      shared/
         wasm-src/lerp_demo.c
         wasm/lerp_demo.wasm
+      start/
+        js/index.ts
   physics-engine/
     collection.mdx
     simple-dynamics/
@@ -59,6 +60,8 @@ Rules:
 3. Use `## Heading {#step-id}` for each player chapter.
 4. Put the runtime for that chapter at `code/<step-id>/js/index.ts`.
 5. If the step needs Wasm, put C sources in `code/<step-id>/wasm-src/` and the generated binaries will land in `code/<step-id>/wasm/`.
+6. If code or Wasm is shared across chapters in one lerpette, put it in that lerpette's `code/shared/` directory.
+7. Framework-level shared helpers should live under `src/lib/`, not inside `src/lerpettes/`.
 
 Inside a chapter you can write:
 
@@ -112,7 +115,7 @@ export default createCanvasSketchRuntime({
 });
 ```
 
-If multiple steps share one Wasm binary, keep it in one step folder and load it with a relative path such as `ctx.resolveAssetUrl('../start/wasm/lerp_demo.wasm')`.
+If multiple steps in one lerpette share one Wasm binary, keep it in that lerpette's `code/shared/wasm/` and load it with a relative path such as `ctx.resolveAssetUrl('../shared/wasm/lerp_demo.wasm')`.
 
 ## What is inferred
 
@@ -139,7 +142,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` compiles any step-local `wasm-src/*.c` files before starting Astro.
+`npm run dev` compiles any `code/**/wasm-src/*.c` files before starting Astro.
 If your local `clang` does not support the `wasm32` target, the build script falls back to a checked-in seed binary from `public/wasm/` when a matching filename exists.
 If you want real local Wasm recompilation, install LLVM and `lld`, then point the script at them with `WASM_CLANG_BIN=/opt/homebrew/opt/llvm/bin/clang` and `WASM_LD_BIN=/opt/homebrew/opt/lld/bin/wasm-ld` on Apple Silicon, or `/usr/local/opt/...` on Intel.
 The Wasm build is incremental: unchanged outputs are skipped, so `npm run dev` does not recompile every step on every restart.
@@ -150,7 +153,7 @@ The Wasm build is incremental: unchanged outputs are skipped, so `npm run dev` d
 npm run build
 ```
 
-This compiles step-local Wasm assets and then builds the Astro site.
+This compiles lesson code Wasm assets and then builds the Astro site.
 
 ## Routes
 

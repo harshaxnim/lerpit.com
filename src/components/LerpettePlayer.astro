@@ -20,9 +20,11 @@ const clientSteps = lerpette.steps.map((step) => ({
   runtimeImportKey: step.runtimeImportKey,
   assetBasePath: step.assetBasePath
 }));
+const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
 ---
 
-<section class="lerpette-player" data-player-id={playerId}>
+<section class="lerpette-player" data-lerpette-player>
+  <script type="application/json" data-player-config set:html={playerConfig}></script>
   <div class="lerpette-player__bar">
     <div>
       <h1>{displayTitle}</h1>
@@ -31,28 +33,40 @@ const clientSteps = lerpette.steps.map((step) => ({
   </div>
 
   <div class="lerpette-player__grid">
-    <nav class="lerpette-player__rail" aria-label="Chapter rail">
-      <p class="eyebrow">Chapters</p>
+    <nav class="lerpette-player__rail" aria-label="Sections rail">
+      <p class="eyebrow lerpette-player__label">Sections</p>
 
       <ol class="lerpette-player__chapters">
+        <li>
+          <a
+            class="lerpette-player__chapter"
+            href={`#${playerId}-intro`}
+            data-target-id="intro"
+            aria-label={`Jump to ${lerpette.title}`}
+          >
+            <span class="lerpette-player__chapter-index">00</span>
+            <span>{lerpette.title}</span>
+          </a>
+        </li>
         {lerpette.steps.map((step, index) => (
           <li>
-            <button
+            <a
               class="lerpette-player__chapter"
-              type="button"
-              data-step-button={step.id}
+              href={`#${playerId}-${step.id}`}
+              data-target-id={step.id}
               aria-label={`Jump to ${step.title}`}
             >
               <span class="lerpette-player__chapter-index">{String(index + 1).padStart(2, '0')}</span>
               <span>{step.title}</span>
-            </button>
+            </a>
           </li>
         ))}
       </ol>
     </nav>
 
     <div class="lerpette-player__lesson">
-      <section class="lerpette-intro">
+      <section class="lerpette-intro" id={`${playerId}-intro`} data-section-id="intro">
+        <h2 class="lerpette-intro__title">{lerpette.title}</h2>
         <p class="lerpette-intro__summary">{lerpette.summary}</p>
         <div class="prose-block" set:html={lerpette.introHtml}></div>
       </section>
@@ -61,7 +75,7 @@ const clientSteps = lerpette.steps.map((step) => ({
         <section
           class="lerpette-step"
           id={`${playerId}-${step.id}`}
-          data-step-id={step.id}
+          data-section-id={step.id}
           aria-labelledby={`${playerId}-${step.id}-title`}
         >
           <div class="lerpette-step__header">
@@ -74,159 +88,28 @@ const clientSteps = lerpette.steps.map((step) => ({
     </div>
 
     <aside class="lerpette-stage">
-      <div class="lerpette-stage__canvas" data-stage-host>
+      <button
+        class="lerpette-stage__toggle"
+        type="button"
+        data-stage-toggle
+        aria-expanded="false"
+        aria-controls={`${playerId}-viewport-surface`}
+        aria-label="Show viewport"
+      >
+        <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
+        <span class="lerpette-stage__toggle-text">VIEWPORT</span>
+        <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
+      </button>
+      <p class="eyebrow lerpette-stage__label">Viewport</p>
+      <div class="lerpette-stage__canvas" data-stage-host id={`${playerId}-viewport-surface`}>
         <canvas data-stage-canvas aria-label={`Live render for ${lerpette.title}`}></canvas>
       </div>
     </aside>
   </div>
 </section>
 
-<script type="module" define:vars={{ playerId, steps: clientSteps }}>
-  import { loadLerpetteStepRuntime } from '../lib/lerpettes/runtimeLoader';
+<script>
+  import { initLerpettePlayers } from '../lib/lerpettes/playerClient';
 
-  const root = document.querySelector(`[data-player-id="${playerId}"]`);
-
-  if (root instanceof HTMLElement) {
-    const stepsById = new Map(steps.map((step) => [step.id, step]));
-    const stepSections = Array.from(root.querySelectorAll('[data-step-id]'));
-    const stepButtons = Array.from(root.querySelectorAll('[data-step-button]'));
-    const stageHost = root.querySelector('[data-stage-host]');
-    const stageCanvas = root.querySelector('[data-stage-canvas]');
-
-    if (stageHost instanceof HTMLElement && stageCanvas instanceof HTMLCanvasElement && steps.length > 0) {
-      const mountedRuntimes = new Map();
-      const shared = new Map();
-      let activeStepId = steps[0].id;
-      let currentRuntime = null;
-      let activationToken = 0;
-
-      const setActiveChrome = (stepId) => {
-        const step = stepsById.get(stepId);
-        if (!step) {
-          return;
-        }
-
-        activeStepId = stepId;
-
-        stepSections.forEach((section) => {
-          section.classList.toggle('is-active', section.dataset.stepId === stepId);
-        });
-
-        stepButtons.forEach((button) => {
-          button.classList.toggle('is-active', button.dataset.stepButton === stepId);
-        });
-      };
-
-      const createRuntimeContext = (stepId) => {
-        const step = stepsById.get(stepId);
-        if (!step) {
-          throw new Error(`Unknown step id "${stepId}".`);
-        }
-
-        return {
-          canvas: stageCanvas,
-          host: stageHost,
-          currentStepId: stepId,
-          shared,
-          setStatus() {
-            return;
-          },
-          setRuntimeLabel() {
-            return;
-          },
-          resolveAssetUrl(relativePath) {
-            return new URL(relativePath, new URL(step.assetBasePath, window.location.origin)).toString();
-          }
-        };
-      };
-
-      const activateStep = async (stepId, options = { scroll: false }) => {
-        const step = stepsById.get(stepId);
-        if (!step) {
-          return;
-        }
-
-        const nextToken = ++activationToken;
-        const previousStepId = activeStepId;
-        const previousRuntime = currentRuntime;
-
-        setActiveChrome(stepId);
-
-        if (options.scroll) {
-          const target = document.getElementById(`${playerId}-${stepId}`);
-          target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        if (previousRuntime && previousStepId !== stepId && typeof previousRuntime.exit === 'function') {
-          await previousRuntime.exit(createRuntimeContext(previousStepId));
-        }
-
-        const runtime = await loadLerpetteStepRuntime(step.runtimeImportKey);
-        if (nextToken !== activationToken) {
-          return;
-        }
-
-        if (!mountedRuntimes.has(stepId)) {
-          await runtime.mount(createRuntimeContext(stepId));
-          mountedRuntimes.set(stepId, runtime);
-        }
-
-        if (typeof runtime.enter === 'function') {
-          await runtime.enter(createRuntimeContext(stepId));
-        }
-
-        currentRuntime = runtime;
-      };
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          const visible = entries
-            .filter((entry) => entry.isIntersecting)
-            .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
-
-          if (visible?.target instanceof HTMLElement) {
-            activateStep(visible.target.dataset.stepId);
-          }
-        },
-        {
-          rootMargin: '-20% 0px -55% 0px',
-          threshold: [0.15, 0.35, 0.6]
-        }
-      );
-
-      stepSections.forEach((section) => observer.observe(section));
-
-      stepButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const stepId = button.dataset.stepButton;
-          if (stepId) {
-            activateStep(stepId, { scroll: true });
-          }
-        });
-      });
-
-      window.addEventListener('resize', () => {
-        if (currentRuntime && typeof currentRuntime.resize === 'function') {
-          currentRuntime.resize(createRuntimeContext(activeStepId));
-        }
-      });
-
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && currentRuntime && typeof currentRuntime.enter === 'function') {
-          currentRuntime.enter(createRuntimeContext(activeStepId));
-        }
-      });
-
-      window.addEventListener('beforeunload', () => {
-        observer.disconnect();
-        mountedRuntimes.forEach((runtime, stepId) => {
-          runtime.dispose?.(createRuntimeContext(stepId));
-        });
-      });
-
-      const hash = window.location.hash.replace('#', '');
-      const hashStep = hash.startsWith(`${playerId}-`) ? hash.slice(playerId.length + 1) : '';
-      activateStep(stepsById.has(hashStep) ? hashStep : steps[0].id);
-    }
-  }
+  initLerpettePlayers();
 </script>

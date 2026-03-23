@@ -1,4 +1,4 @@
-import { createIssueZeroStepRuntime } from '@/lib/lerpettes/runtimes';
+import { createIssueZeroStepRuntime } from '@/lerpettes/issue-zero/code/shared';
 
 export default createIssueZeroStepRuntime({
   target: 0.75,
