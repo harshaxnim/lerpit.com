@@ -2,6 +2,8 @@
 
 This is issue zero. The purpose of the site is built into the lesson itself: take a topic that feels bigger than you can comfortably hold in your head, split it into named chunks, and then move between those chunks one clear state at a time.
 
+Author: Harsha | Date: 2026-03-25
+
 Lerp is a good first example because the rule is small:
 
 $$

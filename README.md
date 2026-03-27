@@ -57,11 +57,12 @@ Rules:
 
 1. Start with one `#` heading for the lesson title.
 2. Put the summary in the first paragraph after that heading.
-3. Use `## Heading {#step-id}` for each player chapter.
-4. Put the runtime for that chapter at `code/<step-id>/js/index.ts`.
-5. If the step needs Wasm, put C sources in `code/<step-id>/wasm-src/` and the generated binaries will land in `code/<step-id>/wasm/`.
-6. If code or Wasm is shared across chapters in one lerpette, put it in that lerpette's `code/shared/` directory.
-7. Framework-level shared helpers should live under `src/lib/`, not inside `src/lerpettes/`.
+3. Add metadata in the next paragraph with `Author: <name> | Date: YYYY-MM-DD`.
+4. Use `## Heading {#step-id}` for each player chapter.
+5. Put the runtime for that chapter at `code/<step-id>/js/index.ts`.
+6. If the step needs Wasm, put C sources in `code/<step-id>/wasm-src/` and the generated binaries will land in `code/<step-id>/wasm/`.
+7. If code or Wasm is shared across chapters in one lerpette, put it in that lerpette's `code/shared/` directory.
+8. Framework-level shared helpers should live under `src/lib/`, not inside `src/lerpettes/`.
 
 Inside a chapter you can write:
 

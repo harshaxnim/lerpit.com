@@ -2,6 +2,8 @@
 
 This lerpette treats a shadow map as a two-step story: first build a depth view from the light, then filter or sample that depth when shading from the camera.
 
+Author: Harsha | Date: 2026-03-25
+
 ## Capture the depth pass {#depth-pass}
 
 The first step is to render the scene from the light's point of view and store depth.

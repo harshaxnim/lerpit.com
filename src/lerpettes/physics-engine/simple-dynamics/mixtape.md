@@ -2,6 +2,8 @@
 
 This lerpette starts with two of the smallest useful ideas in rigid body simulation: a force accumulating over time, and an impulse changing velocity immediately.
 
+Author: Harsha | Date: 2026-03-25
+
 ## Accumulated force {#intro}
 
 Forces act over time, so they usually change velocity through integration.

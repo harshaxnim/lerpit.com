@@ -253,8 +253,13 @@ nav {
 }
 
 .lerpette-player__label,
-.lerpette-stage__label {
+.lerpette-stage__label,
+.lerpette-player__lesson-label {
   margin: 0;
+}
+
+.lerpette-player__lesson-label {
+  margin-bottom: -0.1rem;
 }
 
 .lerpette-player__chapter {

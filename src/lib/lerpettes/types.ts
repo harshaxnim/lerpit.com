@@ -29,6 +29,8 @@ export type LerpetteMixtape = {
   href: string;
   title: string;
   summary: string;
+  publishedOn: string;
+  author: string;
   introHtml: string;
   steps: LerpetteStep[];
   collectionSlug?: string;

@@ -30,6 +30,11 @@ type MarkdownRoot = {
   children: MarkdownNode[];
 };
 
+type MixtapeMeta = {
+  author: string;
+  date: string;
+};
+
 const LERPETTE_ROOT = path.join(process.cwd(), 'src/lerpettes');
 const RUNTIME_LOADER_DIR = path.join(process.cwd(), 'src/lib/lerpettes');
 const ASSET_ROUTE_PREFIX = '/assets/lerpettes';
@@ -213,7 +218,8 @@ async function parseMixtapeDirectory(
   assert(firstStepIndex >= 0, `Mixtape ${mixtapePath} must include at least one H2 chapter with an explicit id.`);
 
   const introNodes = contentNodes.slice(0, firstStepIndex);
-  const { summary, remainingNodes: introBodyNodes } = extractSummary(introNodes, mixtapePath);
+  const { summary, remainingNodes: introNodesWithoutSummary } = extractSummary(introNodes, mixtapePath);
+  const { meta, remainingNodes: introBodyNodes } = extractMixtapeMeta(introNodesWithoutSummary, mixtapePath);
   const stepNodes = contentNodes.slice(firstStepIndex);
   const steps = extractMixtapeSteps(stepNodes, mixtapePath, mixtapeDir);
 
@@ -224,6 +230,8 @@ async function parseMixtapeDirectory(
     href: href ?? (collectionSlug ? `/${collectionSlug}/${path.basename(mixtapeDir)}/` : '/'),
     title,
     summary,
+    publishedOn: meta.date,
+    author: meta.author,
     introHtml: renderNodesToHtml(introBodyNodes, mixtapeDir),
     steps,
     collectionSlug,
@@ -347,6 +355,49 @@ function extractSummary(nodes: MarkdownNode[], filePath: string): { summary: str
   assert(paragraph, `Expected a summary paragraph near the top of ${filePath}`);
   return {
     summary: toString(paragraph as never).trim(),
+    remainingNodes: nodes.filter((_, index) => index !== paragraphIndex)
+  };
+}
+
+function extractMixtapeMeta(nodes: MarkdownNode[], filePath: string): { meta: MixtapeMeta; remainingNodes: MarkdownNode[] } {
+  const paragraphIndex = nodes.findIndex((node) => node.type === 'paragraph');
+  const paragraph = paragraphIndex >= 0 ? nodes[paragraphIndex] : undefined;
+  assert(paragraph, `Expected metadata after summary in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
+
+  const raw = toString(paragraph as never).trim();
+  const parts = raw
+    .split('|')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const meta = new Map<string, string>();
+
+  for (const part of parts) {
+    const separatorIndex = part.indexOf(':');
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = part.slice(0, separatorIndex).trim().toLowerCase();
+    const value = part.slice(separatorIndex + 1).trim();
+    if (!key || !value) {
+      continue;
+    }
+
+    meta.set(key, value);
+  }
+
+  const author = meta.get('author');
+  const date = meta.get('date');
+
+  assert(author, `Missing author metadata in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
+  assert(date, `Missing date metadata in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(date), `Invalid date "${date}" in ${filePath}. Use YYYY-MM-DD.`);
+
+  return {
+    meta: {
+      author,
+      date
+    },
     remainingNodes: nodes.filter((_, index) => index !== paragraphIndex)
   };
 }
