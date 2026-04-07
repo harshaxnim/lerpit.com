@@ -53,6 +53,60 @@ export function initLerpettePlayers() {
 
     initializedPlayers.add(root);
     initFootnotesToggles(root);
+    const revealFootnoteTarget = (hash: string) => {
+      if (!hash.startsWith('#')) {
+        return;
+      }
+
+      const id = decodeURIComponent(hash.slice(1));
+      if (!id) {
+        return;
+      }
+
+      const target = document.getElementById(id);
+      if (!(target instanceof HTMLElement) || !root.contains(target)) {
+        return;
+      }
+
+      const footnotes = target.closest<HTMLElement>('.footnotes');
+      if (!(footnotes instanceof HTMLElement)) {
+        return;
+      }
+
+      const wasCollapsed = footnotes.classList.contains('is-collapsed');
+      setFootnotesCollapsed(footnotes, false);
+
+      if (wasCollapsed) {
+        window.requestAnimationFrame(() => {
+          target.scrollIntoView({ block: 'nearest' });
+        });
+      }
+
+      target.classList.add('is-footnote-target');
+      window.setTimeout(() => {
+        target.classList.remove('is-footnote-target');
+      }, 1400);
+    };
+    const onFootnoteHashChange = () => {
+      revealFootnoteTarget(window.location.hash);
+    };
+    const onFootnoteReferenceClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const link = target.closest<HTMLAnchorElement>('a[href]');
+      const href = link?.getAttribute('href');
+      if (!href || !href.startsWith('#')) {
+        return;
+      }
+
+      revealFootnoteTarget(href);
+    };
+    root.addEventListener('click', onFootnoteReferenceClick);
+    window.addEventListener('hashchange', onFootnoteHashChange);
+    revealFootnoteTarget(window.location.hash);
 
     const { playerId, steps } = config;
     const stepsById = new Map(steps.map((step) => [step.id, step]));
@@ -317,6 +371,8 @@ export function initLerpettePlayers() {
 
       stageToggle?.removeEventListener('click', handleStageToggle);
       mobileStageMedia.removeEventListener('change', onStageMediaChange);
+      root.removeEventListener('click', onFootnoteReferenceClick);
+      window.removeEventListener('hashchange', onFootnoteHashChange);
     });
 
     const hash = window.location.hash.replace('#', '');
@@ -360,13 +416,19 @@ function initFootnotesToggles(root: HTMLElement) {
     button.setAttribute('aria-expanded', 'false');
 
     const updateExpandedState = () => {
-      const isCollapsed = footnotes.classList.toggle('is-collapsed');
-      button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      const isCollapsed = !footnotes.classList.contains('is-collapsed');
+      setFootnotesCollapsed(footnotes, isCollapsed);
     };
 
     button.addEventListener('click', updateExpandedState);
     heading.replaceChildren(button);
-    footnotes.classList.add('is-collapsed');
+    setFootnotesCollapsed(footnotes, true);
     footnotes.dataset.footnotesToggleReady = 'true';
   });
+}
+
+function setFootnotesCollapsed(footnotes: HTMLElement, collapsed: boolean) {
+  footnotes.classList.toggle('is-collapsed', collapsed);
+  const button = footnotes.querySelector<HTMLButtonElement>('.footnotes__title-toggle');
+  button?.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
 }

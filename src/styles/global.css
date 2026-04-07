@@ -451,6 +451,10 @@ nav {
   display: none;
 }
 
+.prose-block .footnotes .is-footnote-target {
+  background: rgba(255, 221, 87, 0.3);
+}
+
 .katex-display {
   overflow-x: auto;
   padding: 0.2rem 0;
