@@ -1,6 +1,9 @@
 ---
 import CollectionShowcase from '../components/CollectionShowcase.astro';
-import LerpettePlayer from '../components/LerpettePlayer.astro';
+import CollectionsShelf from '../components/CollectionsShelf.astro';
+import LerpettesShelf from '../components/LerpettesShelf.astro';
+import LerpetteLessonPage from '../components/LerpetteLessonPage.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollectionBySlug, getCollections, getMixtapeBySlugs } from '../lib/lerpettes/content';
 
@@ -26,6 +29,8 @@ const props = Astro.props as
 
 let collection = null;
 let mixtape = null;
+const allCollections = await getCollections();
+const libraryMixtapes = allCollections.flatMap((entry) => entry.mixtapes);
 
 if (props.kind === 'collection') {
   collection = await getCollectionBySlug(props.collectionSlug);
@@ -38,26 +43,35 @@ if (props.kind === 'collection') {
     throw new Error(`Unknown mixtape "${props.collectionSlug}/${props.mixtapeSlug}".`);
   }
 }
+
+const otherLerpettes = mixtape ? libraryMixtapes.filter((entry) => entry.href !== mixtape?.href) : [];
+const otherCollections = collection ? allCollections.filter((entry) => entry.slug !== collection.slug) : [];
+const otherCollectionMixtapes = collection
+  ? libraryMixtapes.filter((entry) => entry.collectionSlug !== collection.slug)
+  : [];
 ---
 
 {
   collection ? (
     <BaseLayout title={`${collection.title} · Lerpit`} description={collection.summary}>
       <main class="site-shell">
-        <header class="collection-header">
-          <p class="site-badge">Collection</p>
-          <h1>{collection.title}</h1>
-          <p>{collection.summary}</p>
-        </header>
-
-        <CollectionShowcase collection={collection} />
+        <section class="lerpette-player">
+          <SiteHeader />
+          <CollectionShowcase collection={collection} />
+        </section>
+        <LerpettesShelf
+          mixtapes={otherCollectionMixtapes}
+          headingId="other-mixtapes-heading"
+          heading="Mixtapes from other collections"
+        />
+        <CollectionsShelf
+          collections={otherCollections}
+          headingId="other-collections-heading"
+          heading="Explore more collections"
+        />
       </main>
     </BaseLayout>
   ) : (
-    <BaseLayout title={`${mixtape!.title} · Lerpit`} description={mixtape!.summary}>
-      <main class="site-shell site-shell--lesson">
-        <LerpettePlayer lerpette={mixtape!} playerLabel={`Lerpit / ${mixtape!.collectionTitle ?? 'collection'}`} />
-      </main>
-    </BaseLayout>
+    <LerpetteLessonPage mixtape={mixtape!} allMixtapes={otherLerpettes} />
   )
 }

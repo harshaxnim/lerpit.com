@@ -1,0 +1,32 @@
+---
+import type { LerpetteMixtape } from '../lib/lerpettes/types';
+import CassetteCard from './CassetteCard.astro';
+
+interface Props {
+  mixtapes: LerpetteMixtape[];
+  headingId?: string;
+  heading?: string;
+}
+
+const {
+  mixtapes,
+  headingId = 'other-lerpettes-heading',
+  heading = 'More mixtapes in the library'
+} = Astro.props as Props;
+---
+
+<section class="lerpette-shelf" aria-labelledby={headingId}>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Other lerpettes</p>
+      <h2 id={headingId}>{heading}</h2>
+    </div>
+    <a class="button button--ghost" href={`${import.meta.env.BASE_URL}library/`}>Open the library</a>
+  </div>
+
+  <div class="cassette-grid">
+    {mixtapes.map((entry) => (
+      <CassetteCard mixtape={entry} />
+    ))}
+  </div>
+</section>

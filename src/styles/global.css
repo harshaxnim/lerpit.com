@@ -109,7 +109,7 @@ nav {
 }
 
 .site-shell {
-  width: min(1320px, calc(100% - 2rem));
+  width: min(1440px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 1rem 0 4rem;
 }
@@ -210,6 +210,53 @@ nav {
   margin-top: 1.6rem;
 }
 
+.site-shell > .lerpette-player > .archive-collection {
+  margin-top: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.site-shell > .lerpette-player > .archive-collection:first-of-type {
+  margin-top: 0;
+}
+
+.site-shell > .lerpette-player > .archive-collection > .section-heading {
+  margin-bottom: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.site-shell > .lerpette-player > .archive-collection > .section-heading h2 {
+  font-size: clamp(1.6rem, 3.1vw, 2.2rem);
+  font-weight: 500;
+}
+
+.site-shell > .lerpette-player > .collection-header {
+  margin-top: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.site-shell > .lerpette-player > .collection-header h2 {
+  font-size: clamp(1.9rem, 3.8vw, 2.35rem);
+  font-weight: 500;
+}
+
+.library-separator {
+  margin: 1.25rem 0 1.1rem;
+  border: 0;
+  border-top: 1px solid var(--line-strong);
+}
+
+.site-shell > .lerpette-player > .archive-collection + .archive-collection {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line-strong);
+}
+
 .lerpette-player__lesson .prose-block p,
 .lerpette-player__lesson .prose-block li {
   font-size: 1.1rem;
@@ -219,6 +266,11 @@ nav {
   margin-top: 0.5rem;
   font-size: clamp(2.3rem, 5.5vw, 3.8rem);
   font-weight: 500;
+}
+
+.collection-header h1 a {
+  color: inherit;
+  text-decoration: none;
 }
 
 .lerpette-player__bar {
@@ -235,6 +287,11 @@ nav {
   font-size: clamp(2.5rem, 5vw, 4.2rem);
   font-weight: 500;
   max-width: 12ch;
+}
+
+.lerpette-player__bar h1 a {
+  color: inherit;
+  text-decoration: none;
 }
 
 .lerpette-player__subtitle {
@@ -281,6 +338,15 @@ nav {
 
 .lerpette-player__lesson-label {
   margin-bottom: -0.1rem;
+}
+
+.lerpette-player__lesson-collection-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.lerpette-player__lesson-collection-link:hover {
+  text-decoration: none;
 }
 
 .lerpette-player__chapter {
@@ -514,6 +580,12 @@ nav {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.collections-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .cassette-card {

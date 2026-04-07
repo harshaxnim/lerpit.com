@@ -1,5 +1,6 @@
 ---
 import CollectionShowcase from '../components/CollectionShowcase.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollections } from '../lib/lerpettes/content';
 
@@ -8,17 +9,18 @@ const collections = await getCollections();
 
 <BaseLayout title="Lerpettes · Lerpit" description="Document-first lerpettes grouped by collection and mixtape.">
   <main class="site-shell">
-    <header class="collection-header">
-      <p class="site-badge">Lerpit / library</p>
-      <h1>The lerpette library</h1>
-      <p>
-        Collections group related topics. Each cassette below opens a mixtape-style lesson with a chapter rail on
-        the left and a live surface on the right.
-      </p>
-    </header>
-
-    {collections.map((collection) => (
-      <CollectionShowcase collection={collection} showLink={true} />
-    ))}
+    <section class="lerpette-player">
+      <SiteHeader />
+      <header class="collection-header">
+        <h2>The lerpette library</h2>
+        <p>
+          Lerpettes grouped by collections.
+        </p>
+      </header>
+      <hr class="library-separator" />
+      {collections.map((collection) => (
+        <CollectionShowcase collection={collection} showLink={true} />
+      ))}
+    </section>
   </main>
 </BaseLayout>

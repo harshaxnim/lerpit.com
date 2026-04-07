@@ -1,0 +1,31 @@
+---
+import type { LerpetteCollection } from '../lib/lerpettes/types';
+
+interface Props {
+  collections: LerpetteCollection[];
+  headingId?: string;
+  heading?: string;
+}
+
+const {
+  collections,
+  headingId = 'other-collections-heading',
+  heading = 'Explore more collections'
+} = Astro.props as Props;
+---
+
+<section class="lerpette-shelf" aria-labelledby={headingId}>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Other collections</p>
+      <h2 id={headingId}>{heading}</h2>
+    </div>
+    <a class="button button--ghost" href={`${import.meta.env.BASE_URL}library/`}>Open the library</a>
+  </div>
+
+  <div class="collections-grid">
+    {collections.map((collection) => (
+      <a class="button button--ghost" href={collection.href}>{collection.title}</a>
+    ))}
+  </div>
+</section>

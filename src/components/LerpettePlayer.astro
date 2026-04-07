@@ -1,5 +1,6 @@
 ---
 import type { LerpetteMixtape } from '../lib/lerpettes/types';
+import SiteHeader from './SiteHeader.astro';
 
 interface Props {
   lerpette: LerpetteMixtape;
@@ -15,7 +16,7 @@ const playerId = `lerpette-${(lerpette.collectionSlug ? `${lerpette.collectionSl
 const displayTitle = headerTitle ?? lerpette.title;
 const displaySubtitle = headerSubtitle ?? playerLabel;
 const collectionLabel = lerpette.collectionTitle ?? 'Issue Zero';
-const lessonMetaLabel = `${collectionLabel} / ${lerpette.publishedOn} / ${lerpette.author}`;
+const collectionHref = lerpette.collectionSlug ? `${import.meta.env.BASE_URL}${lerpette.collectionSlug}/` : null;
 const clientSteps = lerpette.steps.map((step) => ({
   id: step.id,
   title: step.title,
@@ -27,12 +28,7 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
 
 <section class="lerpette-player" data-lerpette-player>
   <script type="application/json" data-player-config set:html={playerConfig}></script>
-  <div class="lerpette-player__bar">
-    <div>
-      <h1>{displayTitle}</h1>
-      <p class="lerpette-player__subtitle">{displaySubtitle}</p>
-    </div>
-  </div>
+  <SiteHeader title={displayTitle} subtitle={displaySubtitle} />
 
   <div class="lerpette-player__grid">
     <nav class="lerpette-player__rail" aria-label="Sections rail">
@@ -67,7 +63,16 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
     </nav>
 
     <div class="lerpette-player__lesson">
-      <p class="eyebrow lerpette-player__label lerpette-player__lesson-label">{lessonMetaLabel}</p>
+      <p class="eyebrow lerpette-player__label lerpette-player__lesson-label">
+        {collectionHref ? (
+          <a class="lerpette-player__lesson-collection-link" href={collectionHref}>
+            {collectionLabel}
+          </a>
+        ) : (
+          collectionLabel
+        )}{' '}
+        / {lerpette.publishedOn} / {lerpette.author}
+      </p>
       <section class="lerpette-intro" id={`${playerId}-intro`} data-section-id="intro">
         <h2 class="lerpette-intro__title">{lerpette.title}</h2>
         <div class="prose-block" set:html={lerpette.introHtml}></div>

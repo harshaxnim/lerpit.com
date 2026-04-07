@@ -1,0 +1,36 @@
+---
+import type { LerpetteMixtape } from '../lib/lerpettes/types';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import LerpettesShelf from './LerpettesShelf.astro';
+import LerpettePlayer from './LerpettePlayer.astro';
+
+interface Props {
+  mixtape: LerpetteMixtape;
+  allMixtapes: LerpetteMixtape[];
+  playerLabel?: string;
+  headerTitle?: string;
+  headerSubtitle?: string;
+}
+
+const {
+  mixtape,
+  allMixtapes,
+  playerLabel = `Lerpit / ${mixtape.collectionTitle ?? 'issue zero'}`,
+  headerTitle = 'LerpIt',
+  headerSubtitle = 'Interactive lessons on simulation, rendering, and animation.'
+} = Astro.props as Props;
+
+const otherLerpettes = allMixtapes.filter((entry) => entry.href !== mixtape.href);
+---
+
+<BaseLayout title={`${mixtape.title} · Lerpit`} description={mixtape.summary}>
+  <main class="site-shell site-shell--lesson">
+    <LerpettePlayer
+      lerpette={mixtape}
+      playerLabel={playerLabel}
+      headerTitle={headerTitle}
+      headerSubtitle={headerSubtitle}
+    />
+    <LerpettesShelf mixtapes={otherLerpettes} />
+  </main>
+</BaseLayout>

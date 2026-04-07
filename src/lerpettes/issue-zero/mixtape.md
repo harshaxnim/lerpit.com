@@ -24,9 +24,9 @@ This site turns that into a method: split complex topics into small, named steps
 
 ## Let's begin {#begin}
 
-Let's familiarize ourselves with the UI. The left side of the player carries the lesson document: prose, math, figures, references, and code samples. The right side keeps one live stage so the lesson can point at a concrete state instead of making you imagine it. As we progress through the lesson, we see how the implementation evolves to achieve our final goal. In one of the future updates, I will add an feature that will challenge users to implement a feature we just learnt and live preview it.
+Let's familiarize ourselves with the UI. This panel of the player carries the lesson document: prose, math, figures, references, and code samples. The right side keeps one live stage so the lesson can point at a concrete state instead of making you imagine it. As we progress through the lesson, we see how the implementation evolves to achieve our final goal. In one of the future updates, I will add an feature that will challenge users to implement a feature we just learnt and live preview it.
 
-Let's put it to practice by learning about the name of this website. Lerp stands for **L**inear Int**erp**olation. In simple terms, if we move from a point A to point B in a straight line at a constant speed, we are already linearly interpolating. This concept is particularly interesting because just by using one parameter (t), we can control how far along this journey we are - 0 means the beginning, and 1 means the end.
+Let's put it to practice by learning about the name of this website. Lerp stands for **L**inear Int**erp**olation. In simple terms, if we move from a point A to point B in a straight line at a constant speed, we are linearly interpolating. This concept is particularly interesting because just by using one parameter (t), we can control how far along this journey we are - 0 means the beginning, and 1 means the end.
 
 $$
 \operatorname{lerp}(A, B, t) = A + t(B - A)
@@ -41,7 +41,7 @@ float lerp_f32(float a, float b, float t) {
   return a + (b - a) * t;
 }
 ```
-
+Let's plug-in different values of `t` into that formula and see how the system evolves.
 
 ## Set the start at A {#start}
 

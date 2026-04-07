@@ -1,0 +1,18 @@
+---
+interface Props {
+  title?: string;
+  subtitle?: string;
+}
+
+const {
+  title = 'LerpIt',
+  subtitle = 'Interactive lessons on simulation, rendering, and animation.'
+} = Astro.props as Props;
+---
+
+<div class="lerpette-player__bar">
+  <div>
+    <h1><a href={`${import.meta.env.BASE_URL}`}>{title}</a></h1>
+    <p class="lerpette-player__subtitle">{subtitle}</p>
+  </div>
+</div>

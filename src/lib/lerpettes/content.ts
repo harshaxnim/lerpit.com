@@ -193,13 +193,13 @@ async function parseCollectionDocument(filePath: string, href: string) {
   const h1Node = root.children[h1Index];
   const title = getHeadingTitle(h1Node, 1, filePath).title;
   const bodyNodes = root.children.slice(h1Index + 1);
-  const { summary, remainingNodes } = extractSummary(bodyNodes, filePath);
+  const { summary } = extractSummary(bodyNodes, filePath);
 
   return {
     href,
     title,
     summary,
-    bodyHtml: renderNodesToHtml(remainingNodes, docDir)
+    bodyHtml: renderNodesToHtml(bodyNodes, docDir)
   };
 }
 
