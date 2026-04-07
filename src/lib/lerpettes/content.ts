@@ -276,24 +276,62 @@ function extractMixtapeSteps(stepNodes: MarkdownNode[], filePath: string, mixtap
   }
 
   const seenIds = new Set<string>();
-
-  return steps.map(({ heading, body }) => {
+  const parsedSteps = steps.map(({ heading, body }) => {
     const { title, id } = getHeadingTitle(heading, 2, filePath);
     assert(id, `Missing explicit H2 id in ${filePath}. Use the form "## Title {#step-id}".`);
     assert(!seenIds.has(id), `Duplicate step id "${id}" found in ${filePath}`);
     seenIds.add(id);
 
-    const runtimeFile = path.join(mixtapeDir, 'code', id, 'js', 'index.ts');
-    assert(fs.existsSync(runtimeFile), `Missing runtime entry at ${runtimeFile}`);
+    return { id, title, body };
+  });
 
+  const runtimeAvailability = parsedSteps.map((step) => {
+    const runtimeFile = path.join(mixtapeDir, 'code', step.id, 'js', 'index.ts');
     return {
-      id,
-      title,
-      bodyHtml: renderNodesToHtml(body, mixtapeDir),
-      runtimeImportKey: toRuntimeImportKey(runtimeFile),
-      assetBasePath: `${ASSET_ROUTE_PREFIX}/${toPosixPath(path.relative(LERPETTE_ROOT, path.join(mixtapeDir, 'code', id)))}/`
+      runtimeFile,
+      exists: fs.existsSync(runtimeFile)
     };
   });
+
+  const hasAnyRuntime = runtimeAvailability.some((entry) => entry.exists);
+  assert(hasAnyRuntime, `No runtime entry found for any step in ${mixtapeDir}/code/*/js/index.ts`);
+
+  return parsedSteps.map((step, index) => {
+    const fallbackIndex = findNearestRuntimeIndex(runtimeAvailability, index);
+    const runtimeStepId = parsedSteps[fallbackIndex].id;
+    const runtimeFile = runtimeAvailability[fallbackIndex].runtimeFile;
+
+    return {
+      id: step.id,
+      title: step.title,
+      bodyHtml: renderNodesToHtml(step.body, mixtapeDir),
+      runtimeImportKey: toRuntimeImportKey(runtimeFile),
+      assetBasePath: `${ASSET_ROUTE_PREFIX}/${toPosixPath(path.relative(LERPETTE_ROOT, path.join(mixtapeDir, 'code', runtimeStepId)))}/`
+    };
+  });
+}
+
+function findNearestRuntimeIndex(
+  availability: Array<{ runtimeFile: string; exists: boolean }>,
+  fromIndex: number
+): number {
+  if (availability[fromIndex]?.exists) {
+    return fromIndex;
+  }
+
+  for (let index = fromIndex + 1; index < availability.length; index += 1) {
+    if (availability[index].exists) {
+      return index;
+    }
+  }
+
+  for (let index = fromIndex - 1; index >= 0; index -= 1) {
+    if (availability[index].exists) {
+      return index;
+    }
+  }
+
+  throw new Error(`No runtime available near step index ${fromIndex}.`);
 }
 
 function validateCodeDirectory(mixtapeDir: string, steps: LerpetteStep[]) {
