@@ -52,6 +52,7 @@ export function initLerpettePlayers() {
     }
 
     initializedPlayers.add(root);
+    initFootnotesToggles(root);
 
     const { playerId, steps } = config;
     const stepsById = new Map(steps.map((step) => [step.id, step]));
@@ -331,5 +332,41 @@ export function initLerpettePlayers() {
 
     syncStageDrawerState();
     syncActiveSectionToViewport();
+  });
+}
+
+function initFootnotesToggles(root: HTMLElement) {
+  const footnotesBlocks = Array.from(root.querySelectorAll<HTMLElement>('.prose-block .footnotes'));
+
+  footnotesBlocks.forEach((footnotes) => {
+    if (footnotes.dataset.footnotesToggleReady === 'true') {
+      return;
+    }
+
+    const heading = footnotes.querySelector<HTMLElement>('h1, h2, h3, h4, h5, h6');
+    if (!heading) {
+      return;
+    }
+
+    const headingText = heading.textContent?.trim();
+    if (!headingText) {
+      return;
+    }
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'footnotes__title-toggle';
+    button.textContent = headingText;
+    button.setAttribute('aria-expanded', 'false');
+
+    const updateExpandedState = () => {
+      const isCollapsed = footnotes.classList.toggle('is-collapsed');
+      button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    };
+
+    button.addEventListener('click', updateExpandedState);
+    heading.replaceChildren(button);
+    footnotes.classList.add('is-collapsed');
+    footnotes.dataset.footnotesToggleReady = 'true';
   });
 }

@@ -327,7 +327,6 @@ nav {
   border: 1px solid var(--line);
   background: rgba(249, 252, 255, 0.88);
   scroll-margin-top: 1rem;
-  cursor: pointer;
 }
 
 .lerpette-intro__title {
@@ -412,6 +411,44 @@ nav {
   padding-top: 0.8rem;
   border-top: 1px solid var(--line);
   font-size: 0.95rem;
+}
+
+.prose-block .footnotes h1,
+.prose-block .footnotes h2,
+.prose-block .footnotes h3,
+.prose-block .footnotes h4,
+.prose-block .footnotes h5,
+.prose-block .footnotes h6 {
+  margin: 0;
+}
+
+.prose-block .footnotes__title-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prose-block .footnotes__title-toggle::before {
+  content: "▸";
+  font-family: var(--font-mono);
+  font-size: 0.72em;
+  line-height: 1;
+}
+
+.prose-block .footnotes:not(.is-collapsed) .footnotes__title-toggle::before {
+  content: "▾";
+}
+
+.prose-block .footnotes.is-collapsed > :not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) {
+  display: none;
 }
 
 .katex-display {
