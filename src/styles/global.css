@@ -348,7 +348,7 @@ nav {
 
 .lerpette-step.is-active {
   border-color: var(--line-strong);
-  background: rgba(46, 109, 164, 0.08);
+  background: rgba(46, 109, 164, 0.02);
 }
 
 .lerpette-step__header {
