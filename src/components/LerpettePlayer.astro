@@ -70,7 +70,6 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
       <p class="eyebrow lerpette-player__label lerpette-player__lesson-label">{lessonMetaLabel}</p>
       <section class="lerpette-intro" id={`${playerId}-intro`} data-section-id="intro">
         <h2 class="lerpette-intro__title">{lerpette.title}</h2>
-        <p class="lerpette-intro__summary">{lerpette.summary}</p>
         <div class="prose-block" set:html={lerpette.introHtml}></div>
       </section>
 

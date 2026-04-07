@@ -1,5 +1,8 @@
 :root {
   color-scheme: light;
+  --font-serif: "Cardo", "Iowan Old Style", "Times New Roman", serif;
+  --font-sans: "Space Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --paper: #f8fbff;
   --paper-deep: #edf4fa;
   --panel: rgba(248, 251, 255, 0.94);
@@ -24,7 +27,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  font-family: "Space Grotesk", "Helvetica Neue", Helvetica, sans-serif;
+  font-family: var(--font-serif);
   background-color: var(--paper);
   background-image:
     linear-gradient(var(--line) 1px, transparent 1px),
@@ -54,7 +57,20 @@ pre,
 .lerpette-step__index,
 .cassette-card__collection,
 .cassette-card__action {
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  font-family: var(--font-mono);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.button,
+.lerpette-player__chapter,
+.lerpette-player__subtitle,
+.cassette-card h3 {
+  font-family: var(--font-sans);
 }
 
 code {
@@ -192,6 +208,11 @@ nav {
 .archive-collection,
 .collection-page {
   margin-top: 1.6rem;
+}
+
+.lerpette-player__lesson .prose-block p,
+.lerpette-player__lesson .prose-block li {
+  font-size: 1.1rem;
 }
 
 .collection-header h1 {

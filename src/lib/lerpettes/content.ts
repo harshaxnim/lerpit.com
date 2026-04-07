@@ -57,6 +57,10 @@ const MIME_TYPES: Record<string, string> = {
 let cachedLibrary: Promise<LerpetteLibrary> | null = null;
 
 export async function getLerpetteLibrary(): Promise<LerpetteLibrary> {
+  if (process.env.NODE_ENV !== 'production') {
+    return buildLerpetteLibrary();
+  }
+
   if (!cachedLibrary) {
     cachedLibrary = buildLerpetteLibrary();
   }
@@ -212,14 +216,21 @@ async function parseMixtapeDirectory(
   const h1Index = root.children.findIndex((node) => node.type === 'heading' && node.depth === 1);
   assert(h1Index >= 0, `Missing H1 in ${mixtapePath}`);
 
+  const { meta: preTitleMeta } = extractMixtapeMeta(root.children.slice(0, h1Index), mixtapePath, false);
   const title = getHeadingTitle(root.children[h1Index], 1, mixtapePath).title;
   const contentNodes = root.children.slice(h1Index + 1);
   const firstStepIndex = contentNodes.findIndex((node) => node.type === 'heading' && node.depth === 2);
   assert(firstStepIndex >= 0, `Mixtape ${mixtapePath} must include at least one H2 chapter with an explicit id.`);
 
   const introNodes = contentNodes.slice(0, firstStepIndex);
-  const { summary, remainingNodes: introNodesWithoutSummary } = extractSummary(introNodes, mixtapePath);
-  const { meta, remainingNodes: introBodyNodes } = extractMixtapeMeta(introNodesWithoutSummary, mixtapePath);
+  const { summary, summaryNode, remainingNodes: introNodesWithoutSummary } = extractSummary(introNodes, mixtapePath);
+  const { meta: postSummaryMeta, remainingNodes: introBodyNodes } = extractMixtapeMeta(
+    introNodesWithoutSummary,
+    mixtapePath,
+    false
+  );
+  const meta = preTitleMeta ?? postSummaryMeta;
+  assert(meta, `Expected metadata near the top of ${mixtapePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
   const stepNodes = contentNodes.slice(firstStepIndex);
   const steps = extractMixtapeSteps(stepNodes, mixtapePath, mixtapeDir);
 
@@ -232,7 +243,7 @@ async function parseMixtapeDirectory(
     summary,
     publishedOn: meta.date,
     author: meta.author,
-    introHtml: renderNodesToHtml(introBodyNodes, mixtapeDir),
+    introHtml: renderNodesToHtml([summaryNode, ...introBodyNodes], mixtapeDir),
     steps,
     collectionSlug,
     collectionTitle
@@ -349,22 +360,44 @@ function getHeadingTitle(node: MarkdownNode, depth: number, filePath: string): {
   return { title: raw };
 }
 
-function extractSummary(nodes: MarkdownNode[], filePath: string): { summary: string; remainingNodes: MarkdownNode[] } {
+function extractSummary(nodes: MarkdownNode[], filePath: string): {
+  summary: string;
+  summaryNode: MarkdownNode;
+  remainingNodes: MarkdownNode[];
+} {
   const paragraphIndex = nodes.findIndex((node) => node.type === 'paragraph');
   const paragraph = paragraphIndex >= 0 ? nodes[paragraphIndex] : undefined;
   assert(paragraph, `Expected a summary paragraph near the top of ${filePath}`);
   return {
     summary: toString(paragraph as never).trim(),
+    summaryNode: paragraph,
     remainingNodes: nodes.filter((_, index) => index !== paragraphIndex)
   };
 }
 
-function extractMixtapeMeta(nodes: MarkdownNode[], filePath: string): { meta: MixtapeMeta; remainingNodes: MarkdownNode[] } {
+function extractMixtapeMeta(
+  nodes: MarkdownNode[],
+  filePath: string,
+  required = true
+): { meta?: MixtapeMeta; remainingNodes: MarkdownNode[] } {
   const paragraphIndex = nodes.findIndex((node) => node.type === 'paragraph');
   const paragraph = paragraphIndex >= 0 ? nodes[paragraphIndex] : undefined;
-  assert(paragraph, `Expected metadata after summary in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
+  if (!paragraph) {
+    assert(!required, `Expected metadata after summary in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
+    return {
+      remainingNodes: nodes
+    };
+  }
 
   const raw = toString(paragraph as never).trim();
+  const looksLikeMeta = /\bauthor\s*:/i.test(raw) || /\bdate\s*:/i.test(raw);
+  if (!looksLikeMeta) {
+    assert(!required, `Expected metadata after summary in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
+    return {
+      remainingNodes: nodes
+    };
+  }
+
   const parts = raw
     .split('|')
     .map((part) => part.trim())

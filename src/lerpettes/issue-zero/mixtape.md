@@ -1,16 +1,33 @@
-# Lerp on a line segment
-
-This is issue zero. The purpose of the site is built into the lesson itself: take a topic that feels bigger than you can comfortably hold in your head, split it into named chunks, and then move between those chunks one clear state at a time.
-
 Author: Harsha | Date: 2026-03-25
 
-Lerp is a good first example because the rule is small:
+# Why Lerpit?
+
+*Incremental learning in small chunks is easier and faster than taking a few big leaps.*
+
+Complex systems often evolve through punctuated equilibria. In fact, this seems to come up in biological evolutionary systems, government policies, deep learning, earth's climate, even in the collective human wisdom as a whole. Interestingly, it also appears to be true for a particular neural collective: our individual brains.
+
+![Punctuated Equilibrium](./punctuated_equilibrium.png)
+
+You may have noticed this while learning a new skill. You improve for a while, then enter a phase of apparent stalling where no progress seems to happen. Then, suddenly, there is a burst of eureka that seems to come out of nowhere, followed later by yet another plateau, and so on. This is a classic sign of punctuated equilibrium.
+
+Now, you might ask: *this is interesting, but what does it mean for me?* First, it should reassure you that plateaus are a natural part of learning. You do not need to stress over an apparent lack of progress. Beyond that, my conjecture is that in the BFS-esque branching that takes place in our brain during path exploration toward a new skill, the tighter the feedback loop, the faster we can *detect* and cull incorrect steps and branch in the right direction. Expanding further, this branch exploration phase, where the brain is searching for the right path, manifests as the flat regions in the image above. On the surface, nothing's happening, but underneath, your brain is trying a hundred different things. The eureka moment is when one branch *detects* a valid path in learning, which is manifested as a jump in the graph above. This *detection* mechanism is feuled by **feedback**. And given the BFS-esque nature of any exploration, the penalty of having slow feedback is expotentially damaging. So if you are waiting a couple of days between writing a test and receiving your scores, what you learn from that process is far less than receiving small quick feedbacks more often and being guided immediately. Your progress may come in smaller increments, but your plateaus will also become predictably shorter.
+
+In fact, it has been shown independently in pedagogical research that incremental learning in small chunks is usually easier and faster than taking a few big leaps.[^soderstrom] 
+
+This site turns that into a method: split complex topics into small named steps, and move through them one at a time. Desirable difficulties and the Region of Proximal Learning support this idea.[^soderstrom][^metcalfe] If learning a new skill is too much of a challenge, it is easy to get discouraged. The practical target is to challenge the brain by the right amount so effort produces better long-term learning.[^metcalfe]
+
+[^soderstrom]: Nicholas C. Soderstrom and Robert A. Bjork, *Learning Versus Performance: An Integrative Review* (2015), [doi:10.1177/1745691615569000](https://doi.org/10.1177/1745691615569000).
+[^metcalfe]: Janet Metcalfe, *Is Study Time Allocated Selectively to a Region of Proximal Learning?* (2002), [doi:10.1037/0096-3445.131.3.349](https://doi.org/10.1037/0096-3445.131.3.349).
+
+Let's familiarize ourselves with the UI. The left side of the player carries the lesson document: prose, math, figures, references, and code samples. The right side keeps one live stage so the lesson can point at a concrete state instead of making you imagine it. As we progress through the lesson, we see how the implementation evolves to achieve our final goal. In one of the future updates, I will add an feature that will challenge users to implement a feature we just learnt and live preview it.
+
+Let's put it to practice by learning about the name of this website. Lerp stands for **L**inear Int**erp**olation. In simple terms, if we move from a point A to point B in a straight line at a constant speed, we are already linearly interpolating. This concept is particularly interesting because just by using one parameter (t), we can control how far along this journey we are - 0 means the beginning, and 1 means the end.
 
 $$
 \operatorname{lerp}(A, B, t) = A + t(B - A)
 $$
 
-Two known points, one parameter, and a line segment traced as that parameter changes. It is enough structure to talk about state, interpolation, and transitions without adding too many moving parts at once.[^sweller]
+Two known points, one parameter, and a line segment traced as that parameter changes. It is enough structure to talk about state, interpolation, and transitions without adding too many moving parts at once.
 
 ![A notebook-style line segment with checkpoints at A, 0.25, 0.5, 0.75, and B.](./segment-diagram.svg)
 
@@ -20,11 +37,6 @@ float lerp_f32(float a, float b, float t) {
 }
 ```
 
-The left side of the player carries the lesson document: prose, math, figures, references, and code samples. The right side keeps one live stage so the lesson can point at a concrete state instead of making you imagine it.[^mayer][^miller]
-
-[^sweller]: John Sweller, *Cognitive Load During Problem Solving: Effects on Learning* (1988), [doi:10.1207/s15516709cog1202_4](https://doi.org/10.1207/s15516709cog1202_4).
-[^mayer]: Richard E. Mayer and Celeste Pilegard, *Principles for Managing Essential Processing in Multimedia Learning* (2014), [doi:10.1017/CBO9781139547369.016](https://doi.org/10.1017/CBO9781139547369.016).
-[^miller]: G. A. Miller, *The Magical Number Seven, Plus or Minus Two* (1956), [doi:10.1037/h0043158](https://doi.org/10.1037/h0043158).
 
 ## Set the start at A {#start}
 
