@@ -42,7 +42,6 @@ jobs:
           NTFY_TOPIC: lerpit
         run: |
           curl -fsS -X POST "https://ntfy.sh/${NTFY_TOPIC}" \
-            -H "Title: Lerpit Deployment successful" \
+            -H "Title: Lerpit deployed" \
             -H "Priority: default" \
-            -H "Tags: tada,rocket" \
-            -d "🎉 lerpit deployed successfully"
+            -H "Tags: rocket"
