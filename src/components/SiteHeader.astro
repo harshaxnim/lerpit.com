@@ -1,4 +1,6 @@
 ---
+import { getCollections } from '../lib/lerpettes/content';
+
 interface Props {
   title?: string;
   subtitle?: string;
@@ -8,11 +10,25 @@ const {
   title = 'LerpIt',
   subtitle = 'Interactive lessons on simulation, rendering, and animation.'
 } = Astro.props as Props;
+const collections = await getCollections();
 ---
 
 <div class="lerpette-player__bar">
-  <div>
+  <div class="lerpette-player__heading">
     <h1><a href={`${import.meta.env.BASE_URL}`}>{title}</a></h1>
-    <p class="lerpette-player__subtitle">{subtitle}</p>
+    <div class="lerpette-player__meta">
+      <p class="lerpette-player__subtitle">{subtitle}</p>
+      <div class="lerpette-player__actions">
+        <details class="lerpette-player__collection-menu">
+          <summary class="lerpette-player__collection-trigger lerpette-player__action">collection</summary>
+          <div class="lerpette-player__collection-list" role="list">
+            {collections.map((collection) => (
+              <a href={`${import.meta.env.BASE_URL}${collection.slug}/`}>{collection.title}</a>
+            ))}
+          </div>
+        </details>
+        <a class="lerpette-player__me-link lerpette-player__action" href="https://life.inspirho.com/me">lè me</a>
+      </div>
+    </div>
   </div>
 </div>

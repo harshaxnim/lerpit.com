@@ -22,14 +22,17 @@ This site turns that into a method: split complex topics into small, named steps
 [^soderstrom]: Nicholas C. Soderstrom and Robert A. Bjork, *Learning Versus Performance: An Integrative Review* (2015), [doi:10.1177/1745691615569000](https://doi.org/10.1177/1745691615569000).
 [^metcalfe]: Janet Metcalfe, *Is Study Time Allocated Selectively to a Region of Proximal Learning?* (2002), [doi:10.1037/0096-3445.131.3.349](https://doi.org/10.1037/0096-3445.131.3.349).
 
-## Let's begin {#begin}
+## Let's begin {#start}
 
 Let's familiarize ourselves with the UI. This panel of the player carries the lesson document: prose, math, figures, references, and code samples. The right side keeps one live stage so the lesson can point at a concrete state instead of making you imagine it. As we progress through the lesson, we see how the implementation evolves to achieve our final goal. In one of the future updates, I will add an feature that will challenge users to implement a feature we just learnt and live preview it.
 
 Let's put it to practice by learning about the name of this website. Lerp stands for **L**inear Int**erp**olation. In simple terms, if we move from a point A to point B in a straight line at a constant speed, we are linearly interpolating. This concept is particularly interesting because just by using one parameter (t), we can control how far along this journey we are - 0 means the beginning, and 1 means the end.
 
 $$
-\operatorname{lerp}(A, B, t) = A + t(B - A)
+\begin{aligned}
+\operatorname{lerp}(A, B, t) & = A + t(B - A) \\
+& = (1 - t)A + tB
+\end{aligned}
 $$
 
 Two known points, one parameter, and a line segment traced as that parameter changes. It is enough structure to talk about state, interpolation, and transitions without adding too many moving parts at once.
@@ -43,12 +46,14 @@ float lerp_f32(float a, float b, float t) {
 ```
 Let's plug-in different values of `t` into that formula and see how the system evolves.
 
-## Set the start at A {#start}
-
-At the beginning, the point is exactly at `A`, because `t = 0`.
+We begin at `t = 0`. At this point the output is exactly at `A`, because:
 
 $$
-\operatorname{lerp}(A, B, 0) = A
+\begin{aligned}
+\operatorname{lerp}(A, B, 0) & = A + 0 \cdot (B - A) \\
+& = A + 0 \\
+& = A
+\end{aligned}
 $$
 
 This is the easiest checkpoint to understand because nothing is hidden yet. The moving point and the anchor coincide, so you can read the rest of the lesson against a stable reference.
@@ -58,7 +63,11 @@ This is the easiest checkpoint to understand because nothing is hidden yet. The 
 Now let the parameter increase, but only a little.
 
 $$
-\operatorname{lerp}(A, B, 0.25) = A + 0.25(B - A)
+\begin{aligned}
+\operatorname{lerp}(A, B, 0.25) & = A + 0.25(B - A) \\
+& = A + \tfrac{1}{4}(B - A) \\
+& = \tfrac{3}{4}A + \tfrac{1}{4}B
+\end{aligned}
 $$
 
 At this stage the relationship between the parameter and the geometry starts to feel concrete. The point has not “jumped somewhere in the middle.” It has moved a quarter of the way from the start toward the end.
@@ -73,7 +82,12 @@ const y = lerp(pointA.y, pointB.y, 0.25);
 The midpoint is the most legible checkpoint in the sequence.
 
 $$
-\operatorname{lerp}(A, B, 0.5) = \frac{A + B}{2}
+\begin{aligned}
+\operatorname{lerp}(A, B, 0.5) & = A + 0.5(B - A) \\
+& = A + \tfrac{1}{2}(B - A) \\
+& = \tfrac{1}{2}A + \tfrac{1}{2}B \\
+& = \frac{A + B}{2}
+\end{aligned}
 $$
 
 Once the halfway state is obvious, it becomes easier to trust the rest of the parameter range. This is also where interpolation starts to feel like a reusable mental tool rather than a one-off formula.
@@ -82,6 +96,14 @@ Once the halfway state is obvious, it becomes easier to trust the rest of the pa
 
 With `t = 0.75`, the point has covered most of the distance while still following the same straight path.
 
+$$
+\begin{aligned}
+\operatorname{lerp}(A, B, 0.75) & = A + 0.75(B - A) \\
+& = A + \tfrac{3}{4}(B - A) \\
+& = \tfrac{1}{4}A + \tfrac{3}{4}B
+\end{aligned}
+$$
+
 The lesson here is simple: changing `t` changes where you are on the segment, not what the segment is. The geometry stays the same. Only the selected point changes.
 
 ## Finish at B {#finish}
@@ -89,7 +111,11 @@ The lesson here is simple: changing `t` changes where you are on the segment, no
 The last checkpoint closes the loop.
 
 $$
-\operatorname{lerp}(A, B, 1) = B
+\begin{aligned}
+\operatorname{lerp}(A, B, 1) & = A + 1 \cdot (B - A) \\
+& = A + B - A \\
+& = B
+\end{aligned}
 $$
 
 By the time the point reaches `B`, the full path from start to finish has been explained as one controlled parameter change. Later lerpettes can build on that same idea when the state is more complex than a single point on a line.

@@ -27,6 +27,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
+  font-size: 1.1rem;
   font-family: var(--font-serif);
   background-color: var(--paper);
   background-image:
@@ -65,11 +66,7 @@ h2,
 h3,
 h4,
 h5,
-h6,
-.button,
-.lerpette-player__chapter,
-.lerpette-player__subtitle,
-.cassette-card h3 {
+h6 {
   font-family: var(--font-sans);
 }
 
@@ -127,7 +124,7 @@ nav {
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--ink);
-  font-size: 0.76rem;
+  font-size: 1.1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-decoration: none;
@@ -135,6 +132,10 @@ nav {
 
 .button--ghost {
   background: rgba(255, 255, 255, 0.56);
+}
+
+.button--mono {
+  font-family: var(--font-mono);
 }
 
 .eyebrow,
@@ -199,6 +200,7 @@ nav {
 .cassette-card p,
 .lerpette-intro__summary {
   margin: 0;
+  font-size: 1.1rem;
   color: var(--muted);
   line-height: 1.72;
 }
@@ -294,9 +296,96 @@ nav {
   text-decoration: none;
 }
 
+.lerpette-player__heading {
+  width: 100%;
+}
+
 .lerpette-player__subtitle {
-  margin-top: 0.55rem;
+  margin: 0;
+  font-size: 1.1rem;
   max-width: 34rem;
+}
+
+.lerpette-player__meta {
+  margin-top: 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.lerpette-player__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.lerpette-player__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--ink);
+  font-size: 1.1rem;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.lerpette-player__action:hover,
+.lerpette-player__action:focus-visible,
+.lerpette-player__collection-menu[open] .lerpette-player__action {
+  text-decoration: none;
+  border-color: var(--accent);
+  background: rgba(46, 109, 164, 0.08);
+}
+
+.lerpette-player__collection-menu {
+  position: relative;
+  margin: 0;
+}
+
+.lerpette-player__collection-trigger {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lerpette-player__collection-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.lerpette-player__collection-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 6;
+  display: grid;
+  gap: 0.2rem;
+  width: min(92vw, clamp(12rem, 28vw, 20rem));
+  max-height: min(22rem, 64vh);
+  overflow-y: auto;
+  padding: 0.35rem;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+}
+
+.lerpette-player__collection-list a {
+  display: block;
+  padding: 0.45rem 0.55rem;
+  text-decoration: none;
+  color: var(--ink);
+  border: 1px solid transparent;
+}
+
+.lerpette-player__collection-list a:hover {
+  border-color: var(--line-strong);
+  background: rgba(46, 109, 164, 0.08);
 }
 
 .lerpette-player__grid {
@@ -354,6 +443,7 @@ nav {
   display: grid;
   gap: 0.18rem;
   padding: 0.75rem;
+  font-size: 1.1rem;
   border: 1px solid var(--line);
   cursor: pointer;
   background: rgba(255, 255, 255, 0.58);
@@ -728,6 +818,15 @@ nav {
 
   .lerpette-player__bar {
     display: grid;
+  }
+
+  .lerpette-player__meta {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .lerpette-player__actions {
+    width: 100%;
   }
 
   .lerpette-player__grid {
