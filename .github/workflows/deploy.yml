@@ -35,3 +35,14 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Notify ntfy on successful deployment
+        if: success()
+        env:
+          NTFY_TOPIC: lerpit
+        run: |
+          curl -fsS -X POST "https://ntfy.sh/${NTFY_TOPIC}" \
+            -H "Title: Lerpit Deployment successful" \
+            -H "Priority: default" \
+            -H "Tags: tada,rocket" \
+            -d "🎉 lerpit deployed successfully"
