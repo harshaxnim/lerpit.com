@@ -37,7 +37,7 @@ $$
 
 Two known points, one parameter, and a line segment traced as that parameter changes. It is enough structure to talk about state, interpolation, and transitions without adding too many moving parts at once.
 
-![A notebook-style line segment with checkpoints at A, 0.25, 0.5, 0.75, and B.](./segment-diagram.svg)
+![Interpolating checkpoints at A, 0.25, 0.5, 0.75, and B.](./segment-diagram.svg)
 
 ```c
 float lerp_f32(float a, float b, float t) {

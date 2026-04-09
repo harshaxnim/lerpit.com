@@ -1,7 +1,6 @@
 :root {
   color-scheme: light;
   --font-serif: "Cardo", "Iowan Old Style", "Times New Roman", serif;
-  --font-sans: "Space Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --paper: #f8fbff;
   --paper-deep: #edf4fa;
@@ -67,7 +66,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
 }
 
 code {
@@ -223,6 +222,10 @@ nav {
   margin-top: 0;
 }
 
+.site-shell > .lerpette-player--collection > .archive-collection:first-of-type {
+  margin-top: 1rem;
+}
+
 .site-shell > .lerpette-player > .archive-collection > .section-heading {
   margin-bottom: 1rem;
   padding: 0;
@@ -288,7 +291,7 @@ nav {
   margin-top: 0.45rem;
   font-size: clamp(2.5rem, 5vw, 4.2rem);
   font-weight: 500;
-  max-width: 12ch;
+  max-width: none;
 }
 
 .lerpette-player__bar h1 a {
@@ -548,6 +551,21 @@ nav {
   padding: 0.85rem;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.45);
+}
+
+.prose-block figcaption {
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.45;
+  font-style: italic;
+  text-align: center;
+}
+
+.prose-block figcaption::before {
+  content: "Figure. ";
+  font-weight: 700;
+  font-style: normal;
 }
 
 .prose-block blockquote {

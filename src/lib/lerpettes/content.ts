@@ -111,6 +111,43 @@ function createRenderProcessor(docDir: string) {
       });
     })
     .use(remarkRehype)
+    .use(() => (tree: any) => {
+      visit(tree, 'element', (node: any, index: number | undefined, parent: any) => {
+        if (!parent || typeof index !== 'number') {
+          return;
+        }
+
+        if (node.tagName !== 'p' || !Array.isArray(node.children) || node.children.length !== 1) {
+          return;
+        }
+
+        const imageNode = node.children[0];
+        if (!imageNode || imageNode.type !== 'element' || imageNode.tagName !== 'img') {
+          return;
+        }
+
+        const title = typeof imageNode.properties?.title === 'string' ? imageNode.properties.title.trim() : '';
+        const alt = typeof imageNode.properties?.alt === 'string' ? imageNode.properties.alt.trim() : '';
+        const caption = title || alt;
+        const figureChildren: any[] = [imageNode];
+
+        if (caption) {
+          figureChildren.push({
+            type: 'element',
+            tagName: 'figcaption',
+            properties: {},
+            children: [{ type: 'text', value: caption }]
+          });
+        }
+
+        parent.children[index] = {
+          type: 'element',
+          tagName: 'figure',
+          properties: {},
+          children: figureChildren
+        };
+      });
+    })
     .use(rehypeKatex)
     .use(rehypeStringify);
 }

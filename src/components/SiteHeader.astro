@@ -20,7 +20,7 @@ const collections = await getCollections();
       <p class="lerpette-player__subtitle">{subtitle}</p>
       <div class="lerpette-player__actions">
         <details class="lerpette-player__collection-menu">
-          <summary class="lerpette-player__collection-trigger lerpette-player__action">collection</summary>
+          <summary class="lerpette-player__collection-trigger lerpette-player__action">collections</summary>
           <div class="lerpette-player__collection-list" role="list">
             {collections.map((collection) => (
               <a href={`${import.meta.env.BASE_URL}${collection.slug}/`}>{collection.title}</a>

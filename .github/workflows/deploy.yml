@@ -44,4 +44,5 @@ jobs:
           curl -fsS -X POST "https://ntfy.sh/${NTFY_TOPIC}" \
             -H "Title: Lerpit deployed" \
             -H "Priority: default" \
-            -H "Tags: rocket"
+            -H "Tags: rocket" \
+            -d "Yay!"
