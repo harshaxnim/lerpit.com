@@ -11,22 +11,44 @@ const {
   subtitle = 'Interactive lessons on simulation, rendering, and animation.'
 } = Astro.props as Props;
 const collections = await getCollections();
+const isDefaultTitle = title === 'LerpIt';
+const visibleCollections = collections.slice(0, 3);
+const overflowCollections = collections.slice(3);
 ---
 
 <div class="lerpette-player__bar">
   <div class="lerpette-player__heading">
-    <h1><a href={`${import.meta.env.BASE_URL}`}>{title}</a></h1>
+    <h1>
+      <a href={`${import.meta.env.BASE_URL}`}>
+        {isDefaultTitle ? (
+          <>
+            Lerp<em>It</em>
+          </>
+        ) : (
+          title
+        )}
+      </a>
+    </h1>
     <div class="lerpette-player__meta">
       <p class="lerpette-player__subtitle">{subtitle}</p>
       <div class="lerpette-player__actions">
-        <details class="lerpette-player__collection-menu">
-          <summary class="lerpette-player__collection-trigger lerpette-player__action">collections</summary>
-          <div class="lerpette-player__collection-list" role="list">
-            {collections.map((collection) => (
-              <a href={`${import.meta.env.BASE_URL}${collection.slug}/`}>{collection.title}</a>
-            ))}
-          </div>
-        </details>
+        {visibleCollections.map((collection) => (
+          <a class="lerpette-player__action" href={`${import.meta.env.BASE_URL}${collection.slug}/`}>
+            {collection.title}
+          </a>
+        ))}
+        {
+          overflowCollections.length > 0 && (
+            <details class="lerpette-player__collection-menu">
+              <summary class="lerpette-player__collection-trigger lerpette-player__action">more collections</summary>
+              <div class="lerpette-player__collection-list" role="list">
+                {overflowCollections.map((collection) => (
+                  <a href={`${import.meta.env.BASE_URL}${collection.slug}/`}>{collection.title}</a>
+                ))}
+              </div>
+            </details>
+          )
+        }
         <a class="lerpette-player__me-link lerpette-player__action" href="https://life.inspirho.com/me">lè me</a>
       </div>
     </div>

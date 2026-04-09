@@ -2,9 +2,9 @@
   color-scheme: light;
   --font-serif: "Cardo", "Iowan Old Style", "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-  --paper: #f8fbff;
-  --paper-deep: #edf4fa;
-  --panel: rgba(248, 251, 255, 0.94);
+  --paper: #fdfbf4;
+  --paper-deep: #f7f3e7;
+  --panel: rgba(253, 251, 244, 0.95);
   --ink: #20313f;
   --muted: #506270;
   --line: rgba(81, 131, 173, 0.42);
@@ -30,12 +30,15 @@ body {
   font-family: var(--font-serif);
   background-color: var(--paper);
   background-image:
+    radial-gradient(circle at 22% 18%, rgba(168, 142, 82, 0.035) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 76% 64%, rgba(168, 142, 82, 0.028) 0 1px, transparent 1px 100%),
+    linear-gradient(180deg, rgba(232, 206, 142, 0.035), rgba(232, 206, 142, 0.02)),
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px),
     linear-gradient(var(--line-strong) 1px, transparent 1px),
     linear-gradient(90deg, var(--line-strong) 1px, transparent 1px);
-  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
-  background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+  background-size: 180px 180px, 220px 220px, auto, 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  background-position: 0 0, 80px 40px, 0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px;
 }
 
 a {
@@ -107,11 +110,29 @@ nav {
 .site-shell {
   width: min(1440px, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 1rem 0 4rem;
+  padding: 1rem 0 1rem;
 }
 
 .site-shell--lesson {
   width: min(1440px, calc(100% - 2rem));
+}
+
+.site-footer {
+  width: min(1440px, calc(100% - 2rem));
+  margin: 0 auto 1rem;
+}
+
+.site-footer__card {
+  margin: 0;
+  padding: 1.1rem;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  text-align: center;
+  color: var(--muted);
+}
+
+.site-footer__card em {
+  font-style: italic;
 }
 
 .button {
@@ -484,7 +505,13 @@ nav {
 .lerpette-step {
   padding: 1rem 1.05rem;
   border: 1px solid var(--line);
-  background: rgba(249, 252, 255, 0.88);
+  background:
+    radial-gradient(circle at 18% 22%, rgba(168, 142, 82, 0.022) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 72% 66%, rgba(168, 142, 82, 0.018) 0 1px, transparent 1px 100%),
+    linear-gradient(180deg, rgba(232, 206, 142, 0.03), rgba(232, 206, 142, 0.015)),
+    rgba(253, 251, 244, 0.9);
+  background-size: 180px 180px, 220px 220px, auto, auto;
+  background-position: 0 0, 60px 40px, 0 0, 0 0;
   scroll-margin-top: 1rem;
 }
 
@@ -668,13 +695,16 @@ nav {
   min-height: 520px;
   border: 1px solid var(--line-strong);
   background:
+    radial-gradient(circle at 22% 18%, rgba(168, 142, 82, 0.016) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 76% 64%, rgba(168, 142, 82, 0.012) 0 1px, transparent 1px 100%),
+    linear-gradient(180deg, rgba(232, 206, 142, 0.018), rgba(232, 206, 142, 0.009)),
     linear-gradient(rgba(81, 131, 173, 0.12) 1px, transparent 1px),
     linear-gradient(90deg, rgba(81, 131, 173, 0.12) 1px, transparent 1px),
     linear-gradient(rgba(81, 131, 173, 0.24) 1px, transparent 1px),
     linear-gradient(90deg, rgba(81, 131, 173, 0.24) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(232, 241, 249, 0.92));
-  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px, auto;
-  background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px, 0 0;
+    linear-gradient(180deg, rgba(255, 253, 246, 0.78), rgba(243, 238, 224, 0.9));
+  background-size: 180px 180px, 220px 220px, auto, 24px 24px, 24px 24px, 120px 120px, 120px 120px, auto;
+  background-position: 0 0, 80px 40px, 0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px, 0 0;
   overflow: hidden;
 }
 

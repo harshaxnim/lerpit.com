@@ -4,17 +4,14 @@ import SiteHeader from './SiteHeader.astro';
 
 interface Props {
   lerpette: LerpetteMixtape;
-  playerLabel: string;
   headerTitle?: string;
   headerSubtitle?: string;
 }
 
-const { lerpette, playerLabel, headerTitle, headerSubtitle } = Astro.props as Props;
+const { lerpette, headerTitle, headerSubtitle } = Astro.props as Props;
 const playerId = `lerpette-${(lerpette.collectionSlug ? `${lerpette.collectionSlug}-${lerpette.slug}` : lerpette.slug)
   .replace(/[^a-z0-9-]/gi, '-')
   .toLowerCase()}`;
-const displayTitle = headerTitle ?? lerpette.title;
-const displaySubtitle = headerSubtitle ?? playerLabel;
 const collectionLabel = lerpette.collectionTitle ?? 'Issue Zero';
 const collectionHref = lerpette.collectionSlug ? `${import.meta.env.BASE_URL}${lerpette.collectionSlug}/` : null;
 const clientSteps = lerpette.steps.map((step) => ({
@@ -28,7 +25,7 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
 
 <section class="lerpette-player" data-lerpette-player>
   <script type="application/json" data-player-config set:html={playerConfig}></script>
-  <SiteHeader title={displayTitle} subtitle={displaySubtitle} />
+  <SiteHeader title={headerTitle} subtitle={headerSubtitle} />
 
   <div class="lerpette-player__grid">
     <nav class="lerpette-player__rail" aria-label="Sections rail">

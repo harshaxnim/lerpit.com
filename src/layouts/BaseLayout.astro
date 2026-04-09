@@ -9,7 +9,7 @@ interface Props {
 
 const {
   title = 'Lerpit',
-  description = 'A learn-in-public site for WebAssembly-powered physics and animation demos.'
+  description = 'Interactive lessons on simulation, rendering, and animation.'
 } = Astro.props;
 ---
 
@@ -32,5 +32,10 @@ const {
   </head>
   <body>
     <slot />
+    <footer class="site-footer">
+      <p class="site-footer__card">
+        <em>Meticulously lerped by Harsha</em> (2026)
+      </p>
+    </footer>
   </body>
 </html>
