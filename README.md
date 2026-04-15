@@ -34,7 +34,8 @@ src/lerpettes/
     mixtape.md
     code/
       shared/
-        wasm-src/lerp_demo.c
+        wasm-src/lerp_demo.cpp
+        wasm/lerp_demo.js
         wasm/lerp_demo.wasm
       start/
         js/index.ts
@@ -60,7 +61,7 @@ Rules:
 3. Add metadata in the next paragraph with `Author: <name> | Date: YYYY-MM-DD`.
 4. Use `## Heading {#step-id}` for each player chapter.
 5. Put the runtime for that chapter at `code/<step-id>/js/index.ts`.
-6. If the step needs Wasm, put C sources in `code/<step-id>/wasm-src/` and the generated binaries will land in `code/<step-id>/wasm/`.
+6. If the step needs Wasm, put C++ sources in `code/<step-id>/wasm-src/` and the generated Embind module artifacts will land in `code/<step-id>/wasm/`.
 7. If code or Wasm is shared across chapters in one lerpette, put it in that lerpette's `code/shared/` directory.
 8. Framework-level shared helpers should live under `src/lib/`, not inside `src/lerpettes/`.
 
@@ -92,8 +93,9 @@ If the step needs Wasm:
 code/<step-id>/
   js/index.ts
   wasm-src/
-    my_module.c
+    my_module.cpp
   wasm/
+    my_module.js
     my_module.wasm
 ```
 
@@ -116,7 +118,7 @@ export default createCanvasSketchRuntime({
 });
 ```
 
-If multiple steps in one lerpette share one Wasm binary, keep it in that lerpette's `code/shared/wasm/` and load it with a relative path such as `ctx.resolveAssetUrl('../shared/wasm/lerp_demo.wasm')`.
+If multiple steps in one lerpette share one Wasm module, keep it in that lerpette's `code/shared/wasm/` and initialize it once from shared runtime code. The loader can still pass a resolved path like `ctx.resolveAssetUrl('../shared/wasm/lerp_demo.wasm')` via `locateFile`.
 
 ## What is inferred
 
@@ -134,18 +136,21 @@ Recommended environment:
 
 - Node.js 22
 - npm 10 or newer
-- LLVM clang plus a `wasm-ld` linker
+- Python 3.10 or newer (required by `emsdk`)
+- Emscripten (`emcc`) with Embind support
 
 Start the dev server:
 
 ```bash
 npm install
+npm run setup
 npm run dev
 ```
 
-`npm run dev` compiles any `code/**/wasm-src/*.c` files before starting Astro.
-If your local `clang` does not support the `wasm32` target, the build script falls back to a checked-in seed binary from `public/wasm/` when a matching filename exists.
-If you want real local Wasm recompilation, install LLVM and `lld`, then point the script at them with `WASM_CLANG_BIN=/opt/homebrew/opt/llvm/bin/clang` and `WASM_LD_BIN=/opt/homebrew/opt/lld/bin/wasm-ld` on Apple Silicon, or `/usr/local/opt/...` on Intel.
+`npm run dev` compiles any `code/**/wasm-src/*.cpp` files with `emcc --bind` before starting Astro.
+If `emcc` is unavailable, the build fails fast.
+`npm run setup` installs a repo-local Emscripten toolchain under `.tools/emsdk` if a system `emcc` is not already available.
+If you have Emscripten in a non-default location, point the build at it with `EMCC_BIN=/path/to/emcc`.
 The Wasm build is incremental: unchanged outputs are skipped, so `npm run dev` does not recompile every step on every restart.
 
 ## Build

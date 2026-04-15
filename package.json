@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "bash scripts/setup.sh",
     "dev": "npm run build:wasm && astro dev",
     "start": "npm run build:wasm && astro dev",
     "build:wasm": "bash scripts/build-wasm.sh",

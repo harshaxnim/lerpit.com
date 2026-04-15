@@ -3,169 +3,82 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LERPETTE_ROOT="$ROOT_DIR/src/lerpettes"
-SEED_DIR="$ROOT_DIR/public/wasm"
-TMP_DIR="$(mktemp -d "/tmp/lerpit-wasm.XXXXXX")"
 SCRIPT_FILE="$ROOT_DIR/scripts/build-wasm.sh"
-DEFAULT_CLANG="$(command -v clang || true)"
-WASM_CLANG=""
-DEFAULT_WASM_LD="$(command -v wasm-ld || true)"
-WASM_LD=""
-HAS_WASM_TOOLCHAIN=0
-FALLBACK_NOTICE_EMITTED=0
+LOCAL_EMCC="$ROOT_DIR/.tools/emsdk/upstream/emscripten/emcc"
+EMCC="${EMCC_BIN:-$(command -v emcc || true)}"
 BUILT_COUNT=0
 SKIPPED_COUNT=0
 
-trap 'rm -rf "$TMP_DIR"' EXIT
-
-if [[ -n "${WASM_CLANG_BIN:-}" ]]; then
-  WASM_CLANG="$WASM_CLANG_BIN"
-elif [[ -x /opt/homebrew/opt/llvm/bin/clang ]]; then
-  WASM_CLANG="/opt/homebrew/opt/llvm/bin/clang"
-elif [[ -x /usr/local/opt/llvm/bin/clang ]]; then
-  WASM_CLANG="/usr/local/opt/llvm/bin/clang"
-else
-  WASM_CLANG="$DEFAULT_CLANG"
+if [[ -z "$EMCC" && -x "$LOCAL_EMCC" ]]; then
+  EMCC="$LOCAL_EMCC"
 fi
 
-if [[ -n "${WASM_LD_BIN:-}" ]]; then
-  WASM_LD="$WASM_LD_BIN"
-elif [[ -x "$(dirname "$WASM_CLANG")/wasm-ld" ]]; then
-  WASM_LD="$(dirname "$WASM_CLANG")/wasm-ld"
-elif [[ -x /opt/homebrew/opt/lld/bin/wasm-ld ]]; then
-  WASM_LD="/opt/homebrew/opt/lld/bin/wasm-ld"
-elif [[ -x /usr/local/opt/lld/bin/wasm-ld ]]; then
-  WASM_LD="/usr/local/opt/lld/bin/wasm-ld"
-else
-  WASM_LD="$DEFAULT_WASM_LD"
+if [[ -z "$EMCC" ]]; then
+  echo "Error: emcc was not found." >&2
+  echo "Run \"npm run setup\" or install Emscripten manually." >&2
+  echo "You can also set EMCC_BIN=/path/to/emcc." >&2
+  exit 1
 fi
 
-compiler_supports_wasm() {
-  local compiler="$1"
-  local probe_log="$TMP_DIR/clang-probe.log"
-  local linker_dir=""
-
-  [[ -n "$compiler" ]] || return 1
-  if [[ -n "$WASM_LD" ]]; then
-    linker_dir="$(dirname "$WASM_LD")"
-  fi
-
-  printf 'float lerp_f32(float a, float b, float t) { return a + (b - a) * t; }\n' |
-    PATH="${linker_dir:+$linker_dir:}$PATH" "$compiler" \
-      --target=wasm32 \
-      -O0 \
-      -nostdlib \
-      -Wl,--no-entry \
-      -Wl,--export=lerp_f32 \
-      -x c \
-      - \
-      -o "$TMP_DIR/probe.wasm" \
-      >/dev/null 2>"$probe_log"
+python_is_supported() {
+  "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1
 }
 
-emit_fallback_notice() {
-  local seed_file="$1"
+if [[ -z "${EMSDK_PYTHON:-}" ]] || ! python_is_supported "$EMSDK_PYTHON"; then
+  for candidate in \
+    "$(command -v python3.13 || true)" \
+    "$(command -v python3.12 || true)" \
+    "$(command -v python3.11 || true)" \
+    "$(command -v python3.10 || true)" \
+    /opt/homebrew/bin/python3.14 \
+    /opt/homebrew/bin/python3.13 \
+    /opt/homebrew/bin/python3.12 \
+    /opt/homebrew/bin/python3.11 \
+    /opt/homebrew/bin/python3.10; do
+    [[ -n "$candidate" && -x "$candidate" ]] || continue
+    if python_is_supported "$candidate"; then
+      export EMSDK_PYTHON="$candidate"
+      break
+    fi
+  done
+fi
 
-  if [[ $FALLBACK_NOTICE_EMITTED -eq 1 ]]; then
-    return
-  fi
-
-  FALLBACK_NOTICE_EMITTED=1
-
-  if [[ -n "$WASM_CLANG" && -z "$WASM_LD" ]]; then
-    echo "Found a wasm-capable clang at \"$WASM_CLANG\", but no wasm-ld linker was available." >&2
-    echo "Install lld and set WASM_LD_BIN if it is not on PATH." >&2
-    echo "Fell back to seed binary from $seed_file" >&2
-  elif [[ "$WASM_CLANG" == "$DEFAULT_CLANG" ]]; then
-    echo "Local clang cannot target wasm32; copied fallback seed binary from $seed_file" >&2
-    echo "Install LLVM and set WASM_CLANG_BIN if you want local Wasm recompilation." >&2
-  else
-    echo "Configured compiler \"$WASM_CLANG\" could not build wasm32; copied fallback seed binary from $seed_file" >&2
-  fi
-}
-
-artifact_matches_seed() {
-  local output_file="$1"
-  local seed_file="$2"
-
-  [[ -f "$output_file" ]] || return 1
-  [[ -f "$seed_file" ]] || return 1
-  cmp -s "$output_file" "$seed_file"
-}
+if [[ -z "${EMSDK_PYTHON:-}" ]]; then
+  echo "Error: Emscripten requires Python 3.10+ but none was found on PATH." >&2
+  echo "Install Python 3.11+ (e.g. brew install python@3.12) and retry." >&2
+  exit 1
+fi
 
 needs_rebuild() {
   local src_file="$1"
-  local output_file="$2"
-  local seed_file="$3"
+  local output_js="$2"
+  local output_wasm="$3"
 
-  [[ -f "$output_file" ]] || return 0
-  [[ "$src_file" -nt "$output_file" ]] && return 0
-  [[ "$SCRIPT_FILE" -nt "$output_file" ]] && return 0
-
-  if [[ $HAS_WASM_TOOLCHAIN -eq 1 ]]; then
-    [[ -n "$WASM_CLANG" && "$WASM_CLANG" -nt "$output_file" ]] && return 0
-    [[ -n "$WASM_LD" && "$WASM_LD" -nt "$output_file" ]] && return 0
-    artifact_matches_seed "$output_file" "$seed_file" && return 0
-  else
-    [[ -f "$seed_file" && "$seed_file" -nt "$output_file" ]] && return 0
-  fi
+  [[ -f "$output_js" ]] || return 0
+  [[ -f "$output_wasm" ]] || return 0
+  [[ "$src_file" -nt "$output_js" ]] && return 0
+  [[ "$src_file" -nt "$output_wasm" ]] && return 0
+  [[ "$SCRIPT_FILE" -nt "$output_js" ]] && return 0
+  [[ "$SCRIPT_FILE" -nt "$output_wasm" ]] && return 0
+  [[ "$EMCC" -nt "$output_js" ]] && return 0
+  [[ "$EMCC" -nt "$output_wasm" ]] && return 0
 
   return 1
 }
 
-build_artifact() {
+build_with_emcc() {
   local src_file="$1"
-  local module_name
-  local seed_file
-  local artifact_file
-  local compile_log
-  local artifact_key
-  local linker_dir=""
+  local output_js="$2"
 
-  module_name="$(basename "${src_file%.c}")"
-  seed_file="$SEED_DIR/$module_name.wasm"
-  artifact_key="$(printf '%s' "$src_file" | cksum | awk '{print $1}')"
-  artifact_file="$TMP_DIR/$artifact_key-$module_name.wasm"
-  compile_log="$TMP_DIR/$artifact_key-$module_name.stderr.log"
-  if [[ -n "$WASM_LD" ]]; then
-    linker_dir="$(dirname "$WASM_LD")"
-  fi
-
-  if [[ $HAS_WASM_TOOLCHAIN -eq 1 ]] && PATH="${linker_dir:+$linker_dir:}$PATH" "$WASM_CLANG" \
-    --target=wasm32 \
+  "$EMCC" "$src_file" \
     -O3 \
-    -nostdlib \
-    -Wl,--no-entry \
-    -Wl,--export=lerp_f32 \
-    "$src_file" \
-    -o "$artifact_file" \
-    >/dev/null 2>"$compile_log"; then
-    echo "Compiled fresh Wasm from $src_file with $WASM_CLANG" >&2
-  elif [[ -f "$seed_file" ]]; then
-    cp "$seed_file" "$artifact_file"
-    emit_fallback_notice "$seed_file"
-  else
-    if [[ -f "$compile_log" ]]; then
-      cat "$compile_log" >&2
-    fi
-    echo "Failed to compile $src_file and no fallback seed binary was found at $seed_file." >&2
-    exit 1
-  fi
-
-  printf '%s\n' "$artifact_file"
+    --bind \
+    -sMODULARIZE=1 \
+    -sEXPORT_ES6=1 \
+    -sENVIRONMENT=web \
+    -sALLOW_MEMORY_GROWTH=1 \
+    -o "$output_js"
 }
-
-copy_artifact() {
-  local artifact_file="$1"
-  local output_file="$2"
-
-  mkdir -p "$(dirname "$output_file")"
-  cp "$artifact_file" "$output_file"
-  echo "Built $output_file"
-}
-
-if compiler_supports_wasm "$WASM_CLANG"; then
-  HAS_WASM_TOOLCHAIN=1
-fi
 
 found_step_src_dir=0
 
@@ -177,19 +90,21 @@ while IFS= read -r step_src_dir; do
 
   while IFS= read -r step_src; do
     [[ -n "$step_src" ]] || continue
-    module_name="$(basename "${step_src%.c}")"
-    output_file="$target_dir/$module_name.wasm"
-    seed_file="$SEED_DIR/$module_name.wasm"
 
-    if needs_rebuild "$step_src" "$output_file" "$seed_file"; then
-      artifact_file="$(build_artifact "$step_src")"
-      copy_artifact "$artifact_file" "$output_file"
+    module_name="$(basename "${step_src%.*}")"
+    output_js="$target_dir/$module_name.js"
+    output_wasm="$target_dir/$module_name.wasm"
+
+    if needs_rebuild "$step_src" "$output_js" "$output_wasm"; then
+      mkdir -p "$target_dir"
+      build_with_emcc "$step_src" "$output_js"
+      echo "Built $output_js and $output_wasm"
       BUILT_COUNT=$((BUILT_COUNT + 1))
     else
       SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-      echo "Skipped unchanged $output_file"
+      echo "Skipped unchanged $output_js and $output_wasm"
     fi
-  done < <(find "$step_src_dir" -maxdepth 1 -type f -name '*.c' | sort)
+  done < <(find "$step_src_dir" -maxdepth 1 -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.cxx' \) | sort)
 done < <(find "$LERPETTE_ROOT" -type d -path '*/code/*/wasm-src' | sort)
 
 if [[ $found_step_src_dir -eq 0 ]]; then

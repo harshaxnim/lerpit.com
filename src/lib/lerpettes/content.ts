@@ -253,21 +253,15 @@ async function parseMixtapeDirectory(
   const h1Index = root.children.findIndex((node) => node.type === 'heading' && node.depth === 1);
   assert(h1Index >= 0, `Missing H1 in ${mixtapePath}`);
 
-  const { meta: preTitleMeta } = extractMixtapeMeta(root.children.slice(0, h1Index), mixtapePath, false);
+  const meta = extractTopMixtapeMeta(root.children.slice(0, h1Index), mixtapePath);
   const title = getHeadingTitle(root.children[h1Index], 1, mixtapePath).title;
   const contentNodes = root.children.slice(h1Index + 1);
+  assertNoBodyMetaLine(contentNodes, mixtapePath);
   const firstStepIndex = contentNodes.findIndex((node) => node.type === 'heading' && node.depth === 2);
   assert(firstStepIndex >= 0, `Mixtape ${mixtapePath} must include at least one H2 chapter with an explicit id.`);
 
   const introNodes = contentNodes.slice(0, firstStepIndex);
-  const { summary, summaryNode, remainingNodes: introNodesWithoutSummary } = extractSummary(introNodes, mixtapePath);
-  const { meta: postSummaryMeta, remainingNodes: introBodyNodes } = extractMixtapeMeta(
-    introNodesWithoutSummary,
-    mixtapePath,
-    false
-  );
-  const meta = preTitleMeta ?? postSummaryMeta;
-  assert(meta, `Expected metadata near the top of ${mixtapePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
+  const { summary, summaryNode, remainingNodes: introBodyNodes } = extractSummary(introNodes, mixtapePath);
   const stepNodes = contentNodes.slice(firstStepIndex);
   const steps = extractMixtapeSteps(stepNodes, mixtapePath, mixtapeDir);
 
@@ -343,7 +337,8 @@ function extractMixtapeSteps(stepNodes: MarkdownNode[], filePath: string, mixtap
       title: step.title,
       bodyHtml: renderNodesToHtml(step.body, mixtapeDir),
       runtimeImportKey: toRuntimeImportKey(runtimeFile),
-      assetBasePath: `${ASSET_ROUTE_PREFIX}/${toPosixPath(path.relative(LERPETTE_ROOT, path.join(mixtapeDir, 'code', runtimeStepId)))}/`
+      assetBasePath: `${ASSET_ROUTE_PREFIX}/${toPosixPath(path.relative(LERPETTE_ROOT, path.join(mixtapeDir, 'code', runtimeStepId)))}/`,
+      hasOwnRuntime: runtimeAvailability[index].exists
     };
   });
 }
@@ -379,6 +374,9 @@ function validateCodeDirectory(mixtapeDir: string, steps: LerpetteStep[]) {
   const entries = fs.readdirSync(codeDir, { withFileTypes: true });
 
   for (const entry of entries) {
+    if (entry.name.startsWith('.')) {
+      continue;
+    }
     if (!entry.isDirectory()) {
       throw new Error(`Unexpected file in ${codeDir}: ${entry.name}`);
     }
@@ -389,7 +387,7 @@ function validateCodeDirectory(mixtapeDir: string, steps: LerpetteStep[]) {
     }
 
     if (!stepIds.has(entryId)) {
-      throw new Error(`Runtime directory "${entryId}" does not match any H2 step id in ${mixtapeDir}`);
+      continue;
     }
 
     const runtimeEntry = path.join(codeDir, entryId, 'js', 'index.ts');
@@ -450,64 +448,41 @@ function extractSummary(nodes: MarkdownNode[], filePath: string): {
   };
 }
 
-function extractMixtapeMeta(
-  nodes: MarkdownNode[],
-  filePath: string,
-  required = true
-): { meta?: MixtapeMeta; remainingNodes: MarkdownNode[] } {
-  const paragraphIndex = nodes.findIndex((node) => node.type === 'paragraph');
-  const paragraph = paragraphIndex >= 0 ? nodes[paragraphIndex] : undefined;
-  if (!paragraph) {
-    assert(!required, `Expected metadata after summary in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
-    return {
-      remainingNodes: nodes
-    };
-  }
+function extractTopMixtapeMeta(nodesBeforeTitle: MarkdownNode[], filePath: string): MixtapeMeta {
+  const firstNode = nodesBeforeTitle[0];
+  assert(
+    nodesBeforeTitle.length === 1 && firstNode?.type === 'paragraph',
+    `Expected exactly one top metadata line in ${filePath}. Use "Author: <name> | Date: YYYY-MM-DD" as the first line.`
+  );
 
-  const raw = toString(paragraph as never).trim();
-  const looksLikeMeta = /\bauthor\s*:/i.test(raw) || /\bdate\s*:/i.test(raw);
-  if (!looksLikeMeta) {
-    assert(!required, `Expected metadata after summary in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
-    return {
-      remainingNodes: nodes
-    };
-  }
+  const raw = toString(firstNode as never).trim();
+  const match = raw.match(/^Author:\s*(.+?)\s*\|\s*Date:\s*(\d{4}-\d{2}-\d{2})$/);
+  assert(match, `Invalid top metadata line in ${filePath}. Use exactly "Author: <name> | Date: YYYY-MM-DD".`);
 
-  const parts = raw
-    .split('|')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  const meta = new Map<string, string>();
-
-  for (const part of parts) {
-    const separatorIndex = part.indexOf(':');
-    if (separatorIndex <= 0) {
-      continue;
-    }
-
-    const key = part.slice(0, separatorIndex).trim().toLowerCase();
-    const value = part.slice(separatorIndex + 1).trim();
-    if (!key || !value) {
-      continue;
-    }
-
-    meta.set(key, value);
-  }
-
-  const author = meta.get('author');
-  const date = meta.get('date');
-
-  assert(author, `Missing author metadata in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
-  assert(date, `Missing date metadata in ${filePath}. Use "Author: Harsha | Date: YYYY-MM-DD".`);
-  assert(/^\d{4}-\d{2}-\d{2}$/.test(date), `Invalid date "${date}" in ${filePath}. Use YYYY-MM-DD.`);
+  const author = match[1].trim();
+  const date = match[2];
+  assert(author.length > 0, `Missing author metadata in top line of ${filePath}. Use "Author: <name> | Date: YYYY-MM-DD".`);
 
   return {
-    meta: {
-      author,
-      date
-    },
-    remainingNodes: nodes.filter((_, index) => index !== paragraphIndex)
+    author,
+    date
   };
+}
+
+function assertNoBodyMetaLine(nodes: MarkdownNode[], filePath: string) {
+  const misplacedMeta = nodes.some((node) => {
+    if (node.type !== 'paragraph') {
+      return false;
+    }
+
+    const raw = toString(node as never).trim();
+    return /^Author:\s*.+?\s*\|\s*Date:\s*\d{4}-\d{2}-\d{2}$/i.test(raw);
+  });
+
+  assert(
+    !misplacedMeta,
+    `Metadata line must appear only at the top of ${filePath}. Use exactly one line: "Author: <name> | Date: YYYY-MM-DD".`
+  );
 }
 
 async function collectAssetEntries(rootDir: string): Promise<LerpetteAssetEntry[]> {

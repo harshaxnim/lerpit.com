@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '@/lib/lerpettes/types';
-import { loadLerpModule } from '@/lib/wasm/lerpLoader';
+import { loadLerpModule } from './lerpLoader';
 
 type IssueZeroConfig = {
   target: number;

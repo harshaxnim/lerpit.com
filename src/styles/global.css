@@ -170,6 +170,50 @@ nav {
   color: var(--muted);
 }
 
+.lerpette-step__missing-runtime {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.4rem;
+  border: 1px solid #c08a2a;
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #8a5a00;
+  background: rgba(255, 200, 80, 0.18);
+}
+
+.lerpette-step__missing-runtime::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 0.4rem 0.6rem;
+  background: #20313F;
+  color: #fff;
+  font-family: var(--font-sans, system-ui);
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 10;
+}
+
+.lerpette-step__missing-runtime:hover::after,
+.lerpette-step__missing-runtime:focus::after {
+  opacity: 1;
+}
+
 .section-heading,
 .collection-header,
 .lerpette-shelf,
@@ -543,6 +587,12 @@ nav {
   border-bottom: 1px solid var(--line);
 }
 
+.lerpette-step__index-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .lerpette-step__header h2 {
   font-size: clamp(1.35rem, 2.6vw, 2rem);
   font-weight: 500;
@@ -572,6 +622,11 @@ nav {
 .prose-block ul,
 .prose-block ol {
   padding-left: 1.2rem;
+}
+
+.prose-block p + ul,
+.prose-block p + ol {
+  margin-top: -.75rem;
 }
 
 .prose-block figure {
@@ -882,8 +937,7 @@ nav {
   }
 
   .lerpette-player__rail {
-    position: static;
-    padding-right: 0;
+    display: none;
   }
 
   .lerpette-player__chapters {

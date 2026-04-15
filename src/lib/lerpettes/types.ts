@@ -22,6 +22,7 @@ export type LerpetteStep = {
   bodyHtml: string;
   runtimeImportKey: string;
   assetBasePath: string;
+  hasOwnRuntime: boolean;
 };
 
 export type LerpetteMixtape = {

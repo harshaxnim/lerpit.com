@@ -83,7 +83,17 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
           aria-labelledby={`${playerId}-${step.id}-title`}
         >
           <div class="lerpette-step__header">
-            <span class="lerpette-step__index">{String(index + 1).padStart(2, '0')}</span>
+            <span class="lerpette-step__index-row">
+              <span class="lerpette-step__index">{String(index + 1).padStart(2, '0')}</span>
+              {!step.hasOwnRuntime && (
+                <span
+                  class="lerpette-step__missing-runtime"
+                  role="img"
+                  aria-label="Missing code folder"
+                  data-tooltip="missing code folder"
+                >!</span>
+              )}
+            </span>
             <h2 id={`${playerId}-${step.id}-title`}>{step.title}</h2>
           </div>
           <div class="prose-block" set:html={step.bodyHtml}></div>

@@ -1,6 +1,6 @@
 Author: Harsha | Date: 2026-03-25
 
-# Why Lerpit?
+# Why LerpIt?
 
 *Incremental learning in small chunks is easier and faster than taking a few big leaps.*
 
