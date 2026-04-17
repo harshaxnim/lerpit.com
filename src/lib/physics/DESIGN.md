@@ -23,21 +23,24 @@ We're building our own because the lerpettes teach *how* physics works — the f
 ```
 src/lib/physics/
   DESIGN.md                 ← this file
-  js/
+  js/                       ← TS source
     index.ts                ← public API re-exports
     world.ts                ← World wrapper (owns wasm module, step loop)
-    sphere.ts               ← JS-side Sphere handle (wraps embind object)
-    renderer.ts             ← Three.js helpers (syncMesh(sphere, mesh))
-    loader.ts               ← loads /physics.wasm, caches factory
-  wasm/
-    wasm-src/
-      particle.h            ← Particle base (pos, vel)
-      sphere.h / sphere.cpp ← Sphere : Particle (radius)
-      world.h   / world.cpp ← World (owns bodies, advances sim)
-      bindings.cpp          ← embind glue
-    build.sh                ← builds physics.wasm + physics.js
-    physics.wasm (artifact, gitignored)
-    physics.js   (artifact, gitignored)
+    renderer.ts             ← Three.js helpers (bindMesh / syncMeshes)
+    loader.ts               ← loads the lerpette-provided factory, caches it
+    ensureWorld.ts          ← idempotent ctx.shared guard
+    types.ts                ← Vec3, NativeParticle, NativeSphere, …
+  wasm/                     ← C++ source (headers + .cpp + build.sh)
+    particle.h              ← Particle base (pos, vel, virtual dtor)
+    shapes.h                ← first-class shape primitives (Sphere, …)
+    world.h / world.cpp     ← World base (owns bodies, virtual step)
+    bindings.cpp            ← embind glue for Vec3/Particle/Sphere/World
+    build.sh                ← emits physics.{js,wasm,d.ts} into ../build
+  build/                    ← artifacts, gitignored
+    physics.{js,wasm,d.ts}
+  tests/                    ← unified tests (one folder per module)
+    cpp/                    ← native doctest-style tests + run.sh
+    js/                     ← Vitest unit + integration/ tests
 ```
 
 Lerpettes import from `src/lib/physics` only. They do not touch wasm directly.
@@ -120,7 +123,7 @@ No automatic mesh creation — lerpettes choose geometry, material, and scene gr
 
 ## Build
 
-New `scripts/build-physics-wasm.sh` (or extend `build-wasm.sh` to also scan `src/lib/physics/wasm/wasm-src/`). Output goes to `src/lib/physics/wasm/` and is gitignored.
+`scripts/build-wasm.sh` scans `src/lerpettes/**/code/**/wasm/` for lerpette sources (delegating to any `wasm/build.sh` present) and then invokes `src/lib/physics/wasm/build.sh` for the framework. All artifacts land in a sibling `build/` directory and are gitignored.
 
 Astro serves the `.wasm` as a static asset; `loader.ts` resolves the URL via `import.meta.env.BASE_URL`.
 
@@ -183,7 +186,7 @@ First lerpette: one sphere at origin, constant velocity `(0, 0.1, 0)`, moves up 
 
 ## Implementation plan
 
-### C++ framework (`src/lib/physics/wasm/wasm-src/`)
+### C++ framework (`src/lib/physics/wasm/`)
 
 **`particle.h`** — Data-only struct. `std::array<float,3> pos`, `std::array<float,3> vel`. No behavior; Sphere inherits from it. The data contract shared with JS.
 
@@ -234,7 +237,7 @@ All embind noise is isolated here; core headers stay clean and portable (→ C++
 ### Repo-level changes
 
 - **`scripts/build-wasm.sh`** — extend to also invoke `src/lib/physics/wasm/build.sh`.
-- **`.gitignore`** — add `src/lib/physics/wasm/physics.{js,wasm,d.ts}`.
+- **`.gitignore`** — add `src/lib/physics/build/` and `src/lerpettes/**/code/**/build/`.
 - **`package.json`** — add `"test": "vitest run"`, `"test:watch": "vitest"`, `"test:cpp": "bash src/lib/physics/wasm/tests/run.sh"`. Add `vitest` as devDependency.
 - **Asset serving** — verify the library-level `.wasm` is reachable via `import.meta.env.BASE_URL`. Current pipeline is lerpette-scoped; may need a small addition in `src/lib/lerpettes/content.ts` or a `public/` drop for the physics module.
 
@@ -258,7 +261,7 @@ Framework: **doctest** (single-header, zero-install, MIT). Dropped into `tests/d
 
 Build via `src/lib/physics/wasm/tests/run.sh` — compiles each `test_*.cpp` with the native C++ compiler (not emcc), links the world/sphere sources, runs the binary. Fast feedback loop: a failing physics test is under a second from edit to red.
 
-### JS unit tests — `src/lib/physics/js/__tests__/`
+### JS unit tests — `src/lib/physics/tests/js/`
 
 Framework: **Vitest** (TS-native, Vite-native, fast). Uses a fake `PhysicsModule` (hand-written mock conforming to the generated `physics.d.ts` shape) so these tests run without compiling wasm.
 
@@ -283,7 +286,7 @@ Framework: **Vitest** (TS-native, Vite-native, fast). Uses a fake `PhysicsModule
   - Different `key` values yield different worlds.
   - `disposeWorld` removes from `ctx.shared` and calls `destroy`.
 
-### Integration tests — `src/lib/physics/js/__tests__/integration/`
+### Integration tests — `src/lib/physics/tests/js/integration/`
 
 These actually load the compiled `physics.js` / `physics.wasm` in the Vitest Node environment (that's what `-sENVIRONMENT=web,node` buys us). Slower than unit tests (~hundreds of ms to instantiate) but catches the whole stack.
 

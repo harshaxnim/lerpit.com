@@ -69,6 +69,7 @@ needs_rebuild() {
 build_with_emcc() {
   local src_file="$1"
   local output_js="$2"
+  local output_tsd="${output_js%.js}.d.ts"
 
   "$EMCC" "$src_file" \
     -O3 \
@@ -77,6 +78,8 @@ build_with_emcc() {
     -sEXPORT_ES6=1 \
     -sENVIRONMENT=web \
     -sALLOW_MEMORY_GROWTH=1 \
+    "-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64" \
+    --emit-tsd "$output_tsd" \
     -o "$output_js"
 }
 
@@ -86,7 +89,17 @@ while IFS= read -r step_src_dir; do
   [[ -n "$step_src_dir" ]] || continue
   found_step_src_dir=1
   step_dir="$(dirname "$step_src_dir")"
-  target_dir="$step_dir/wasm"
+  target_dir="$step_dir/build"
+  mkdir -p "$target_dir"
+
+  # If the wasm source dir has its own build.sh, delegate to it (used by lerpettes
+  # that combine multiple .cpp files and/or link against the physics framework).
+  if [[ -x "$step_src_dir/build.sh" ]]; then
+    echo "--- $(basename "$step_dir") ---"
+    EMCC_BIN="$EMCC" EMSDK_PYTHON="${EMSDK_PYTHON:-}" bash "$step_src_dir/build.sh"
+    BUILT_COUNT=$((BUILT_COUNT + 1))
+    continue
+  fi
 
   while IFS= read -r step_src; do
     [[ -n "$step_src" ]] || continue
@@ -105,11 +118,17 @@ while IFS= read -r step_src_dir; do
       echo "Skipped unchanged $output_js and $output_wasm"
     fi
   done < <(find "$step_src_dir" -maxdepth 1 -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.cxx' \) | sort)
-done < <(find "$LERPETTE_ROOT" -type d -path '*/code/*/wasm-src' | sort)
+done < <(find "$LERPETTE_ROOT" -type d -path '*/code/*/wasm' | sort)
 
 if [[ $found_step_src_dir -eq 0 ]]; then
-  echo "No wasm-src directories found under src/lerpettes/**/code/**."
-  exit 0
+  echo "No wasm source directories found under src/lerpettes/**/code/**."
 fi
 
-echo "Wasm build complete: $BUILT_COUNT built, $SKIPPED_COUNT skipped."
+# Build the shared physics framework wasm.
+PHYSICS_BUILD="$ROOT_DIR/src/lib/physics/wasm/build.sh"
+if [[ -f "$PHYSICS_BUILD" ]]; then
+  echo "--- physics framework ---"
+  EMCC_BIN="$EMCC" EMSDK_PYTHON="${EMSDK_PYTHON:-}" bash "$PHYSICS_BUILD"
+fi
+
+echo "Wasm build complete: $BUILT_COUNT built, $SKIPPED_COUNT skipped (lerpettes) + physics framework."

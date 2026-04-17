@@ -9,7 +9,11 @@
     "start": "npm run build:wasm && astro dev",
     "build:wasm": "bash scripts/build-wasm.sh",
     "build": "npm run build:wasm && astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "test": "npm run test:cpp && vitest run",
+    "test:js": "vitest run",
+    "test:watch": "vitest",
+    "test:cpp": "bash src/lib/physics/tests/cpp/run.sh"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.8",
@@ -27,6 +31,7 @@
   "devDependencies": {
     "typescript": "^5.9.2",
     "unified": "^11.0.5",
-    "unist-util-visit": "^5.0.0"
+    "unist-util-visit": "^5.0.0",
+    "vitest": "^2.1.9"
   }
 }

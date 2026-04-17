@@ -68,7 +68,7 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
         ) : (
           collectionLabel
         )}{' '}
-        / {lerpette.publishedOn} / {lerpette.author}
+        / {lerpette.slug} / {lerpette.publishedOn} / {lerpette.author}
       </p>
       <section class="lerpette-intro" id={`${playerId}-intro`} data-section-id="intro">
         <h2 class="lerpette-intro__title">{lerpette.title}</h2>
@@ -114,9 +114,13 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
         <span class="lerpette-stage__toggle-text">VIEWPORT</span>
         <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
       </button>
-      <p class="eyebrow lerpette-stage__label">Viewport</p>
+      <p class="eyebrow lerpette-stage__label">
+        <span>Viewport</span>
+        <span class="lerpette-stage__active-step" data-stage-active-step></span>
+      </p>
       <div class="lerpette-stage__canvas" data-stage-host id={`${playerId}-viewport-surface`}>
         <canvas data-stage-canvas aria-label={`Live render for ${lerpette.title}`}></canvas>
+        <p class="lerpette-stage__status" data-stage-status></p>
       </div>
     </aside>
   </div>

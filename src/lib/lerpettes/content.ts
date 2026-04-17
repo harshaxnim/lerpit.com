@@ -159,23 +159,27 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
 
-  assert(directories.includes('issue-zero'), 'Missing special issue-zero directory under src/lerpettes.');
-
-  const issueZero = await parseMixtapeDirectory(
-    path.join(LERPETTE_ROOT, 'issue-zero'),
-    undefined,
-    undefined,
-    '/'
-  );
-
   const collections = await Promise.all(
     directories
-      .filter((directory) => directory !== 'issue-zero')
       .sort((left, right) => left.localeCompare(right))
       .map((directory) => parseCollectionDirectory(path.join(LERPETTE_ROOT, directory)))
   );
 
-  const mixtapes = collections.flatMap((collection) => collection.mixtapes);
+  // The landing lesson is served at '/' AND kept in its collection listing
+  // (so it shows up in /meta/ alongside other lessons). Clone with overridden
+  // href for the homepage; the original stays in meta.mixtapes with the
+  // canonical /meta/issue-zero/ href for the listing and its own route.
+  const metaCollection = collections.find((c) => c.slug === 'meta');
+  const landing = metaCollection?.mixtapes.find((m) => m.slug === 'issue-zero');
+  assert(
+    metaCollection && landing,
+    'Missing landing lesson at src/lerpettes/meta/issue-zero.'
+  );
+  const issueZero: LerpetteMixtape = { ...landing, href: '/' };
+
+  const mixtapes = collections
+    .flatMap((collection) => collection.mixtapes)
+    .sort((left, right) => right.publishedOn.localeCompare(left.publishedOn));
   const assetEntries = await collectAssetEntries(LERPETTE_ROOT);
 
   return {
@@ -193,8 +197,7 @@ async function parseCollectionDirectory(collectionDir: string): Promise<Lerpette
   const collectionDoc = await parseCollectionDocument(collectionPath, `/${collectionSlug}/`);
   const mixtapeDirs = (await fsp.readdir(collectionDir, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort((left, right) => left.localeCompare(right));
+    .map((entry) => entry.name);
 
   const mixtapes = await Promise.all(
     mixtapeDirs.map(async (mixtapeSlug) => {
@@ -209,6 +212,9 @@ async function parseCollectionDirectory(collectionDir: string): Promise<Lerpette
       return mixtape;
     })
   );
+
+  // Newest-first by publishedOn (YYYY-MM-DD sorts lexicographically).
+  mixtapes.sort((left, right) => right.publishedOn.localeCompare(left.publishedOn));
 
   return {
     slug: collectionSlug,
@@ -422,12 +428,16 @@ function getHeadingTitle(node: MarkdownNode, depth: number, filePath: string): {
   const raw = toString(node as never).trim();
   if (depth === 2) {
     const match = raw.match(/^(.*?)\s*\{#([A-Za-z0-9][A-Za-z0-9-_]*)\}$/);
-    assert(match, `Heading "${raw}" in ${filePath} is missing an explicit id.`);
+    if (match) {
+      return { title: match[1].trim(), id: match[2] };
+    }
 
-    return {
-      title: match[1].trim(),
-      id: match[2]
-    };
+    const slug = raw
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return { title: raw, id: slug || undefined };
   }
 
   return { title: raw };

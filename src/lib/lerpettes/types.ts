@@ -3,7 +3,7 @@ export type LerpetteRuntimeContext = {
   host: HTMLElement;
   currentStepId: string;
   shared: Map<string, unknown>;
-  setStatus: (value: string) => void;
+  setCaption: (value: string) => void;
   setRuntimeLabel: (value: string) => void;
   resolveAssetUrl: (relativePath: string) => string;
 };

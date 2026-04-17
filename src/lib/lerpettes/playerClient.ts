@@ -46,6 +46,8 @@ export function initLerpettePlayers() {
     const stageHost = root.querySelector<HTMLElement>('[data-stage-host]');
     const stageCanvas = root.querySelector<HTMLCanvasElement>('[data-stage-canvas]');
     const stageToggle = root.querySelector<HTMLButtonElement>('[data-stage-toggle]');
+    const stageActiveStep = root.querySelector<HTMLElement>('[data-stage-active-step]');
+    const stageStatus = root.querySelector<HTMLElement>('[data-stage-status]');
 
     if (!(stageHost instanceof HTMLElement) || !(stageCanvas instanceof HTMLCanvasElement)) {
       return;
@@ -156,6 +158,7 @@ export function initLerpettePlayers() {
         button.classList.toggle('is-active', isActive);
         button.setAttribute('aria-current', isActive ? 'location' : 'false');
       });
+
     };
 
     const createRuntimeContext = (stepId: string) => {
@@ -169,11 +172,11 @@ export function initLerpettePlayers() {
         host: stageHost,
         currentStepId: stepId,
         shared,
-        setStatus() {
-          return;
+        setCaption(value: string) {
+          if (stageStatus) stageStatus.textContent = value;
         },
-        setRuntimeLabel() {
-          return;
+        setRuntimeLabel(value: string) {
+          if (stageActiveStep) stageActiveStep.textContent = value;
         },
         resolveAssetUrl(relativePath: string) {
           return new URL(relativePath, new URL(step.assetBasePath, window.location.origin)).toString();
@@ -240,6 +243,10 @@ export function initLerpettePlayers() {
 
       currentRuntime = runtime;
       activeStepId = stepId;
+
+      if (stageActiveStep) {
+        stageActiveStep.textContent = step.title;
+      }
     };
 
     const activateIntro = () => {

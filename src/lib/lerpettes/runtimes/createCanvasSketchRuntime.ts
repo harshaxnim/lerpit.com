@@ -63,7 +63,7 @@ export function createCanvasSketchRuntime(config: SketchConfig): LerpetteStepRun
     },
     enter(ctx) {
       ctx.setRuntimeLabel(config.runtimeLabel);
-      ctx.setStatus(config.status);
+      ctx.setCaption(config.status);
       active = true;
       stop();
       tick(ctx);

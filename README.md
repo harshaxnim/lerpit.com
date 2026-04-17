@@ -34,9 +34,9 @@ src/lerpettes/
     mixtape.md
     code/
       shared/
-        wasm-src/lerp_demo.cpp
-        wasm/lerp_demo.js
-        wasm/lerp_demo.wasm
+        wasm/lerp_demo.cpp
+        build/lerp_demo.js
+        build/lerp_demo.wasm
       start/
         js/index.ts
   physics-engine/
@@ -61,7 +61,7 @@ Rules:
 3. Add metadata in the next paragraph with `Author: <name> | Date: YYYY-MM-DD`.
 4. Use `## Heading {#step-id}` for each player chapter.
 5. Put the runtime for that chapter at `code/<step-id>/js/index.ts`.
-6. If the step needs Wasm, put C++ sources in `code/<step-id>/wasm-src/` and the generated Embind module artifacts will land in `code/<step-id>/wasm/`.
+6. If the step needs Wasm, put C++ sources in `code/<step-id>/wasm/` and the generated Embind module artifacts will land in `code/<step-id>/build/`.
 7. If code or Wasm is shared across chapters in one lerpette, put it in that lerpette's `code/shared/` directory.
 8. Framework-level shared helpers should live under `src/lib/`, not inside `src/lerpettes/`.
 
@@ -92,9 +92,9 @@ If the step needs Wasm:
 ```text
 code/<step-id>/
   js/index.ts
-  wasm-src/
-    my_module.cpp
   wasm/
+    my_module.cpp
+  build/
     my_module.js
     my_module.wasm
 ```
@@ -118,7 +118,7 @@ export default createCanvasSketchRuntime({
 });
 ```
 
-If multiple steps in one lerpette share one Wasm module, keep it in that lerpette's `code/shared/wasm/` and initialize it once from shared runtime code. The loader can still pass a resolved path like `ctx.resolveAssetUrl('../shared/wasm/lerp_demo.wasm')` via `locateFile`.
+If multiple steps in one lerpette share one Wasm module, keep its sources in that lerpette's `code/shared/wasm/` and initialize it once from shared runtime code. Artifacts land in `code/shared/build/`; the loader passes a resolved path like `ctx.resolveAssetUrl('../shared/build/lerp_demo.wasm')` via `locateFile`.
 
 ## What is inferred
 
@@ -147,7 +147,7 @@ npm run setup
 npm run dev
 ```
 
-`npm run dev` compiles any `code/**/wasm-src/*.cpp` files with `emcc --bind` before starting Astro.
+`npm run dev` compiles any `code/**/wasm/*.cpp` files with `emcc --bind` before starting Astro (per-lerpette `wasm/build.sh` scripts are delegated to when present; output goes to the sibling `build/` directory).
 If `emcc` is unavailable, the build fails fast.
 `npm run setup` installs a repo-local Emscripten toolchain under `.tools/emsdk` if a system `emcc` is not already available.
 If you have Emscripten in a non-default location, point the build at it with `EMCC_BIN=/path/to/emcc`.
