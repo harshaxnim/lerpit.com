@@ -380,12 +380,10 @@ export function initLerpettePlayers() {
     });
 
     const hash = window.location.hash.replace('#', '');
-    const introHash = `${playerId}-intro`;
-    const hashStep = hash.startsWith(`${playerId}-`) ? hash.slice(playerId.length + 1) : '';
-    if (hash === introHash) {
+    if (hash === 'intro') {
       activateIntro();
-    } else if (stepsById.has(hashStep)) {
-      handleSectionTarget(hashStep);
+    } else if (stepsById.has(hash)) {
+      handleSectionTarget(hash);
     } else {
       activateIntro();
     }

@@ -35,7 +35,7 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
         <li>
           <a
             class="lerpette-player__chapter"
-            href={`#${playerId}-intro`}
+            href="#intro"
             data-target-id="intro"
             aria-label={`Jump to ${lerpette.title}`}
           >
@@ -47,7 +47,7 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
           <li>
             <a
               class="lerpette-player__chapter"
-              href={`#${playerId}-${step.id}`}
+              href={`#${step.id}`}
               data-target-id={step.id}
               aria-label={`Jump to ${step.title}`}
             >
@@ -70,7 +70,7 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
         )}{' '}
         / {lerpette.slug} / {lerpette.publishedOn} / {lerpette.author}
       </p>
-      <section class="lerpette-intro" id={`${playerId}-intro`} data-section-id="intro">
+      <section class="lerpette-intro" id="intro" data-section-id="intro">
         <h2 class="lerpette-intro__title">{lerpette.title}</h2>
         <div class="prose-block" set:html={lerpette.introHtml}></div>
       </section>
@@ -78,9 +78,9 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
       {lerpette.steps.map((step, index) => (
         <section
           class="lerpette-step"
-          id={`${playerId}-${step.id}`}
+          id={step.id}
           data-section-id={step.id}
-          aria-labelledby={`${playerId}-${step.id}-title`}
+          aria-labelledby={`${step.id}-title`}
         >
           <div class="lerpette-step__header">
             <span class="lerpette-step__index-row">
@@ -94,7 +94,7 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
                 >!</span>
               )}
             </span>
-            <h2 id={`${playerId}-${step.id}-title`}>{step.title}</h2>
+            <h2 id={`${step.id}-title`}>{step.title}</h2>
           </div>
           <div class="prose-block" set:html={step.bodyHtml}></div>
         </section>
