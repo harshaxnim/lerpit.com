@@ -1,50 +1,51 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '@/lib/lerpettes/types';
 import {
-  bindMesh,
-  disposeWorld,
-  ensureWorld,
   syncMeshes,
   type ModuleFactory,
-  type NativeSphere,
+  type NativeWorld,
   type PhysicsModule,
-  type World
+  World
 } from '@/lib/physics/js';
 
-type LerpetteModule = PhysicsModule & {
-  ParticleWorld: new () => PhysicsModule extends { World: new () => infer W } ? W : never;
-};
-
-type SceneBundle = {
+export type SetupContext = {
+  world: World;
+  module: PhysicsModule;
   scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
-  renderer: THREE.WebGLRenderer;
-  sphere: NativeSphere;
-  mesh: THREE.Mesh;
-  rafHandle: number | null;
 };
 
 type StepConfig = {
-  runtimeLabel: string;
   caption: string;
+  factory?: ModuleFactory;
+  construct?: (m: PhysicsModule) => NativeWorld;
+  setup: (ctx: SetupContext) => void;
 };
 
-const SCENE_KEY = 'simple-dynamics:scene';
+type RendererBundle = {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  controls: OrbitControls;
+};
 
-const lerpetteFactory: ModuleFactory = async () => {
-  // @ts-expect-error — generated .d.ts for lerpette wasm
-  const mod = (await import('../particle/build/particle.js')).default;
+type StepState = {
+  world: World;
+  rafHandle: number | null;
+};
+
+const RENDERER_KEY = 'simple-dynamics:renderer';
+const STEP_KEY = 'simple-dynamics:step';
+
+// Default factory: loads the framework-only wasm (base World, empty step).
+const defaultFactory: ModuleFactory = async () => {
+  const mod = (await import('@/lib/physics/build/physics.js')).default;
   return (await mod()) as PhysicsModule;
 };
 
-async function ensureScene(ctx: LerpetteRuntimeContext): Promise<SceneBundle> {
-  const existing = ctx.shared.get(SCENE_KEY) as SceneBundle | undefined;
+function ensureRenderer(ctx: LerpetteRuntimeContext): RendererBundle {
+  const existing = ctx.shared.get(RENDERER_KEY) as RendererBundle | undefined;
   if (existing) return existing;
-
-  const world: World = await ensureWorld(ctx, lerpetteFactory, {
-    construct: (m) => new (m as LerpetteModule).ParticleWorld()
-  });
-  const module = world.module as LerpetteModule;
 
   const scene = new THREE.Scene();
   const { clientWidth, clientHeight } = ctx.host;
@@ -56,65 +57,98 @@ async function ensureScene(ctx: LerpetteRuntimeContext): Promise<SceneBundle> {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(clientWidth, clientHeight, false);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-  dir.position.set(2, 3, 4);
-  scene.add(dir);
+  scene.add(new THREE.AmbientLight(0xffffff, 2.));
 
-  const sphere = new module.Sphere([0, 0, 0], [0, 0.1, 0], 0.5);
-  world.addParticle(sphere);
+  const controls = new OrbitControls(camera, ctx.canvas);
+  controls.enableDamping = true;
+  controls.enablePan = false;
 
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 32, 32),
-    new THREE.MeshStandardMaterial({ color: '#D17041' })
+  const bundle: RendererBundle = { scene, camera, renderer, controls };
+  ctx.shared.set(RENDERER_KEY, bundle);
+  return bundle;
+}
+
+function teardownStep(ctx: LerpetteRuntimeContext, rb: RendererBundle) {
+  const prev = ctx.shared.get(STEP_KEY) as StepState | undefined;
+  if (!prev) return;
+
+  if (prev.rafHandle != null) window.cancelAnimationFrame(prev.rafHandle);
+
+  const toRemove: THREE.Object3D[] = [];
+  rb.scene.traverse((obj) => {
+    if (obj instanceof THREE.Mesh || obj instanceof THREE.LineSegments) toRemove.push(obj);
+  });
+  for (const obj of toRemove) {
+    rb.scene.remove(obj);
+    (obj as THREE.Mesh).geometry.dispose();
+    ((obj as THREE.Mesh).material as THREE.Material).dispose();
+  }
+
+  prev.world.destroy();
+  ctx.shared.delete(STEP_KEY);
+}
+
+async function setupStep(
+  ctx: LerpetteRuntimeContext,
+  rb: RendererBundle,
+  factory: ModuleFactory,
+  construct: ((m: PhysicsModule) => NativeWorld) | undefined,
+  setup: (ctx: SetupContext) => void
+): Promise<StepState> {
+  const module = await (await factory());
+  const nativeWorld = construct ? construct(module) : new module.World();
+  const world = await World.create(
+    async () => module,
+    () => nativeWorld
   );
-  scene.add(mesh);
-  bindMesh(sphere, mesh);
 
-  const bundle: SceneBundle = { scene, camera, renderer, sphere, mesh, rafHandle: null };
-  ctx.shared.set(SCENE_KEY, bundle);
+  setup({ world, module, scene: rb.scene });
+
+  const state: StepState = { world, rafHandle: null };
+  ctx.shared.set(STEP_KEY, state);
 
   const loop = (nowMs: number) => {
     world.advance(nowMs);
     syncMeshes(world);
-    renderer.render(scene, camera);
-    bundle.rafHandle = window.requestAnimationFrame(loop);
+    rb.controls.update();
+    rb.renderer.render(rb.scene, rb.camera);
+    state.rafHandle = window.requestAnimationFrame(loop);
   };
-  bundle.rafHandle = window.requestAnimationFrame(loop);
+  state.rafHandle = window.requestAnimationFrame(loop);
 
-  return bundle;
+  return state;
 }
 
 export function createSimpleDynamicsRuntime(config: StepConfig): LerpetteStepRuntime {
+  const factory = config.factory ?? defaultFactory;
+  const construct = config.construct;
+
   return {
     async mount(ctx) {
-      await ensureScene(ctx);
+      ensureRenderer(ctx);
     },
     async enter(ctx) {
-      await ensureScene(ctx);
-      ctx.setRuntimeLabel(config.runtimeLabel);
+      const rb = ensureRenderer(ctx);
+      teardownStep(ctx, rb);
+      await setupStep(ctx, rb, factory, construct, config.setup);
       ctx.setCaption(config.caption);
     },
     resize(ctx) {
-      const bundle = ctx.shared.get(SCENE_KEY) as SceneBundle | undefined;
-      if (!bundle) return;
+      const rb = ctx.shared.get(RENDERER_KEY) as RendererBundle | undefined;
+      if (!rb) return;
       const { clientWidth, clientHeight } = ctx.host;
-      bundle.renderer.setSize(clientWidth, clientHeight, false);
-      bundle.camera.aspect = clientWidth / Math.max(clientHeight, 1);
-      bundle.camera.updateProjectionMatrix();
+      rb.renderer.setSize(clientWidth, clientHeight, false);
+      rb.camera.aspect = clientWidth / Math.max(clientHeight, 1);
+      rb.camera.updateProjectionMatrix();
     },
     dispose(ctx) {
-      const bundle = ctx.shared.get(SCENE_KEY) as SceneBundle | undefined;
-      if (bundle?.rafHandle != null) {
-        window.cancelAnimationFrame(bundle.rafHandle);
+      const rb = ctx.shared.get(RENDERER_KEY) as RendererBundle | undefined;
+      if (rb) {
+        teardownStep(ctx, rb);
+        rb.controls.dispose();
+        rb.renderer.dispose();
+        ctx.shared.delete(RENDERER_KEY);
       }
-      if (bundle) {
-        bundle.mesh.geometry.dispose();
-        (bundle.mesh.material as THREE.Material).dispose();
-        bundle.renderer.dispose();
-        ctx.shared.delete(SCENE_KEY);
-      }
-      disposeWorld(ctx);
     }
   };
 }

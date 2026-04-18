@@ -14,11 +14,7 @@ namespace lerpette {
 class ParticleWorld : public World {
 public:
   void step(float dt) override {
-    for (Particle* p : particles()) {
-      // p->pos[0] += p->vel[0] * dt;
-      // p->pos[1] += p->vel[1] * dt;
-      // p->pos[2] += p->vel[2] * dt;
-    }
+      // do nothing
   }
 };
 

@@ -27,8 +27,10 @@ SRC_FILES=(
   "$SRC_DIR/bindings.cpp"
 )
 
+LIB_A="$OUT_DIR/libphysics.a"
+
 needs_rebuild() {
-  [[ -f "$OUT_JS" && -f "$OUT_WASM" ]] || return 0
+  [[ -f "$OUT_JS" && -f "$OUT_WASM" && -f "$LIB_A" ]] || return 0
   [[ "${BASH_SOURCE[0]}" -nt "$OUT_JS" ]] && return 0
   for f in "${SRC_FILES[@]}" "$SRC_DIR"/*.h; do
     [[ -f "$f" ]] || continue
@@ -38,9 +40,16 @@ needs_rebuild() {
 }
 
 if ! needs_rebuild; then
-  echo "Skipped unchanged $OUT_JS"
+  echo "  [skip] lib/physics (unchanged)"
   exit 0
 fi
+
+# Build static library for lerpettes to link against
+EMAR="$(dirname "$EMCC")/emar"
+"$EMCC" -c "$SRC_DIR/world.cpp" -O3 -std=c++17 -o "$OUT_DIR/world.o"
+"$EMCC" -c "$SRC_DIR/bindings.cpp" -O3 -std=c++17 -o "$OUT_DIR/bindings.o"
+"$EMAR" rcs "$LIB_A" "$OUT_DIR/world.o" "$OUT_DIR/bindings.o"
+rm -f "$OUT_DIR/world.o" "$OUT_DIR/bindings.o"
 
 "$EMCC" "${SRC_FILES[@]}" \
   -lembind \
@@ -54,4 +63,4 @@ fi
   --emit-tsd "$OUT_TSD" \
   -o "$OUT_JS"
 
-echo "Built $OUT_JS, $OUT_WASM, $OUT_TSD"
+echo "  [build] lib/physics → libphysics.a + physics.{js,wasm,d.ts}"

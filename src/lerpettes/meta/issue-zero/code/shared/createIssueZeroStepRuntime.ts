@@ -4,7 +4,6 @@ import { loadLerpModule } from './lerpLoader';
 
 type IssueZeroConfig = {
   target: number;
-  runtimeLabel: string;
   status: string;
 };
 

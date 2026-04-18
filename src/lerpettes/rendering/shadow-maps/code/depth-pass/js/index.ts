@@ -1,7 +1,6 @@
 import { createCanvasSketchRuntime } from '@/lib/lerpettes/runtimes';
 
 export default createCanvasSketchRuntime({
-  runtimeLabel: 'Runtime / depth pass',
   status: 'The light view stores depth as an intermediate surface.',
   draw(ctx, frame, width, height) {
     ctx.fillStyle = '#F8FBFF';

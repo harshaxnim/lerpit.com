@@ -175,9 +175,6 @@ export function initLerpettePlayers() {
         setCaption(value: string) {
           if (stageStatus) stageStatus.textContent = value;
         },
-        setRuntimeLabel(value: string) {
-          if (stageActiveStep) stageActiveStep.textContent = value;
-        },
         resolveAssetUrl(relativePath: string) {
           return new URL(relativePath, new URL(step.assetBasePath, window.location.origin)).toString();
         }

@@ -19,28 +19,22 @@ The sphere particle's properties that are pertinent to what we're building are:
 
 ## Dynamics {#dynamics}
 
-Now let's see that body move! As a particle moves, it's postion changes based on the velocity it has at that instance.
+Now let's see that body move! As a particle moves, it's postion changes based on the velocity it has at that instance. Here is an example of the particle ping-ponging between -1 to 1 on the y-axis. The velocity flips between 0,1,0 to 0,-1,0. This is not driven by forces, it's just integrating the velocity and when the ball reaches the manually defined boundary, the velocity is flipped, hence the change in the direction.
+
+The integration step itself is just this -
+$$
+x_{t + \Delta t} = x_t + v_t\Delta t
+$$
+
 
 ## Accumulated force {#forces}
 
-Forces act over time, so they usually change velocity through integration.
+Let's now look at forces! Forces is a great step towards this feeling like a simulation. Let's add a bunch of smaller spheres all starting from random positions and velocities in a 1x1x1 box and let's apply gravity on it. Let's see what happens!
+
+Here's some theory for how the forces come into the picture. Forces act over time, so they usually change velocity through integration.
 
 $$
 v_{t + \Delta t} = v_t + \frac{F}{m}\Delta t
 $$
 
 The point of this chapter is just to separate “push over time” from “instant change.” Once that distinction is clear, the rest of the engine starts to organize itself.
-
-## Impulse as an immediate correction {#impulse}
-
-Impulses are useful when the change is instantaneous.
-
-$$
-\Delta v = \frac{J}{m}
-$$
-
-That is why impulses show up naturally in collisions and constraints: they correct the velocity state directly instead of being accumulated like forces.
-
-```ts
-velocity += impulse / mass;
-```

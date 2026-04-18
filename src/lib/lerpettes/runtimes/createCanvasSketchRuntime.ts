@@ -1,7 +1,6 @@
 import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '../types';
 
 type SketchConfig = {
-  runtimeLabel: string;
   status: string;
   draw: (ctx: CanvasRenderingContext2D, frame: number, width: number, height: number) => void;
 };
@@ -62,7 +61,6 @@ export function createCanvasSketchRuntime(config: SketchConfig): LerpetteStepRun
       render(ctx);
     },
     enter(ctx) {
-      ctx.setRuntimeLabel(config.runtimeLabel);
       ctx.setCaption(config.status);
       active = true;
       stop();

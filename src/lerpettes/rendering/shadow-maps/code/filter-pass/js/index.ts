@@ -1,7 +1,6 @@
 import { createCanvasSketchRuntime } from '@/lib/lerpettes/runtimes';
 
 export default createCanvasSketchRuntime({
-  runtimeLabel: 'Runtime / filter pass',
   status: 'The shaded result samples the stored depth and softens the edge.',
   draw(ctx, frame, width, height) {
     ctx.fillStyle = '#F8FBFF';

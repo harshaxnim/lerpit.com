@@ -9,6 +9,8 @@ EMCC="${EMCC_BIN:-$(command -v emcc || true)}"
 BUILT_COUNT=0
 SKIPPED_COUNT=0
 
+rel() { echo "${1#"$ROOT_DIR"/}"; }
+
 if [[ -z "$EMCC" && -x "$LOCAL_EMCC" ]]; then
   EMCC="$LOCAL_EMCC"
 fi
@@ -66,12 +68,17 @@ needs_rebuild() {
   return 1
 }
 
+LIB_ROOT="$ROOT_DIR/src/lib"
+LIB_ARGS=()
+
 build_with_emcc() {
   local src_file="$1"
   local output_js="$2"
   local output_tsd="${output_js%.js}.d.ts"
 
-  "$EMCC" "$src_file" \
+  # Try with --emit-tsd first; fall back without it if tsgen fails
+  # (happens when embind bindings span a static lib + the source file)
+  "$EMCC" "$src_file" "${LIB_ARGS[@]+"${LIB_ARGS[@]}"}" \
     -O3 \
     --bind \
     -sMODULARIZE=1 \
@@ -80,8 +87,29 @@ build_with_emcc() {
     -sALLOW_MEMORY_GROWTH=1 \
     "-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64" \
     --emit-tsd "$output_tsd" \
+    -o "$output_js" 2>/dev/null || \
+  "$EMCC" "$src_file" "${LIB_ARGS[@]+"${LIB_ARGS[@]}"}" \
+    -O3 \
+    --bind \
+    -sMODULARIZE=1 \
+    -sEXPORT_ES6=1 \
+    -sENVIRONMENT=web \
+    -sALLOW_MEMORY_GROWTH=1 \
+    "-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64" \
     -o "$output_js"
 }
+
+# Build all libs under src/lib/ first, then collect .a files + include paths.
+while IFS= read -r lib_build; do
+  [[ -n "$lib_build" ]] || continue
+  EMCC_BIN="$EMCC" EMSDK_PYTHON="${EMSDK_PYTHON:-}" bash "$lib_build"
+done < <(find "$LIB_ROOT" -path '*/wasm/build.sh' 2>/dev/null | sort)
+
+while IFS= read -r lib_a; do
+  [[ -n "$lib_a" ]] || continue
+  lib_dir="$(dirname "$(dirname "$lib_a")")"
+  LIB_ARGS+=(-Wl,--whole-archive "$lib_a" -Wl,--no-whole-archive -I"$lib_dir/wasm")
+done < <(find "$LIB_ROOT" -path '*/build/lib*.a' 2>/dev/null | sort)
 
 found_step_src_dir=0
 
@@ -95,7 +123,6 @@ while IFS= read -r step_src_dir; do
   # If the wasm source dir has its own build.sh, delegate to it (used by lerpettes
   # that combine multiple .cpp files and/or link against the physics framework).
   if [[ -x "$step_src_dir/build.sh" ]]; then
-    echo "--- $(basename "$step_dir") ---"
     EMCC_BIN="$EMCC" EMSDK_PYTHON="${EMSDK_PYTHON:-}" bash "$step_src_dir/build.sh"
     BUILT_COUNT=$((BUILT_COUNT + 1))
     continue
@@ -111,11 +138,11 @@ while IFS= read -r step_src_dir; do
     if needs_rebuild "$step_src" "$output_js" "$output_wasm"; then
       mkdir -p "$target_dir"
       build_with_emcc "$step_src" "$output_js"
-      echo "Built $output_js and $output_wasm"
+      echo "  [build] $(rel "$step_src") → $(rel "$target_dir")/$module_name.{js,wasm}"
       BUILT_COUNT=$((BUILT_COUNT + 1))
     else
       SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-      echo "Skipped unchanged $output_js and $output_wasm"
+      echo "  [skip]  $(rel "$step_src") (unchanged)"
     fi
   done < <(find "$step_src_dir" -maxdepth 1 -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.cxx' \) | sort)
 done < <(find "$LERPETTE_ROOT" -type d -path '*/code/*/wasm' | sort)
@@ -124,11 +151,5 @@ if [[ $found_step_src_dir -eq 0 ]]; then
   echo "No wasm source directories found under src/lerpettes/**/code/**."
 fi
 
-# Build the shared physics framework wasm.
-PHYSICS_BUILD="$ROOT_DIR/src/lib/physics/wasm/build.sh"
-if [[ -f "$PHYSICS_BUILD" ]]; then
-  echo "--- physics framework ---"
-  EMCC_BIN="$EMCC" EMSDK_PYTHON="${EMSDK_PYTHON:-}" bash "$PHYSICS_BUILD"
-fi
-
-echo "Wasm build complete: $BUILT_COUNT built, $SKIPPED_COUNT skipped (lerpettes) + physics framework."
+echo ""
+echo "wasm: $BUILT_COUNT built, $SKIPPED_COUNT skipped"

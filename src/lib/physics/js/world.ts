@@ -76,7 +76,6 @@ export class World {
     if (this._destroyed) return;
     this._destroyed = true;
     this._native.destroy();
-    for (const h of this._handles) h.delete();
     this._handles.length = 0;
     this._native.delete();
   }

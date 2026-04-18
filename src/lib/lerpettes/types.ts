@@ -4,7 +4,6 @@ export type LerpetteRuntimeContext = {
   currentStepId: string;
   shared: Map<string, unknown>;
   setCaption: (value: string) => void;
-  setRuntimeLabel: (value: string) => void;
   resolveAssetUrl: (relativePath: string) => string;
 };
 
