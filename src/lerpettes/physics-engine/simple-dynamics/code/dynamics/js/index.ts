@@ -28,7 +28,7 @@ function setup({ world, module, scene }: SetupContext) {
 }
 
 export default createSimpleDynamicsRuntime({
-  caption: 'The sphere moves according to its initial velocity.',
+  caption: 'The sphere moves according to its initial velocity. It simply flips its velocity when it hits the walls.',
   factory,
   construct: (m) => new (m as any).ParticleWorld(),
   setup

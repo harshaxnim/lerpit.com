@@ -40,7 +40,7 @@ function setup({ world, module, scene }: SetupContext) {
 }
 
 export default createSimpleDynamicsRuntime({
-  caption: 'A bunch of spheres bouncing around under gravity.',
+  caption: 'A bunch of spheres bouncing around under gravity. The bouncing again is done simply by flipping the velocity when the sphere hits the walls.',
   factory,
   construct: (m) => new (m as any).ParticleWorld(),
   setup

@@ -12,8 +12,9 @@ const {
 } = Astro.props as Props;
 const collections = await getCollections();
 const isDefaultTitle = title === 'LerpIt';
-const visibleCollections = collections.slice(0, 3);
-const overflowCollections = collections.slice(3);
+const headerCollections = collections.filter((c) => c.slug !== 'meta');
+const visibleCollections = headerCollections.slice(0, 3);
+const overflowCollections = headerCollections.slice(3);
 ---
 
 <div class="lerpette-player__bar">
