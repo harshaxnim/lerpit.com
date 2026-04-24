@@ -28,6 +28,10 @@ export class World {
     return this._module;
   }
 
+  get native(): NativeWorld {
+    return this._native;
+  }
+
   addParticle<P extends NativeParticle>(p: P): P {
     this._assertAlive();
     this._native.addParticle(p);

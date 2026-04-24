@@ -576,6 +576,10 @@ nav {
   transition: background 140ms ease, border-color 140ms ease;
 }
 
+.lerpette-step:last-of-type {
+  margin-bottom: calc(75dvh - 8rem);
+}
+
 .lerpette-step.is-active {
   border-color: var(--line-strong);
   background: rgba(46, 109, 164, 0.02);
@@ -714,6 +718,7 @@ nav {
 
 .katex-display {
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 0.2rem 0;
 }
 
@@ -730,10 +735,24 @@ nav {
 
 .lerpette-stage__label {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
+}
+
+.lerpette-stage__label .lerpette-stage__active-step {
+  margin-left: auto;
+}
+
+.lerpette-stage__label-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.lerpette-stage__label-end .lerpette-stage__active-step {
+  margin-left: 0;
 }
 
 .lerpette-stage__active-step {
@@ -761,7 +780,8 @@ nav {
   backdrop-filter: blur(3px);
   pointer-events: none;
   white-space: pre-wrap;
-  max-width: min(80%, 28rem);
+  width: 80%;
+  max-width: none;
 }
 
 .lerpette-stage__status:empty {
@@ -809,6 +829,71 @@ nav {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.lerpette-stage__reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.lerpette-stage__reset:hover {
+  color: var(--accent);
+}
+
+.lerpette-stage__controls {
+  position: absolute;
+  bottom: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(80%, 22rem);
+  z-index: 2;
+  --tp-base-background-color: rgba(255, 253, 246, 0.92);
+  --tp-base-border-radius: 0px;
+  --tp-base-font-family: var(--font-mono);
+  --tp-base-shadow-color: rgba(32, 49, 63, 0.08);
+  --tp-blade-border-radius: 0px;
+  --tp-button-background-color: rgba(46, 109, 164, 0.12);
+  --tp-button-background-color-active: rgba(46, 109, 164, 0.32);
+  --tp-button-background-color-focus: rgba(46, 109, 164, 0.24);
+  --tp-button-background-color-hover: rgba(46, 109, 164, 0.18);
+  --tp-button-foreground-color: var(--ink);
+  --tp-container-background-color: rgba(46, 109, 164, 0.06);
+  --tp-container-background-color-active: rgba(46, 109, 164, 0.18);
+  --tp-container-background-color-focus: rgba(46, 109, 164, 0.14);
+  --tp-container-background-color-hover: rgba(46, 109, 164, 0.10);
+  --tp-container-foreground-color: var(--ink);
+  --tp-groove-foreground-color: rgba(81, 131, 173, 0.28);
+  --tp-input-background-color: rgba(255, 253, 246, 0.95);
+  --tp-input-background-color-active: rgba(46, 109, 164, 0.16);
+  --tp-input-background-color-focus: rgba(46, 109, 164, 0.10);
+  --tp-input-background-color-hover: rgba(46, 109, 164, 0.06);
+  --tp-input-foreground-color: var(--ink);
+  --tp-label-foreground-color: var(--muted);
+  --tp-monitor-background-color: rgba(255, 253, 246, 0.95);
+  --tp-monitor-foreground-color: var(--ink);
+  border: 1px solid var(--line-strong);
+  backdrop-filter: blur(3px);
+}
+
+.lerpette-stage__controls .tp-lblv_l,
+.lerpette-stage__controls .tp-txtv_i,
+.lerpette-stage__controls .tp-sldtxtv_t {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.lerpette-stage__controls .tp-lblv_l {
+  text-align: right;
 }
 
 .cassette-grid {

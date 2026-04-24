@@ -1,10 +1,10 @@
 #pragma once
 
-#include <array>
+#include "linalg.h"
 
 namespace physics {
 
-using Vec3 = std::array<float, 3>;
+using Vec3 = linalg::aliases::float3;
 
 /**
  * Data-only base class. Derive for lerpette-specific bodies (e.g. to add

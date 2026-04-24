@@ -9,6 +9,10 @@
     "start": "npm run build:wasm && astro dev",
     "build:wasm": "bash scripts/build-wasm.sh",
     "build": "npm run build:wasm && astro build",
+    "clean:wasm": "find src -type d \\( -name build -o -name .build \\) -prune -exec rm -rf {} +",
+    "clean:dist": "rm -rf dist",
+    "clean": "npm run clean:wasm && npm run clean:dist",
+    "rebuild:wasm": "npm run clean:wasm && npm run build:wasm",
     "preview": "astro preview",
     "test": "npm run test:cpp && vitest run",
     "test:js": "vitest run",
@@ -26,9 +30,11 @@
     "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "tweakpane": "^4.0.5"
   },
   "devDependencies": {
+    "@tweakpane/core": "^2.0.5",
     "typescript": "^5.9.2",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.0.0",

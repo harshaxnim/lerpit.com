@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { createSimpleDynamicsRuntime, type SetupContext } from '../../shared/createSimpleDynamicsRuntime';
-import { bindMesh } from '@/lib/physics/js';
+import { bindMesh, create3DPhysicsRuntime, type Setup3DPhysicsContext } from '@/lib/physics/js';
 
 const factory = async () => {
   const mod = (await import('../build/particle_world.js')).default;
@@ -13,7 +12,10 @@ function addBox(scene: THREE.Scene) {
   scene.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: '#000000' })));
 }
 
-function setup({ world, module, scene }: SetupContext) {
+function setup({ world, module, scene, camera }: Setup3DPhysicsContext) {
+  camera.position.set(0, 0, 6);
+  camera.lookAt(0, 0, 0);
+
   addBox(scene);
 
   const sphere = new module.Sphere([0, 0, 0], [0, 0, 0], 0.5);
@@ -27,7 +29,7 @@ function setup({ world, module, scene }: SetupContext) {
   bindMesh(sphere, mesh);
 }
 
-export default createSimpleDynamicsRuntime({
+export default create3DPhysicsRuntime({
   caption: 'A sphere positioned at the origin.',
   factory,
   construct: (m) => new (m as any).ParticleWorld(),

@@ -12,6 +12,8 @@ namespace lerpette {
 
 class ParticleWorld : public World {
 public:
+  void setFloorRestitution(float v) { floorRestitution = v; }
+
   void step(float dt) override {
     for (Particle* p : particles()) {
       Sphere* s = static_cast<Sphere*>(p);
@@ -33,7 +35,7 @@ public:
         }
       }
       if (p->pos[1]+(s->radius+0.01) > 1. || p->pos[1]-(s->radius+0.01) < -1.) {
-        p->vel[1] *= -.95;
+        p->vel[1] *= -floorRestitution;
         if (p->pos[1] > 0) {
           p->pos[1] = 1. - (s->radius+0.01);
         } else {
@@ -50,11 +52,15 @@ public:
       }
     }
   }
+
+private:
+  float floorRestitution = 0.95f;
 };
 
 }
 
 EMSCRIPTEN_BINDINGS(lerpette_particle_step) {
   class_<lerpette::ParticleWorld, base<World>>("ParticleWorld")
-    .constructor<>();
+    .constructor<>()
+    .function("setFloorRestitution", &lerpette::ParticleWorld::setFloorRestitution);
 }

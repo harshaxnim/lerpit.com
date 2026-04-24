@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { bindMesh, create3DPhysicsRuntime, type Setup3DPhysicsContext, type World } from '@/lib/physics/js';
 
 const factory = async () => {
-  const mod = (await import('../build/forces.js')).default;
+  const mod = (await import('../build/collisions.js')).default;
   return await mod();
 };
 
@@ -21,9 +21,9 @@ function totalEnergy(world: World): number {
 }
 
 function setup({ world, module, scene, camera, controls, onFrame }: Setup3DPhysicsContext) {
-  camera.position.set(0, 0, 6);
-  camera.lookAt(0, 0, 0);
 
+  camera.position.set(0, 6, 0);
+  camera.lookAt(0, 0, 0);
 
   const boxGeo = new THREE.BoxGeometry(2, 2, 2);
   const box = new THREE.Mesh(
@@ -39,8 +39,8 @@ function setup({ world, module, scene, camera, controls, onFrame }: Setup3DPhysi
   scene.add(edges);
 
   for (let i = 0; i < 10; i++) {
-    const ranPos: [number, number, number] = [Math.random() * 2 - 1, 0.8, Math.random() * 2 - 1];
-    const ranVel: [number, number, number] = [Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1];
+    const ranPos: [number, number, number] = [(Math.random()-.5)*2, -0.9, (Math.random()-.5)*2];
+    const ranVel: [number, number, number] = [(Math.random()-.5)*10, 0., (Math.random()-.5)*10];
     const radius = 0.1;
     const sphere = new module.Sphere(ranPos, ranVel, radius);
 
@@ -53,13 +53,13 @@ function setup({ world, module, scene, camera, controls, onFrame }: Setup3DPhysi
     bindMesh(sphere, mesh);
   }
 
-  const native = world.native as unknown as { setFloorRestitution: (v: number) => void };
-  const params = { restitution: 0.95 };
-  native.setFloorRestitution(params.restitution);
+  const native = world.native as unknown as { setballRestitution: (v: number) => void };
+  const params = { restitution: 1. };
+  native.setballRestitution(params.restitution);
   const pane = controls();
   pane
-    .addBinding(params, 'restitution', { label: 'floor restitution', min: 0, max: 1, step: 0.01 })
-    .on('change', (e) => native.setFloorRestitution(e.value));
+    .addBinding(params, 'restitution', { label: 'ball restitution', min: 0, max: 1, step: 0.01 })
+    .on('change', (e) => native.setballRestitution(e.value));
 
   const energy = { total: totalEnergy(world) };
   pane.addBinding(energy, 'total', {
@@ -75,7 +75,7 @@ function setup({ world, module, scene, camera, controls, onFrame }: Setup3DPhysi
 }
 
 export default create3DPhysicsRuntime({
-  caption: 'A bunch of spheres bouncing around under gravity. The bouncing again is done simply by flipping the velocity when the sphere hits the walls.',
+  caption: 'Balls colliding and bouncing off each other.',
   factory,
   construct: (m) => new (m as any).ParticleWorld(),
   setup
