@@ -63,7 +63,25 @@ bool isColliding(Sphere s1, Sphere s2)
 
 ### Handling
 
-If the spheres are colliding, the next thing we need to do is decide the new velocities. We break the velocities of both the bodies into two orthogonal components, one along the line connecting their centers (let's call it `normal`), another perpendicular to it. The velocity components that are perpendicular to the `normal` will remain unaffected. The velocity components ($v_1$ and $v_2$) parallel to `normal` will be updated according to these two equations, *momentum* equation (1 below) and *restitution* definition (2 below) to find $V_1$ and $V_2$.
+If the spheres are colliding, next we need to do two things -
+1. correct position - displace the sphere by pushing them out into a non-colliding configuration
+2. update the velocities - set the velocities so that they reflect the bouncing
+
+#### Position
+
+Detection only fires once two spheres have *already* overlapped — by the time we react, they're interpenetrating by some amount $\delta = (r_1 + r_2) - d$ along the contact normal $\hat{\mathbf{n}}$. If we only fix velocities and leave the overlap in place, the next frame the spheres are still inside each other, the impulse fires again, and they stick or jitter.
+
+So we push each sphere out along the normal, splitting the correction by inverse mass so the lighter body moves more:
+
+$$
+\mathbf{p}_i = \frac{w_i}{w_1 + w_2}\, \delta\, \hat{\mathbf{n}}, \qquad w_i = \frac{1}{m_i}
+$$
+
+With equal masses this collapses to splitting $\delta$ in half on each side. Notice how we are *projecting*, not applying a force. We instantaneously teleport the bodies to a non-penetrating state. This is a foreshadowing of the technique we will implement soon in later lessons - PBD/XPBD.
+
+#### Velocity
+
+We break the velocities of both the bodies into two orthogonal components, one along the line connecting their centers (let's call it `normal`), another perpendicular to it. The velocity components that are perpendicular to the `normal` will remain unaffected. The velocity components ($v_1$ and $v_2$) parallel to `normal` will be updated according to these two equations, *momentum* equation (1 below) and *restitution* definition (2 below) to find $V_1$ and $V_2$.
 
 $$
 (m_1 \times v_1) + (m_2 \times v_2) = (m_1 \times V_1) + (m_2 \times V_2) \tag{1}
