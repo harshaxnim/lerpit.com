@@ -12,9 +12,11 @@ const {
 } = Astro.props as Props;
 const collections = await getCollections();
 const isDefaultTitle = title === 'LerpIt';
-const headerCollections = collections.filter((c) => c.slug !== 'meta');
-const visibleCollections = headerCollections.slice(0, 3);
-const overflowCollections = headerCollections.slice(3);
+// The header carries one content link: the essay on why this site exists. Collections
+// are reached from the shelf at the foot of a lesson and from /library/.
+const why = collections
+  .find((collection) => collection.slug === 'meta')
+  ?.mixtapes.find((mixtape) => mixtape.slug === 'issue-zero');
 ---
 
 <div class="lerpette-player__bar">
@@ -33,23 +35,11 @@ const overflowCollections = headerCollections.slice(3);
     <div class="lerpette-player__meta">
       <p class="lerpette-player__subtitle">{subtitle}</p>
       <div class="lerpette-player__actions">
-        {visibleCollections.map((collection) => (
-          <a class="lerpette-player__action" href={`${import.meta.env.BASE_URL}${collection.slug}/`}>
-            {collection.title}
+        {why && (
+          <a class="lerpette-player__action" href={`${import.meta.env.BASE_URL}${why.collectionSlug}/${why.slug}/`}>
+            why
           </a>
-        ))}
-        {
-          overflowCollections.length > 0 && (
-            <details class="lerpette-player__collection-menu">
-              <summary class="lerpette-player__collection-trigger lerpette-player__action">more collections</summary>
-              <div class="lerpette-player__collection-list" role="list">
-                {overflowCollections.map((collection) => (
-                  <a href={`${import.meta.env.BASE_URL}${collection.slug}/`}>{collection.title}</a>
-                ))}
-              </div>
-            </details>
-          )
-        }
+        )}
         <a class="lerpette-player__me-link lerpette-player__action" href="https://life.inspirho.com/me">lè me</a>
       </div>
     </div>

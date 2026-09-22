@@ -136,17 +136,9 @@ async function setupStep(
       if (paneState && next.pane) next.pane.importState(paneState);
     });
   });
-  const label = ctx.host.parentElement?.querySelector('.lerpette-stage__label');
-  const activeStep = label?.querySelector('.lerpette-stage__active-step');
-  if (label && activeStep) {
-    let endGroup = label.querySelector('.lerpette-stage__label-end');
-    if (!endGroup) {
-      endGroup = document.createElement('span');
-      endGroup.className = 'lerpette-stage__label-end';
-      label.insertBefore(endGroup, activeStep);
-      endGroup.appendChild(activeStep);
-    }
-    endGroup.insertBefore(resetButton, activeStep);
+  const browEnd = ctx.host.parentElement?.querySelector('[data-stage-brow-end]');
+  if (browEnd) {
+    browEnd.appendChild(resetButton);
   } else {
     ctx.host.appendChild(resetButton);
   }

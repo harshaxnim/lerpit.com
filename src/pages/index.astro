@@ -1,10 +1,10 @@
 ---
 import LerpetteLessonPage from '../components/LerpetteLessonPage.astro';
-import { getCollections, getIssueZeroLerpette } from '../lib/lerpettes/content';
+import { getCollections, getLandingLerpette } from '../lib/lerpettes/content';
 
-const issueZero = await getIssueZeroLerpette();
+const landing = await getLandingLerpette();
 const collections = await getCollections();
 const otherLerpettes = collections.flatMap((collection) => collection.mixtapes);
 ---
 
-<LerpetteLessonPage mixtape={issueZero} allMixtapes={otherLerpettes} />
+<LerpetteLessonPage mixtape={landing} allMixtapes={otherLerpettes} />

@@ -129,6 +129,18 @@ If multiple steps in one lerpette share one Wasm module, keep its sources in tha
 - player steps = each `## Heading {#step-id}`
 - runtime id = the H2 id
 - runtime file = `code/<step-id>/js/index.ts`
+- mixtape slug = the directory name
+- collection slug = the directory name
+
+### Slug and title name the same thing
+
+A lesson is named twice: the directory name becomes the URL segment, and the `#` heading becomes the title. Neither can be derived from the other. The directory has to exist before anything can read the document inside it, and deriving the title from the directory would force every title into slug shape.
+
+So keep them in sync by hand, and treat the slug as an address, not as a label:
+
+- name the directory a slugified form of the H1 (`Simple body dynamics` -> `simple-dynamics/`)
+- never show the slug to a reader; the title is the only reader-facing name
+- renaming the H1 does not change the URL, and should not, since links to it already exist
 
 ## Local development
 

@@ -18,7 +18,12 @@ const {
   headerSubtitle
 } = Astro.props as Props;
 
-const otherLerpettes = allMixtapes.filter((entry) => entry.href !== mixtape.href);
+// Identify by slug, not href: the landing lesson is served at '/' while the same
+// lerpette keeps its canonical href in the collection listing, so comparing hrefs
+// would leave the page you are reading sitting in its own "other lerpettes" shelf.
+const otherLerpettes = allMixtapes.filter(
+  (entry) => !(entry.slug === mixtape.slug && entry.collectionSlug === mixtape.collectionSlug)
+);
 ---
 
 <BaseLayout title={`${mixtape.title} · Lerpit`} description={mixtape.summary}>

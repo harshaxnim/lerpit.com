@@ -56,8 +56,7 @@ code,
 pre,
 .eyebrow,
 .site-badge,
-.lerpette-player__chapter-index,
-.lerpette-step__index,
+.lerpette-head__index,
 .cassette-card__collection,
 .cassette-card__action {
   font-family: var(--font-mono);
@@ -160,8 +159,7 @@ nav {
 
 .eyebrow,
 .site-badge,
-.lerpette-player__chapter-index,
-.lerpette-step__index,
+.lerpette-head__index,
 .cassette-card__collection,
 .cassette-card__action {
   font-size: 0.76rem;
@@ -231,6 +229,11 @@ nav {
 .archive-collection,
 .collection-page,
 .lerpette-player {
+  /* The brow line: one text row, padded when it has to pin itself. --byline-h is
+     what that adds up to, and everything pinning below the brow keys off it. */
+  --brow-pad: 1rem;
+  --brow-line: 1rem;
+  --byline-h: calc(var(--brow-line) + var(--brow-pad) * 2);
   padding: 1.1rem;
 }
 
@@ -406,95 +409,69 @@ nav {
 }
 
 .lerpette-player__action:hover,
-.lerpette-player__action:focus-visible,
-.lerpette-player__collection-menu[open] .lerpette-player__action {
+.lerpette-player__action:focus-visible {
   text-decoration: none;
   border-color: var(--accent);
   background: rgba(46, 109, 164, 0.08);
 }
 
-.lerpette-player__collection-menu {
-  position: relative;
-  margin: 0;
-}
-
-.lerpette-player__collection-trigger {
-  list-style: none;
-  cursor: pointer;
-  user-select: none;
-}
-
-.lerpette-player__collection-trigger::-webkit-details-marker {
-  display: none;
-}
-
-.lerpette-player__collection-list {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.35rem);
-  z-index: 6;
-  display: grid;
-  gap: 0.2rem;
-  width: min(92vw, clamp(12rem, 28vw, 20rem));
-  max-height: min(22rem, 64vh);
-  overflow-y: auto;
-  padding: 0.35rem;
-  border: 1px solid var(--line-strong);
-  background: var(--panel);
-}
-
-.lerpette-player__collection-list a {
-  display: block;
-  padding: 0.45rem 0.55rem;
-  text-decoration: none;
-  color: var(--ink);
-  border: 1px solid transparent;
-}
-
-.lerpette-player__collection-list a:hover {
-  border-color: var(--line-strong);
-  background: rgba(46, 109, 164, 0.08);
-}
-
 .lerpette-player__grid {
   display: grid;
-  grid-template-columns: minmax(160px, 0.26fr) minmax(0, 1.1fr) minmax(360px, 0.92fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.92fr);
   gap: 1rem;
   padding-top: 1rem;
 }
 
-.lerpette-player__rail,
 .lerpette-player__lesson,
 .lerpette-stage {
   min-width: 0;
 }
 
-.lerpette-player__rail {
+/* Both columns open with the same brow line. Each modifier below is a real
+   difference between the two, not a difference in how they were built. */
+.lerpette-brow {
+  margin: 0;
+  line-height: var(--brow-line);
+}
+
+/* The lesson column scrolls with the page, so its brow pins itself. Padding is the
+   opaque band the prose scrolls under; the negative margins cancel the grid's top
+   padding and row gap so the resting position is unchanged. */
+.lerpette-brow--pinned {
   position: sticky;
-  top: 1rem;
-  align-self: start;
-  padding-right: 0.85rem;
-  z-index: 2;
-  display: grid;
-  gap: 0.75rem;
+  top: 0;
+  z-index: 3;
+  margin: calc(var(--brow-pad) * -1) 0;
+  padding: var(--brow-pad) 0;
+  background: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.lerpette-player__chapters {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* The viewport column is sticky as a whole, so its brow only needs to be a row,
+   so that runtime controls can sit at the end of it. */
+.lerpette-brow--row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.lerpette-player__label,
-.lerpette-stage__label,
-.lerpette-player__lesson-label {
-  margin: 0;
+.lerpette-brow__end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
 }
 
-.lerpette-player__lesson-label {
-  margin-bottom: -0.1rem;
+.lerpette-player__byline-sep {
+  opacity: 0.55;
+}
+
+/* The deepest crumb present is the current position, so it carries the ink. */
+.lerpette-player__byline-title.is-current,
+.lerpette-player__byline-section {
+  color: var(--ink);
 }
 
 .lerpette-player__lesson-collection-link {
@@ -504,40 +481,6 @@ nav {
 
 .lerpette-player__lesson-collection-link:hover {
   text-decoration: none;
-}
-
-.lerpette-player__chapter {
-  width: 100%;
-  display: grid;
-  gap: 0.18rem;
-  padding: 0.75rem;
-  font-size: 1.1rem;
-  border: 1px solid var(--line);
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.58);
-  color: var(--ink);
-  text-align: left;
-  text-decoration: none;
-  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
-}
-
-.lerpette-player__chapter.is-active,
-.lerpette-player__chapter[aria-current="location"] {
-  border-color: var(--accent);
-  background: rgba(46, 109, 164, 0.26);
-  box-shadow:
-    inset 0 0 0 1px rgba(46, 109, 164, 0.26),
-    0 0 0 1px rgba(46, 109, 164, 0.22);
-}
-
-.lerpette-player__chapter:hover {
-  text-decoration: none;
-  border-color: var(--line-strong);
-}
-
-.lerpette-player__chapter.is-active .lerpette-player__chapter-index,
-.lerpette-player__chapter[aria-current="location"] .lerpette-player__chapter-index {
-  color: var(--accent);
 }
 
 .lerpette-player__lesson {
@@ -557,7 +500,7 @@ nav {
     rgba(253, 251, 244, 0.9);
   background-size: 180px 180px, 220px 220px, auto, auto;
   background-position: 0 0, 60px 40px, 0 0, 0 0;
-  scroll-margin-top: 1rem;
+  scroll-margin-top: calc(var(--byline-h) + 0.5rem);
 }
 
 .lerpette-intro__title {
@@ -585,22 +528,53 @@ nav {
   background: rgba(46, 109, 164, 0.02);
 }
 
-.lerpette-step__header {
-  display: grid;
-  gap: 0.35rem;
-  padding-bottom: 0.75rem;
+/* The frozen header, shared by the intro box and every chapter box. */
+.lerpette-head {
+  position: sticky;
+  top: var(--byline-h);
+  z-index: 2;
+  /* Title fills the row; the index is pushed to the right edge, turned on its side. */
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  /* Out to the box's border edges, then the inset is restored as padding, so the
+     header's own border-top can sit on the box's top border and stand in for it
+     once the box scrolls past. The extra 1px is that border. */
+  margin: calc(-1rem - 1px) -1.05rem 0;
+  padding: 1rem 1.05rem 0.75rem;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+  /* A little paper past the rule so prose sliding under it never touches the line.
+     At rest this falls inside the prose-block's own margin, so nothing moves. */
+  box-shadow: 0 6px 0 var(--paper);
 }
 
-.lerpette-step__index-row {
+/* Placed rather than reordered, so the number still reads before the heading. */
+.lerpette-head__index-row {
+  /* Ordered rather than moved in the markup, so the number is still read out
+     before the heading it belongs to. */
+  order: 1;
+  margin-left: auto;
+  align-self: center;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   gap: 0.4rem;
 }
 
-.lerpette-step__header h2 {
-  font-size: clamp(1.35rem, 2.6vw, 2rem);
+/* Same vertical label the viewport drawer toggle uses. */
+.lerpette-head__index {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.lerpette-head h2 {
   font-weight: 500;
+}
+
+.lerpette-step .lerpette-head h2 {
+  font-size: clamp(1.35rem, 2.6vw, 2rem);
 }
 
 .prose-block {
@@ -724,44 +698,15 @@ nav {
 
 .lerpette-stage {
   position: sticky;
-  top: 1rem;
+  top: var(--brow-pad);
   align-self: start;
   padding: 0;
-  height: calc(100dvh - 2rem);
+  height: calc(100dvh - var(--brow-pad) * 2);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 0.75rem;
-}
-
-.lerpette-stage__label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-}
-
-.lerpette-stage__label .lerpette-stage__active-step {
-  margin-left: auto;
-}
-
-.lerpette-stage__label-end {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-left: auto;
-}
-
-.lerpette-stage__label-end .lerpette-stage__active-step {
-  margin-left: 0;
-}
-
-.lerpette-stage__active-step {
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  text-transform: none;
-  min-height: 1em;
+  /* Matches the byline's padding-bottom so both columns drop the same distance
+     from their top label to the box below it. */
+  gap: 1rem;
 }
 
 .lerpette-stage__status {
@@ -810,7 +755,7 @@ nav {
   position: relative;
   height: 100%;
   min-height: 520px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   background:
     radial-gradient(circle at 22% 18%, rgba(168, 142, 82, 0.016) 0 1px, transparent 1px 100%),
     radial-gradient(circle at 76% 64%, rgba(168, 142, 82, 0.012) 0 1px, transparent 1px 100%),
@@ -973,7 +918,7 @@ nav {
 
 @media (max-width: 1180px) {
   .lerpette-player__grid {
-    grid-template-columns: minmax(140px, 0.24fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .lerpette-stage {
@@ -1059,27 +1004,12 @@ nav {
     width: 100%;
   }
 
-  .lerpette-player__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .lerpette-player__rail {
-    display: none;
-  }
-
-  .lerpette-player__chapters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .cassette-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
-  .lerpette-player__chapters {
-    grid-template-columns: 1fr;
-  }
-
   .cassette-card__window span {
     width: 3.6rem;
     height: 3.6rem;

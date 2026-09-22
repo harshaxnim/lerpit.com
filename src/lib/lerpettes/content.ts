@@ -38,6 +38,8 @@ type MixtapeMeta = {
 const LERPETTE_ROOT = path.join(process.cwd(), 'src/lerpettes');
 const RUNTIME_LOADER_DIR = path.join(process.cwd(), 'src/lib/lerpettes');
 const ASSET_ROUTE_PREFIX = '/assets/lerpettes';
+// The collection whose newest lerpette is served at '/'.
+const LANDING_COLLECTION_SLUG = 'physics-engine';
 const DOC_BASENAMES = new Set(['collection', 'mixtape']);
 const CODE_EXTENSIONS = new Set(['.js', '.ts', '.jsx', '.tsx', '.mts', '.cts']);
 const DOCUMENT_EXTENSIONS = new Set(['.md', '.mdx']);
@@ -68,8 +70,8 @@ export async function getLerpetteLibrary(): Promise<LerpetteLibrary> {
   return cachedLibrary;
 }
 
-export async function getIssueZeroLerpette(): Promise<LerpetteMixtape> {
-  return (await getLerpetteLibrary()).issueZero;
+export async function getLandingLerpette(): Promise<LerpetteMixtape> {
+  return (await getLerpetteLibrary()).landing;
 }
 
 export async function getCollections(): Promise<LerpetteCollection[]> {
@@ -165,17 +167,17 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
       .map((directory) => parseCollectionDirectory(path.join(LERPETTE_ROOT, directory)))
   );
 
-  // The landing lesson is served at '/' AND kept in its collection listing
-  // (so it shows up in /meta/ alongside other lessons). Clone with overridden
-  // href for the homepage; the original stays in meta.mixtapes with the
-  // canonical /meta/issue-zero/ href for the listing and its own route.
-  const metaCollection = collections.find((c) => c.slug === 'meta');
-  const landing = metaCollection?.mixtapes.find((m) => m.slug === 'issue-zero');
+  // The landing lesson is served at '/' AND kept in its collection listing (so it
+  // still shows up under its own collection). Clone with an overridden href for the
+  // homepage; the original keeps its canonical href for the listing and its own route.
+  const landingCollection = collections.find((c) => c.slug === LANDING_COLLECTION_SLUG);
+  // Collection mixtapes are sorted newest-first, so the newest one is the default.
+  const newest = landingCollection?.mixtapes[0];
   assert(
-    metaCollection && landing,
-    'Missing landing lesson at src/lerpettes/meta/issue-zero.'
+    landingCollection && newest,
+    `Missing landing collection at src/lerpettes/${LANDING_COLLECTION_SLUG} with at least one lerpette.`
   );
-  const issueZero: LerpetteMixtape = { ...landing, href: '/' };
+  const landing: LerpetteMixtape = { ...newest, href: '/' };
 
   const mixtapes = collections
     .flatMap((collection) => collection.mixtapes)
@@ -183,7 +185,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   const assetEntries = await collectAssetEntries(LERPETTE_ROOT);
 
   return {
-    issueZero,
+    landing,
     collections,
     mixtapes,
     assetEntries

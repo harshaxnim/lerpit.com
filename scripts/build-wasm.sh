@@ -22,6 +22,18 @@ if [[ -z "$EMCC" ]]; then
   exit 1
 fi
 
+# Step sources are C++. emcc links as C, so from Emscripten 4 on it fails with
+# "undefined symbol: typeinfo for float"; em++ links libc++/libc++abi.
+EMXX="${EMXX_BIN:-$(dirname "$EMCC")/em++}"
+if [[ ! -x "$EMXX" ]]; then
+  EMXX="$(command -v em++ || true)"
+fi
+
+if [[ -z "$EMXX" || ! -x "$EMXX" ]]; then
+  echo "Error: em++ was not found next to $EMCC." >&2
+  exit 1
+fi
+
 python_is_supported() {
   "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1
 }
@@ -71,14 +83,16 @@ needs_rebuild() {
 LIB_ROOT="$ROOT_DIR/src/lib"
 LIB_ARGS=()
 
-build_with_emcc() {
+build_step_module() {
   local src_file="$1"
   local output_js="$2"
   local output_tsd="${output_js%.js}.d.ts"
 
-  # Try with --emit-tsd first; fall back without it if tsgen fails
-  # (happens when embind bindings span a static lib + the source file)
-  "$EMCC" "$src_file" "${LIB_ARGS[@]+"${LIB_ARGS[@]}"}" \
+  # Try with --emit-tsd first; fall back without it if tsgen fails. Two known causes:
+  # embind bindings spanning a static lib + the source file, and emscripten running its
+  # bundled tsc from inside .tools/emsdk, where TypeScript walks up and finds this repo's
+  # tsconfig.json (TS5112). Output is swallowed because a failed attempt here is expected.
+  "$EMXX" "$src_file" "${LIB_ARGS[@]+"${LIB_ARGS[@]}"}" \
     -O3 \
     --bind \
     -sMODULARIZE=1 \
@@ -87,8 +101,8 @@ build_with_emcc() {
     -sALLOW_MEMORY_GROWTH=1 \
     "-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64" \
     --emit-tsd "$output_tsd" \
-    -o "$output_js" 2>/dev/null || \
-  "$EMCC" "$src_file" "${LIB_ARGS[@]+"${LIB_ARGS[@]}"}" \
+    -o "$output_js" >/dev/null 2>&1 || \
+  "$EMXX" "$src_file" "${LIB_ARGS[@]+"${LIB_ARGS[@]}"}" \
     -O3 \
     --bind \
     -sMODULARIZE=1 \
@@ -137,7 +151,7 @@ while IFS= read -r step_src_dir; do
 
     if needs_rebuild "$step_src" "$output_js" "$output_wasm"; then
       mkdir -p "$target_dir"
-      build_with_emcc "$step_src" "$output_js"
+      build_step_module "$step_src" "$output_js"
       echo "  [build] $(rel "$step_src") → $(rel "$target_dir")/$module_name.{js,wasm}"
       BUILT_COUNT=$((BUILT_COUNT + 1))
     else

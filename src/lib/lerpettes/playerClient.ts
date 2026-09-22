@@ -46,8 +46,11 @@ export function initLerpettePlayers() {
     const stageHost = root.querySelector<HTMLElement>('[data-stage-host]');
     const stageCanvas = root.querySelector<HTMLCanvasElement>('[data-stage-canvas]');
     const stageToggle = root.querySelector<HTMLButtonElement>('[data-stage-toggle]');
-    const stageActiveStep = root.querySelector<HTMLElement>('[data-stage-active-step]');
     const stageStatus = root.querySelector<HTMLElement>('[data-stage-status]');
+    const bylineEl = root.querySelector<HTMLElement>('.lerpette-brow--pinned');
+    const bylineTitle = root.querySelector<HTMLElement>('[data-byline-title]');
+    const bylineSection = root.querySelector<HTMLElement>('[data-byline-section]');
+    const bylineNow = root.querySelector<HTMLElement>('[data-byline-now]');
 
     if (!(stageHost instanceof HTMLElement) || !(stageCanvas instanceof HTMLCanvasElement)) {
       return;
@@ -159,6 +162,18 @@ export function initLerpettePlayers() {
         button.setAttribute('aria-current', isActive ? 'location' : 'false');
       });
 
+      // The byline is the only wayfinding on the page: its last crumb is where you are.
+      // On the intro that is the lesson title itself, so the section crumb stays off.
+      const isIntro = sectionId === 'intro';
+      const sectionTitle = isIntro ? '' : stepsById.get(sectionId)?.title ?? '';
+
+      bylineTitle?.classList.toggle('is-current', isIntro);
+      if (bylineSection) {
+        bylineSection.hidden = isIntro || sectionTitle === '';
+      }
+      if (bylineNow && sectionTitle) {
+        bylineNow.textContent = sectionTitle;
+      }
     };
 
     const createRuntimeContext = (stepId: string) => {
@@ -240,10 +255,6 @@ export function initLerpettePlayers() {
 
       currentRuntime = runtime;
       activeStepId = stepId;
-
-      if (stageActiveStep) {
-        stageActiveStep.textContent = step.title;
-      }
     };
 
     const activateIntro = () => {
@@ -265,7 +276,10 @@ export function initLerpettePlayers() {
     };
 
     const getViewportSectionId = () => {
-      const markerY = window.innerHeight * 0.5;
+      // The marker sits on the line where chapter headers freeze, i.e. just under the
+      // pinned byline. That keeps the three indicators saying the same thing: the frozen
+      // header, the byline's last crumb, and the runtime in the viewport.
+      const markerY = bylineEl ? bylineEl.getBoundingClientRect().bottom + 1 : window.innerHeight * 0.5;
       const sections = sectionEls
         .map((section) => {
           const rect = section.getBoundingClientRect();

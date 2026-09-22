@@ -28,50 +28,33 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
   <SiteHeader title={headerTitle} subtitle={headerSubtitle} />
 
   <div class="lerpette-player__grid">
-    <nav class="lerpette-player__rail" aria-label="Sections rail">
-      <p class="eyebrow lerpette-player__label">Sections</p>
-
-      <ol class="lerpette-player__chapters">
-        <li>
-          <a
-            class="lerpette-player__chapter"
-            href="#intro"
-            data-target-id="intro"
-            aria-label={`Jump to ${lerpette.title}`}
-          >
-            <span class="lerpette-player__chapter-index">00</span>
-            <span>{lerpette.title}</span>
-          </a>
-        </li>
-        {lerpette.steps.map((step, index) => (
-          <li>
-            <a
-              class="lerpette-player__chapter"
-              href={`#${step.id}`}
-              data-target-id={step.id}
-              aria-label={`Jump to ${step.title}`}
-            >
-              <span class="lerpette-player__chapter-index">{String(index + 1).padStart(2, '0')}</span>
-              <span>{step.title}</span>
-            </a>
-          </li>
-        ))}
-      </ol>
-    </nav>
-
     <div class="lerpette-player__lesson">
-      <p class="eyebrow lerpette-player__label lerpette-player__lesson-label">
+      <p class="eyebrow lerpette-brow lerpette-brow--pinned">
+        <span>{lerpette.publishedOn}</span>
+        <span class="lerpette-player__byline-sep"> / </span>
+        <span>{lerpette.author}</span>
+        <span class="lerpette-player__byline-sep"> / </span>
         {collectionHref ? (
           <a class="lerpette-player__lesson-collection-link" href={collectionHref}>
             {collectionLabel}
           </a>
         ) : (
-          collectionLabel
-        )}{' '}
-        / {lerpette.slug} / {lerpette.publishedOn} / {lerpette.author}
+          <span>{collectionLabel}</span>
+        )}
+        <span class="lerpette-player__byline-sep"> / </span>
+        <span class="lerpette-player__byline-title" data-byline-title>{lerpette.title}</span>
+        <span class="lerpette-player__byline-section" data-byline-section hidden>
+          <span class="lerpette-player__byline-sep"> / </span>
+          <span data-byline-now></span>
+        </span>
       </p>
       <section class="lerpette-intro" id="intro" data-section-id="intro">
-        <h2 class="lerpette-intro__title">{lerpette.title}</h2>
+        <div class="lerpette-head">
+          <span class="lerpette-head__index-row">
+            <span class="lerpette-head__index">00</span>
+          </span>
+          <h2 class="lerpette-intro__title">{lerpette.title}</h2>
+        </div>
         <div class="prose-block" set:html={lerpette.introHtml}></div>
       </section>
 
@@ -82,9 +65,9 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
           data-section-id={step.id}
           aria-labelledby={`${step.id}-title`}
         >
-          <div class="lerpette-step__header">
-            <span class="lerpette-step__index-row">
-              <span class="lerpette-step__index">{String(index + 1).padStart(2, '0')}</span>
+          <div class="lerpette-head">
+            <span class="lerpette-head__index-row">
+              <span class="lerpette-head__index">{String(index + 1).padStart(2, '0')}</span>
               {!step.hasOwnRuntime && (
                 <span
                   class="lerpette-step__missing-runtime"
@@ -114,9 +97,9 @@ const playerConfig = JSON.stringify({ playerId, steps: clientSteps });
         <span class="lerpette-stage__toggle-text">VIEWPORT</span>
         <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
       </button>
-      <p class="eyebrow lerpette-stage__label">
-        <span>Viewport</span>
-        <span class="lerpette-stage__active-step" data-stage-active-step></span>
+      <p class="eyebrow lerpette-brow lerpette-brow--row">
+        Viewport
+        <span class="lerpette-brow__end" data-stage-brow-end></span>
       </p>
       <div class="lerpette-stage__canvas" data-stage-host id={`${playerId}-viewport-surface`}>
         <canvas data-stage-canvas aria-label={`Live render for ${lerpette.title}`}></canvas>

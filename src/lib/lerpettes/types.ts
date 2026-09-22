@@ -53,7 +53,7 @@ export type LerpetteAssetEntry = {
 };
 
 export type LerpetteLibrary = {
-  issueZero: LerpetteMixtape;
+  landing: LerpetteMixtape;
   collections: LerpetteCollection[];
   mixtapes: LerpetteMixtape[];
   assetEntries: LerpetteAssetEntry[];
