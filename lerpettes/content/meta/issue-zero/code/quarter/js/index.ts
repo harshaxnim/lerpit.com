@@ -1,0 +1,6 @@
+import { createIssueZeroStepRuntime } from '@lerpit/content/meta/issue-zero/code/shared';
+
+export default createIssueZeroStepRuntime({
+  target: 0.25,
+  status: 't = 0.25 moves the point one quarter of the way from A toward B.'
+});

@@ -1,0 +1,70 @@
+---
+import type { LerpetteMixtape } from '@lerpit/framework/types';
+import { cardArt } from '../lib/cardArt';
+
+interface Props {
+  mixtape: LerpetteMixtape;
+}
+
+const { mixtape } = Astro.props as Props;
+const problemCount = mixtape.problems.length;
+const collection = mixtape.collectionTitle ?? 'Lerpette';
+const chapters = mixtape.steps.length;
+
+/**
+ * Generated at build time from the document's own text, so no two lerpettes
+ * draw the same card and nothing has to be authored to get one. The collection
+ * name picks the style, the palette, the stock and the typeface; the title,
+ * summary, date and chapter count set everything inside them.
+ */
+const art = cardArt(
+  {
+    title: mixtape.title,
+    collection: mixtape.collectionTitle,
+    summary: mixtape.summary,
+    date: mixtape.publishedOn,
+    chapters
+  },
+  // content.ts hands the style out across the whole library so two collections
+  // cannot land on the same one; without it the card draws its own.
+  mixtape.cardStyle ? { style: mixtape.cardStyle } : {}
+);
+
+const stamp = mixtape.publishedOn.slice(0, 10).replace(/-/g, '.');
+---
+
+<a
+  class="cassette-card"
+  href={mixtape.href}
+  data-card-style={art.style}
+  style={`--card-stock:${art.ground.bg};--card-ink:${art.ground.ink};--card-face:${art.face.css};--card-face-weight:${art.face.weight}`}
+>
+  <svg
+    class="cassette-card__plate"
+    viewBox={art.viewBox}
+    role="presentation"
+    aria-hidden="true"
+    focusable="false"
+    set:html={art.body}
+  />
+
+  <span class="cassette-card__caption">
+    <span class="cassette-card__series">{collection}</span>
+    <span class="cassette-card__title">
+      {art.titleLines.map((line) => <span>{line}</span>)}
+    </span>
+    <span class="cassette-card__meta">{stamp}</span>
+  </span>
+
+  <!-- The two press passes and the stock's tooth, applied identically to every
+       card so the shelf reads as one print run rather than twenty exports. -->
+  <span class="cassette-card__press" aria-hidden="true"></span>
+
+  {problemCount > 0 && (
+    <span
+      class="cassette-card__problems"
+      role="img"
+      aria-label={`${problemCount} authoring ${problemCount === 1 ? 'problem' : 'problems'}`}
+    >!</span>
+  )}
+</a>

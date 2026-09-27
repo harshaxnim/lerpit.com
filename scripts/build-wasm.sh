@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LERPETTE_ROOT="$ROOT_DIR/src/lerpettes"
+LERPETTE_ROOT="$ROOT_DIR/lerpettes/content"
 SCRIPT_FILE="$ROOT_DIR/scripts/build-wasm.sh"
 LOCAL_EMCC="$ROOT_DIR/.tools/emsdk/upstream/emscripten/emcc"
 EMCC="${EMCC_BIN:-$(command -v emcc || true)}"
@@ -10,6 +10,24 @@ BUILT_COUNT=0
 SKIPPED_COUNT=0
 
 rel() { echo "${1#"$ROOT_DIR"/}"; }
+
+# Nothing to compile means nothing to install.
+#
+# A lerpette written entirely in JavaScript has no wasm sources at all, and this
+# script used to demand a toolchain before looking. `npm run build` is
+# `build:wasm && astro build`, so the whole site failed to build for an author who
+# had never asked for C++. The check for sources comes first now, and emcc is only
+# required once there is something for it to do.
+has_sources() {
+  [[ -n "$(find "$LERPETTE_ROOT" -type d -path '*/code/*/wasm' -print -quit 2>/dev/null)" ]] && return 0
+  [[ -n "$(find "$ROOT_DIR/lerpettes/libs" -path '*/wasm/build.sh' -print -quit 2>/dev/null)" ]] && return 0
+  return 1
+}
+
+if ! has_sources; then
+  echo "wasm: no C++ sources under lerpettes/, nothing to build."
+  exit 0
+fi
 
 if [[ -z "$EMCC" && -x "$LOCAL_EMCC" ]]; then
   EMCC="$LOCAL_EMCC"
@@ -80,7 +98,7 @@ needs_rebuild() {
   return 1
 }
 
-LIB_ROOT="$ROOT_DIR/src/lib"
+LIB_ROOT="$ROOT_DIR/lerpettes/libs"
 LIB_ARGS=()
 
 build_step_module() {
@@ -113,7 +131,7 @@ build_step_module() {
     -o "$output_js"
 }
 
-# Build all libs under src/lib/ first, then collect .a files + include paths.
+# Build all libs under lerpettes/libs/ first, then collect .a files + include paths.
 while IFS= read -r lib_build; do
   [[ -n "$lib_build" ]] || continue
   EMCC_BIN="$EMCC" EMSDK_PYTHON="${EMSDK_PYTHON:-}" bash "$lib_build"
@@ -162,7 +180,7 @@ while IFS= read -r step_src_dir; do
 done < <(find "$LERPETTE_ROOT" -type d -path '*/code/*/wasm' | sort)
 
 if [[ $found_step_src_dir -eq 0 ]]; then
-  echo "No wasm source directories found under src/lerpettes/**/code/**."
+  echo "No wasm source directories found under lerpettes/content/**/code/**."
 fi
 
 echo ""

@@ -1,0 +1,42 @@
+---
+import { getCollections } from '../lib/content';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'LerpIt' } = Astro.props as Props;
+const collections = await getCollections();
+const isDefaultTitle = title === 'LerpIt';
+// The header carries one content link: the essay on why this site exists. Collections
+// are reached from the shelf at the foot of a lesson and from /library/.
+const why = collections
+  .find((collection) => collection.slug === 'meta')
+  ?.mixtapes.find((mixtape) => mixtape.slug === 'issue-zero');
+---
+
+<div class="lerpette-player__bar">
+  <div class="lerpette-player__heading">
+    <h1>
+      <a href={`${import.meta.env.BASE_URL}`}>
+        {isDefaultTitle ? (
+          <>
+            Lerp<em>It</em>
+          </>
+        ) : (
+          title
+        )}
+      </a>
+    </h1>
+    <div class="lerpette-player__meta">
+      <div class="lerpette-player__actions">
+        {why && (
+          <a class="lerpette-player__action" href={`${import.meta.env.BASE_URL}${why.collectionSlug}/${why.slug}/`}>
+            why
+          </a>
+        )}
+        <a class="lerpette-player__me-link lerpette-player__action" href="https://life.inspirho.com/me">lè me</a>
+      </div>
+    </div>
+  </div>
+</div>

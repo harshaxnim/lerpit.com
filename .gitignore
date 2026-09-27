@@ -3,6 +3,6 @@ dist/
 .astro/
 .tools/
 .DS_Store
-src/lib/physics/build/
-src/lib/physics/tests/cpp/.build/
-src/lerpettes/**/code/**/build/
+lerpettes/libs/physics/build/
+lerpettes/libs/physics/tests/cpp/.build/
+lerpettes/content/**/code/**/build/

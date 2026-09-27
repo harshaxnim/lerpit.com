@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@lerpit': fileURLToPath(new URL('./lerpettes', import.meta.url))
     }
   },
   test: {
-    include: ['src/**/tests/**/*.test.ts'],
+    include: ['lerpettes/**/tests/**/*.test.ts', 'website/**/tests/**/*.test.ts'],
     environment: 'node'
   }
 });

@@ -1,0 +1,77 @@
+---
+import CollectionShowcase from '../components/CollectionShowcase.astro';
+import CollectionsShelf from '../components/CollectionsShelf.astro';
+import LerpettesShelf from '../components/LerpettesShelf.astro';
+import LerpetteLessonPage from '../components/LerpetteLessonPage.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollectionBySlug, getCollections, getMixtapeBySlugs } from '../lib/content';
+
+export async function getStaticPaths() {
+  const collections = await getCollections();
+  return [
+    ...collections.map((collection) => ({
+      params: { slug: collection.slug },
+      props: { kind: 'collection', collectionSlug: collection.slug }
+    })),
+    ...collections.flatMap((collection) =>
+      collection.mixtapes.map((mixtape) => ({
+        params: { slug: `${collection.slug}/${mixtape.slug}` },
+        props: { kind: 'mixtape', collectionSlug: collection.slug, mixtapeSlug: mixtape.slug }
+      }))
+    )
+  ];
+}
+
+const props = Astro.props as
+  | { kind: 'collection'; collectionSlug: string }
+  | { kind: 'mixtape'; collectionSlug: string; mixtapeSlug: string };
+
+let collection = null;
+let mixtape = null;
+const allCollections = await getCollections();
+const libraryMixtapes = allCollections.flatMap((entry) => entry.mixtapes);
+
+if (props.kind === 'collection') {
+  collection = await getCollectionBySlug(props.collectionSlug);
+  if (!collection) {
+    throw new Error(`Unknown lerpette collection "${props.collectionSlug}".`);
+  }
+} else {
+  mixtape = await getMixtapeBySlugs(props.collectionSlug, props.mixtapeSlug);
+  if (!mixtape) {
+    throw new Error(`Unknown mixtape "${props.collectionSlug}/${props.mixtapeSlug}".`);
+  }
+}
+
+const otherLerpettes = mixtape ? libraryMixtapes.filter((entry) => entry.href !== mixtape?.href) : [];
+const otherCollections = collection ? allCollections.filter((entry) => entry.slug !== collection.slug) : [];
+const otherCollectionMixtapes = collection
+  ? libraryMixtapes.filter((entry) => entry.collectionSlug !== collection.slug)
+  : [];
+---
+
+{
+  collection ? (
+    <BaseLayout title={`${collection.title} · Lerpit`} description={collection.summary}>
+      <main class="site-shell">
+        <section class="lerpette-player lerpette-player--collection">
+          <SiteHeader />
+          <CollectionShowcase collection={collection} />
+        </section>
+        <LerpettesShelf
+          mixtapes={otherCollectionMixtapes}
+          headingId="other-mixtapes-heading"
+          heading="Mixtapes from other collections"
+        />
+        <CollectionsShelf
+          collections={otherCollections}
+          headingId="other-collections-heading"
+          heading="Explore more collections"
+        />
+      </main>
+    </BaseLayout>
+  ) : (
+    <LerpetteLessonPage mixtape={mixtape!} allMixtapes={otherLerpettes} />
+  )
+}

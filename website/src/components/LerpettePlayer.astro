@@ -1,0 +1,135 @@
+---
+import type { LerpetteMixtape } from '@lerpit/framework/types';
+import ContentProblems from './ContentProblems.astro';
+import SiteHeader from './SiteHeader.astro';
+
+interface Props {
+  lerpette: LerpetteMixtape;
+  headerTitle?: string;
+}
+
+const { lerpette, headerTitle } = Astro.props as Props;
+const playerId = `lerpette-${(lerpette.collectionSlug ? `${lerpette.collectionSlug}-${lerpette.slug}` : lerpette.slug)
+  .replace(/[^a-z0-9-]/gi, '-')
+  .toLowerCase()}`;
+const collectionLabel = lerpette.collectionTitle ?? 'Issue Zero';
+const collectionHref = lerpette.collectionSlug ? `${import.meta.env.BASE_URL}${lerpette.collectionSlug}/` : null;
+const clientSteps = lerpette.steps.map((step) => ({
+  id: step.id,
+  title: step.title,
+  runtimeImportKey: step.runtimeImportKey,
+  assetBasePath: step.assetBasePath,
+  codePath: step.codePath,
+  panels: step.panels
+}));
+const playerConfig = JSON.stringify({ lessonTitle: lerpette.title, steps: clientSteps });
+// With no runtime anywhere in the lerpette the stage has nothing to show, so it is
+// not rendered at all; the player sees no panel host and leaves the page as prose.
+const hasRuntime = lerpette.steps.some((step) => step.runtimeImportKey !== '' || step.panels.length > 0);
+---
+
+<section class="lerpette-player" data-lerpette-player>
+  <script type="application/json" data-player-config set:html={playerConfig}></script>
+  <SiteHeader title={headerTitle} />
+
+  <p class="eyebrow lerpette-brow lerpette-brow--pinned">
+    {lerpette.publishedOn && (
+      <>
+        <span>{lerpette.publishedOn}</span>
+        <span class="lerpette-player__byline-sep"> / </span>
+      </>
+    )}
+    <span>{lerpette.author}</span>
+    <span class="lerpette-player__byline-sep"> / </span>
+    {collectionHref ? (
+      <a class="lerpette-player__lesson-collection-link" href={collectionHref}>
+        {collectionLabel}
+      </a>
+    ) : (
+      <span>{collectionLabel}</span>
+    )}
+    <span class="lerpette-player__byline-sep"> / </span>
+    <span class="lerpette-player__byline-title" data-byline-title>{lerpette.title}</span>
+    <span class="lerpette-player__byline-section" data-byline-section hidden>
+      <span class="lerpette-player__byline-sep"> / </span>
+      <span data-byline-now></span>
+    </span>
+  </p>
+
+  <div class="lerpette-player__grid">
+    <div class="lerpette-player__lesson">
+      <ContentProblems problems={lerpette.problems} title="This lerpette is unfinished" />
+
+      <section class="lerpette-intro" id="intro" data-section-id="intro">
+        <div class="lerpette-head">
+          <span class="lerpette-head__index-row">
+            <span class="lerpette-head__index">00</span>
+          </span>
+          <h2 class="lerpette-intro__title">{lerpette.title}</h2>
+        </div>
+        <div class="prose-block" set:html={lerpette.introHtml}></div>
+      </section>
+
+      {lerpette.steps.map((step, index) => (
+        <section
+          class="lerpette-step"
+          id={step.id}
+          data-section-id={step.id}
+          aria-labelledby={`${step.id}-title`}
+        >
+          <div class="lerpette-head">
+            <span class="lerpette-head__index-row">
+              <span class="lerpette-head__index">{String(index + 1).padStart(2, '0')}</span>
+              {!step.hasOwnRuntime && (
+                <span
+                  class="lerpette-step__missing-runtime"
+                  role="img"
+                  aria-label="Missing code folder"
+                  data-tooltip="missing code folder"
+                >!</span>
+              )}
+            </span>
+            <h2 id={`${step.id}-title`}>{step.title}</h2>
+          </div>
+          {/* A `lerpit` fence renders an empty .lerpette-code box inside this, which
+              is where a runtime puts UI belonging with the prose rather than the panel. */}
+          <div class="prose-block" set:html={step.bodyHtml}></div>
+        </section>
+      ))}
+    </div>
+
+    {hasRuntime && (
+      <aside class="lerpette-stage">
+        <button
+          class="lerpette-stage__toggle"
+          type="button"
+          data-stage-toggle
+          aria-expanded="false"
+          aria-controls={`${playerId}-panel-surface`}
+          aria-label="Show panel"
+        >
+          <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
+          <span class="lerpette-stage__toggle-text" data-panel-label></span>
+          <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
+        </button>
+        <div class="lerpette-stage__surface">
+          {/* One strip across the top, whatever is below it. A chapter with a single
+              panel gets one tab that reads as its name; a chapter with several gets one
+              each. Same markup, same height, so the panel below never moves as the
+              reader scrolls between chapters. It sits outside the host because the
+              player empties the host wholesale on a swap. */}
+          <div class="lerpette-stage__tabs" role="tablist" data-panel-tabs></div>
+          {/* The host holds nothing but what the panel kind builds. */}
+          <div class="lerpette-stage__panel" data-panel-host id={`${playerId}-panel-surface`}></div>
+          <p class="lerpette-stage__status" data-stage-status></p>
+        </div>
+      </aside>
+    )}
+  </div>
+</section>
+
+<script>
+  import { initLerpettePlayers } from '../lib/playerClient';
+
+  initLerpettePlayers();
+</script>

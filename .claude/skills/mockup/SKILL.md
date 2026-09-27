@@ -18,7 +18,7 @@ Two modes:
 
 ## Build the mock
 
-1. Copy the `:root` token block and the fonts `<link>` from `src/styles/global.css` and `src/layouts/BaseLayout.astro` so the mock looks like the site, not like a wireframe.
+1. Copy the `:root` token block and the fonts `<link>` from `website/src/styles/global.css` and `website/src/layouts/BaseLayout.astro` so the mock looks like the site, not like a wireframe.
 2. Reuse real content: real chapter titles from a `mixtape.md`, the real byline shape (`Collection / slug / date / author`), the real column proportions.
 3. **Render at true size.** Either lay the mock out at the real width (the prose column is 736px at a 1400px window) or lay it out at a fixed logical page (1400x820) and scale it with `transform: scale(z)` where `z = container / 1400`. Scaled mocks are the only faithful way to show a three-column page inside a narrow window.
 4. When the mock is scaled, measure with `offsetWidth` (layout px, unscaled), not `getBoundingClientRect()` (visual px).

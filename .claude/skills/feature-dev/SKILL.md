@@ -13,8 +13,8 @@ Use TodoWrite to track the phases and the dev sub-tasks.
 
 These outrank anything a hat wants to do. Break one only with the user's explicit yes.
 
-- **Scroll drives the runtime.** A mixtape is a continuous scroll where the active `## Heading {#step-id}` swaps the right-pane runtime (`src/lib/lerpettes/playerClient.ts`). Anything that turns reading into clicking breaks the format.
-- **One stylesheet.** All CSS is `src/styles/global.css`. No component `<style>` blocks, no CSS modules, no utility framework.
+- **Scroll drives the runtime.** A mixtape is a continuous scroll where the active `## Heading {#step-id}` swaps the right-pane runtime (`website/src/lib/playerClient.ts`). Anything that turns reading into clicking breaks the format.
+- **One stylesheet.** All CSS is `website/src/styles/global.css`. No component `<style>` blocks, no CSS modules, no utility framework.
 - **Tokens, not literals.** `--paper --paper-deep --panel --ink --muted --line --line-strong --accent --accent-soft --accent-warm`, `--font-serif` (Cardo) for prose, `--font-mono` (IBM Plex Mono) for eyebrows, indices, labels. Square corners. 1px borders. No shadows except on transient overlays.
 - **No frontmatter, no sidecar metadata.** Title, summary, author, date and steps are inferred from the document (see README). Do not add a metadata layer.
 - **Breakpoints already in use:** 1180px (stage becomes a drawer), 900px (rail hides, single column), 640px. Reuse them; don't add new ones without a reason.
@@ -46,7 +46,7 @@ These outrank anything a hat wants to do. Break one only with the user's explici
 
 **Goal:** know the code that the change lands in.
 
-1. Read the actual files, not a summary of them. For player/UI work that is: `src/components/LerpettePlayer.astro`, `src/lib/lerpettes/playerClient.ts`, the relevant block of `src/styles/global.css`, and `src/lib/lerpettes/content.ts` if anything is inferred from the document.
+1. Read the actual files, not a summary of them. For player/UI work that is: `website/src/components/LerpettePlayer.astro`, `website/src/lib/playerClient.ts`, the relevant block of `website/src/styles/global.css`, and `website/src/lib/content.ts` if anything is inferred from the document.
 2. Find the nearest existing pattern and copy its shape. The stage drawer (`.lerpette-stage__toggle`, `.is-open`) is the reference for anything that collapses; the footnotes collapse in `playerClient.ts` is the reference for progressive disclosure inside prose.
 3. Note the CSS you will touch by line, so the diff stays small.
 
@@ -110,7 +110,7 @@ Split the work into sub-tasks that each leave the site working. For each sub-tas
 
 1. **Dev.** Implement it. Follow the conventions in the files you are editing: `.astro` markup mirrors the existing block, CSS goes next to the rules it relates to in `global.css`, client logic goes in `playerClient.ts` behind the existing init.
 2. **Test.** Prove it:
-   - `npm run test:js` when anything under `src/lib/` changed (add a vitest case for new logic; there is no DOM harness, so keep new logic in pure functions that can be tested without a browser)
+   - `npm run test:js` when anything under `lerpettes/libs/` changed (add a vitest case for new logic; there is no DOM harness, so keep new logic in pure functions that can be tested without a browser)
    - `npm run build` for anything that touches content inference or routing
    - a visual pass per the `mockup` skill against the real dev server for anything visible
 3. Only then start the next sub-task.

@@ -1,0 +1,49 @@
+---
+import type { LerpetteProblem } from '@lerpit/framework/types';
+
+interface Props {
+  problems: LerpetteProblem[];
+  title: string;
+}
+
+const { problems, title } = Astro.props as Props;
+const count = `${problems.length} ${problems.length === 1 ? 'problem' : 'problems'}`;
+
+// Problem text is written in content.ts, where paths and headings read better as
+// code. Escape first, then turn the backticks into the site's inline code.
+function toHtml(text: string): string {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+---
+
+{
+  problems.length > 0 && (
+    /* A disclosure rather than the footnotes' scripted collapse: the player returns
+       early on a lerpette with no runtime, which is exactly the page most likely to
+       carry problems, so the toggle has to work with no JS at all. */
+    <details class="content-problems">
+      <summary class="content-problems__head">
+        <span class="content-problems__title">
+          <span class="content-problems__mark" aria-hidden="true">!</span>
+          {title}
+        </span>
+        <span class="content-problems__count">{count}</span>
+      </summary>
+
+      <ul class="content-problems__list">
+        {problems.map((problem) => (
+          <li class="content-problems__item">
+            <p class="content-problems__message" set:html={toHtml(problem.message)} />
+            {problem.fix && <p class="content-problems__fix" set:html={toHtml(problem.fix)} />}
+            <span class="content-problems__where">{problem.where}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}

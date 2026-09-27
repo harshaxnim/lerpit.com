@@ -5,13 +5,35 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * The in-browser C++ toolchain runs its tools in workers backed by
+ * SharedArrayBuffer, which the browser only hands to a cross-origin isolated
+ * page. Astro renders HTML through its own middleware, so vite.server.headers
+ * never reaches a page response; this sets them ahead of it.
+ *
+ * GitHub Pages cannot send headers at all, so production gets the same
+ * isolation from website/public/coi-serviceworker.js instead.
+ */
+function crossOriginIsolation() {
+  return {
+    name: 'lerpit-cross-origin-isolation',
+    configureServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        next();
+      });
+    }
+  };
+}
+
 function lerpitWatcher() {
   return {
     name: 'lerpit-watcher',
     configureServer(server) {
       const root = path.dirname(fileURLToPath(import.meta.url));
-      const lerpettesDir = path.join(root, 'src/lerpettes');
-      const physicsWasmDir = path.join(root, 'src/lib/physics/wasm');
+      const lerpettesDir = path.join(root, 'lerpettes/content');
+      const physicsWasmDir = path.join(root, 'lerpettes/libs/physics/wasm');
 
       server.watcher.add([
         path.join(lerpettesDir, '**/*.md'),
@@ -63,20 +85,30 @@ function lerpitWatcher() {
 
 const owner = process.env.GITHUB_REPOSITORY_OWNER ?? 'harshaxnim';
 const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'lerpit-wasm-blog';
-const hasCustomDomainFile = fs.existsSync(new URL('./public/CNAME', import.meta.url));
+const hasCustomDomainFile = fs.existsSync(new URL('./website/public/CNAME', import.meta.url));
 const customDomain = process.env.CUSTOM_DOMAIN === 'true' || hasCustomDomainFile;
 const site = process.env.SITE ?? (customDomain ? 'https://lerpit.com' : `https://${owner}.github.io`);
 
 export default defineConfig({
   site,
+  // The repo has two roots: website/ is the Astro app, lerpettes/ is the content
+  // plus the framework and libs that authored lerpettes import.
+  srcDir: './website/src',
+  publicDir: './website/public',
   base: customDomain ? '/' : process.env.GITHUB_ACTIONS === 'true' ? `/${repo}/` : '/',
   integrations: [mdx()],
   vite: {
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
+        '@lerpit': fileURLToPath(new URL('./lerpettes', import.meta.url))
       }
     },
-    plugins: [lerpitWatcher()]
+    optimizeDeps: {
+      // The toolchain packages ship a `./subprocess_shim.py?raw` import. Vite's
+      // dependency pre-bundler runs esbuild, which has no loader for .py and
+      // fails; left unbundled, Vite's own ?raw handling resolves it.
+      exclude: ['@gameguild/emception-browser', '@gameguild/emception-xterm', 'emception']
+    },
+    plugins: [crossOriginIsolation(), lerpitWatcher()]
   }
 });
