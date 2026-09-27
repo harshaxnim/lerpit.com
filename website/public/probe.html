@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS Status Bar Probe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" crossorigin>
+<style>
+  :root {
+    --ground: #0f1418;
+    --raised: #172029;
+    --ink: #e8eef2;
+    --dim: #788a97;
+    --rule: #2a3843;
+    --accent: #5183ad;
+    --band: #ff2f92;
+    --byline-h: 48px;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding-bottom: 16rem;
+  }
+
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+
+  /* Replica of the lerpit byline: sticky, top 0, opaque, column width. */
+  .byline {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    margin: 0;
+    height: var(--byline-h);
+    padding: 0 1rem;
+    display: flex;
+    align-items: center;
+    background: var(--raised);
+    border-bottom: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The band under test. Mode is set on <body>. */
+  .byline::before {
+    content: "";
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: var(--byline-h);
+    z-index: -1;
+    background: var(--band);
+    pointer-events: none;
+    box-shadow:
+      0 calc(-1 * var(--byline-h)) 0 var(--band),
+      0 calc(-2 * var(--byline-h)) 0 var(--band);
+  }
+  body[data-mode="off"]   .byline::before { display: none; }
+  body[data-mode="at0"]   .byline::before { top: 0; }
+  body[data-mode="above"] .byline::before { top: calc(-1 * var(--byline-h)); }
+
+  main { padding: 0 1rem; }
+  h2 { font-size: 15px; margin: 1.5rem 0 .4rem; }
+  p { margin: 0 0 .9rem; max-width: 60ch; color: #c3ced6; }
+  .filler p { color: #9fb0bb; }
+  .marker { color: var(--band); font-weight: 600; }
+
+  .modes {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    background: var(--raised);
+    border-top: 1px solid var(--rule);
+    padding: .75rem;
+    padding-bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    gap: .75rem;
+  }
+  .mode-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+  .mode-row button {
+    font: 600 13px/1 "IBM Plex Mono", ui-monospace, monospace;
+    padding: .85rem .4rem;
+    border-radius: 6px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+  }
+  .mode-row button[aria-pressed="true"] { border-color: var(--band); color: var(--ink); background: #2a1220; }
+  .mode-row button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .readout { display: grid; grid-template-columns: 1fr auto; gap: .15rem .75rem; margin: 0; font-size: 13px; }
+  .readout dt { color: var(--dim); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .04em; }
+  .readout dd { margin: 0; text-align: right; font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .readout dd.flag { color: var(--band); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<p class="byline">2026-09-23 / HARSHA / META / PROBE</p>
+
+<main>
+  <h2>What to do</h2>
+  <p>Scroll down a little so this bar pins, then photograph the top of the screen in each of the three modes. The band under test is <span class="marker">bright pink</span>, so wherever it lands is obvious.</p>
+  <p>The numbers below update live. The one that matters is <code>sticky top</code>: if it reads anything but 0 while the bar is pinned, the bar is not pinning at the top of the layout viewport.</p>
+
+  <div class="filler">
+    <h2>Filler, so there is something to scroll</h2>
+    <p>The contract is the same either way. A chapter needs at least one of step and draw, and nothing else is required.</p>
+    <p>dt arrives already clamped, so a tab left in the background comes back without integrating one enormous step.</p>
+    <p>The state is rebuilt on every run, which is what makes pressing run a clean start rather than a continuation.</p>
+    <p>Both functions are JavaScript even when the physics is C++, because a wasm module cannot reach the canvas.</p>
+    <p>A panel is named by the document. The editor does not know which panel it feeds, and the panel does not know whether an editor exists.</p>
+    <p>Keep scrolling. The bar above should stay pinned to the top edge for the whole of this section.</p>
+    <p>If a pink band is visible, note where its top and bottom edges sit relative to the status bar and to the pinned bar.</p>
+    <p>If no pink is visible at all in a mode, that is a result too.</p>
+    <p>The page behind the status bar is the whole question here.</p>
+    <p>One more paragraph of nothing in particular, to guarantee the scroll.</p>
+    <p>And another, so the bar has somewhere to travel.</p>
+    <p>Last one.</p>
+  </div>
+</main>
+
+<div class="modes">
+  <div class="mode-row">
+    <button type="button" data-set="off">no band</button>
+    <button type="button" data-set="at0">band top:0</button>
+    <button type="button" data-set="above">band top:-48</button>
+  </div>
+  <dl class="readout" id="readout"></dl>
+</div>
+
+<div id="safe-probe" style="position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);pointer-events:none;opacity:0"></div>
+<div id="fixed-probe" style="position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;opacity:0"></div>
+
+<script>
+  var body = document.body;
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-set]'));
+
+  function setMode(mode) {
+    body.dataset.mode = mode;
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.set === mode)); });
+  }
+  buttons.forEach(function (b) {
+    b.addEventListener('click', function () { setMode(b.dataset.set); });
+  });
+  setMode('at0');
+
+  var byline = document.querySelector('.byline');
+  var safeProbe = document.getElementById('safe-probe');
+  var fixedProbe = document.getElementById('fixed-probe');
+  var readout = document.getElementById('readout');
+
+  var rows = [
+    ['sticky top', function () { return Math.round(byline.getBoundingClientRect().top); }, true],
+    ['fixed top:0 at', function () { return Math.round(fixedProbe.getBoundingClientRect().top); }, true],
+    ['safe-area-top', function () { return Math.round(safeProbe.getBoundingClientRect().height); }, true],
+    ['visual offsetTop', function () { return window.visualViewport ? Math.round(window.visualViewport.offsetTop) : 'n/a'; }, true],
+    ['visual height', function () { return window.visualViewport ? Math.round(window.visualViewport.height) : 'n/a'; }, false],
+    ['innerHeight', function () { return window.innerHeight; }, false],
+    ['innerWidth', function () { return window.innerWidth; }, false],
+    ['scrollY', function () { return Math.round(window.scrollY); }, false],
+    ['dpr', function () { return window.devicePixelRatio; }, false]
+  ];
+
+  function key(name) { return 'v-' + name.replace(/[^a-z0-9]/gi, ''); }
+
+  rows.forEach(function (row) {
+    var dt = document.createElement('dt');
+    dt.textContent = row[0];
+    var dd = document.createElement('dd');
+    dd.id = key(row[0]);
+    if (row[2]) dd.className = 'flag';
+    readout.append(dt, dd);
+  });
+
+  function paint() {
+    rows.forEach(function (row) {
+      var el = document.getElementById(key(row[0]));
+      if (el) el.textContent = String(row[1]());
+    });
+  }
+
+  paint();
+  addEventListener('scroll', paint, { passive: true });
+  addEventListener('resize', paint);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', paint);
+    window.visualViewport.addEventListener('scroll', paint);
+  }
+  setInterval(paint, 400);
+</script>
+</body>
+</html>
