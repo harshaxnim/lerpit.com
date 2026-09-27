@@ -1595,11 +1595,12 @@ nav {
   overflow: hidden;
 }
 
+/* A flex item under the strip, not laid over the surface: absolutely positioned it
+   filled the tab strip too and, coming later in the markup, took every tap meant for
+   the tabs. */
 .lerpette-stage__panel {
   flex: 1;
   min-height: 0;
-  position: absolute;
-  inset: 0;
 }
 
 .lerpette-stage__surface canvas {
