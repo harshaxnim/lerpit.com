@@ -7,11 +7,16 @@
  */
 (function () {
   var BROW = '.lerpette-brow--pinned';
+  /* The band only tints the strip if Safari counts it as touching the top edge.
+     At top:-48 it is wholly outside the layout viewport and gets culled, shadows
+     and all. So these candidates differ only in how far they reach back in. */
   var MODES = {
-    off: 'display:none',
-    old: 'top:0;height:var(--byline-h)',
-    now: 'top:calc(-1 * var(--byline-h));height:var(--byline-h)',
-    full: 'top:calc(-2 * var(--byline-h));height:calc(3 * var(--byline-h))'
+    off:  'display:none',
+    old:  'top:0;height:var(--byline-h)',
+    now:  'top:calc(-1 * var(--byline-h));height:var(--byline-h)',
+    hair: 'top:calc(-1 * var(--byline-h));height:calc(var(--byline-h) + 1px)',
+    edge: 'top:calc(-1 * var(--byline-h));height:calc(var(--byline-h) + 8px)',
+    half: 'top:calc(-1 * var(--byline-h));height:calc(var(--byline-h) + 24px)'
   };
 
   var css = document.createElement('style');
@@ -27,6 +32,7 @@
     'font:13px/1.4 ui-monospace,Menlo,monospace;display:grid;gap:.5rem}',
     '.probe-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}',
     '.probe-row.two{grid-template-columns:repeat(2,1fr)}',
+    '.probe-row.three{grid-template-columns:repeat(3,1fr)}',
     '.probe-row button{font:600 12px/1 ui-monospace,Menlo,monospace;padding:.75rem .2rem;border-radius:6px;',
     'border:1px solid #2a3843;background:transparent;color:#788a97}',
     '.probe-row button[aria-pressed="true"]{border-color:#ff2f92;color:#fff;background:#2a1220}',
@@ -72,11 +78,15 @@
   var panel = document.createElement('div');
   panel.className = 'probe-panel';
   panel.innerHTML =
-    '<div class="probe-row">' +
+    '<div class="probe-row three">' +
       '<button type="button" data-mode="off">off</button>' +
       '<button type="button" data-mode="old">old 0</button>' +
       '<button type="button" data-mode="now">now -48</button>' +
-      '<button type="button" data-mode="full">full -96</button>' +
+    '</div>' +
+    '<div class="probe-row three">' +
+      '<button type="button" data-mode="hair">hair +1</button>' +
+      '<button type="button" data-mode="edge">edge +8</button>' +
+      '<button type="button" data-mode="half">half +24</button>' +
     '</div>' +
     '<div class="probe-row two">' +
       '<button type="button" id="probe-ruler-toggle" aria-pressed="true">ruler on</button>' +
@@ -105,6 +115,13 @@
     ['is-stuck', function () { var b = brow(); return b ? (b.classList.contains('is-stuck') ? 'yes' : 'NO') : 'none'; }, true],
     ['band top', function () { var b = brow(); return b ? getComputedStyle(b, '::before').top : 'none'; }, true],
     ['band height', function () { var b = brow(); return b ? getComputedStyle(b, '::before').height : 'none'; }, true],
+    ['band reaches to', function () {
+      var b = brow();
+      if (!b) return 'none';
+      var cs = getComputedStyle(b, '::before');
+      if (cs.display === 'none') return 'hidden';
+      return Math.round(parseFloat(cs.top) + parseFloat(cs.height)) + 'px';
+    }, true],
     ['byline height', function () { var b = brow(); return b ? Math.round(b.getBoundingClientRect().height) : 'none'; }, false],
     ['safe-area-top', function () { return safe.getBoundingClientRect().height; }, true],
     ['visual offsetTop', function () { return window.visualViewport ? Math.round(window.visualViewport.offsetTop) : 'n/a'; }, true],
