@@ -94,6 +94,17 @@ const {
           });
       })();
     </script>
+    <script is:inline define:vars={{ probePath: `${import.meta.env.BASE_URL}probe-overlay.js` }}>
+      /* Diagnostic overlay for the status bar gap, only when the URL asks for it.
+         Delete this, probe-overlay.js and probe.html once the gap is fixed. */
+      if (location.search.indexOf('probe') !== -1) {
+        addEventListener('DOMContentLoaded', function () {
+          var s = document.createElement('script');
+          s.src = probePath;
+          document.body.appendChild(s);
+        });
+      }
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     <!-- Ignored by Safari 26, which samples CSS instead, but still honoured by older

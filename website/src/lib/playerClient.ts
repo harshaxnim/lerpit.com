@@ -488,6 +488,11 @@ export function initLerpettePlayers() {
     };
 
     const syncActiveSectionToViewport = () => {
+      // Only a stuck byline may paint above itself; at rest the same band would cover
+      // the site header.
+      if (bylineEl) {
+        bylineEl.classList.toggle('is-stuck', window.scrollY > 0 && bylineEl.getBoundingClientRect().top <= 0);
+      }
       const sectionId = getViewportSectionId();
       setActiveChrome(sectionId);
 
