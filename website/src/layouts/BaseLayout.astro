@@ -24,34 +24,64 @@ const {
        * start. The dev server sends the headers itself; a static host cannot, so a
        * service worker adds them to every response instead. See the worker for why.
        *
-       * First visit registers and reloads once. The reload is guarded by a session
-       * flag so a browser that refuses to keep the worker never loops.
+       * The worker can only add headers to responses it serves, and it serves none
+       * on the visit that installs it, so that first page has to be reloaded once.
+       * A session flag spends exactly one reload, so a browser that will not keep
+       * the worker shows the reader an honest error instead of looping.
        */
       (() => {
-        if (window.crossOriginIsolated || !('serviceWorker' in navigator)) {
+        // Blocked site data throws on access alone, so every touch is guarded.
+        const RELOADED = 'lerpit:coi-reloaded';
+        const flag = {
+          seen: () => {
+            try {
+              return sessionStorage.getItem(RELOADED) === '1';
+            } catch {
+              return false;
+            }
+          },
+          set: () => {
+            try {
+              sessionStorage.setItem(RELOADED, '1');
+            } catch {}
+          },
+          clear: () => {
+            try {
+              sessionStorage.removeItem(RELOADED);
+            } catch {}
+          }
+        };
+
+        // A browser with no concept of isolation gains nothing from reloading.
+        if (!('crossOriginIsolated' in window) || !('serviceWorker' in navigator)) {
           return;
         }
 
-        const RELOADED = 'lerpit:coi-reloaded';
+        if (window.crossOriginIsolated) {
+          // Working. Drop the flag so that if the browser later evicts the worker,
+          // the next visit still has its one reload to spend.
+          flag.clear();
+          return;
+        }
 
+        // Register on every non-isolated load, even ones that will not reload. That
+        // leaves the worker installed, so the next navigation is isolated anyway.
         navigator.serviceWorker
           .register(swPath)
           .then((registration) => {
-            // Already controlled means the headers are arriving; nothing to do.
-            if (navigator.serviceWorker.controller) {
-              return;
-            }
-
-            if (sessionStorage.getItem(RELOADED) === '1') {
+            if (flag.seen()) {
               return;
             }
 
             const reload = () => {
-              sessionStorage.setItem(RELOADED, '1');
+              flag.set();
               window.location.reload();
             };
 
-            if (registration.active) {
+            // Controlled yet not isolated means this document was served before the
+            // worker took over, so its own response never got the headers. Reloading
+            // is what puts the worker in front of the navigation.
+            if (navigator.serviceWorker.controller || registration.active) {
               reload();
               return;
             }

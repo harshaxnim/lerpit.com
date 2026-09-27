@@ -85,8 +85,15 @@ async function getToolchain(log: CompileLog) {
   if (!booting) {
     booting = (async () => {
       if (!window.crossOriginIsolated) {
+        // Isolation comes from a service worker on a static host, and it can only add
+        // headers to responses it serves, so the visit that installs it is never
+        // isolated. Say which of the two cases this is, since one of them the reader
+        // can fix and the other they cannot.
+        const installing = 'serviceWorker' in navigator && !!navigator.serviceWorker.controller;
         throw new Error(
-          'This page is not cross-origin isolated, so the compiler cannot start. It needs COOP and COEP headers.'
+          installing
+            ? 'The compiler needs one reload before it can start. Reload the page and press run again.'
+            : 'The compiler cannot start in this browser. It needs a service worker to run, which private windows and blocked site data both prevent.'
         );
       }
 
