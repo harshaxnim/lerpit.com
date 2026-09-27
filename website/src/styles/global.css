@@ -612,6 +612,17 @@ nav {
   text-overflow: ellipsis;
 }
 
+/* iOS 26 Safari draws the page behind the status bar, above the top of the viewport,
+   so a band pinned at top: 0 still leaves prose scrolling past over it. The shadow
+   carries the paper up into that strip; above a desktop viewport it paints nothing. */
+.lerpette-brow--pinned.is-stuck {
+  /* Two copies of the band stacked above it: an unspread shadow is only as tall as
+     the byline, and the strip under a notch is taller than one. */
+  box-shadow:
+    0 calc(-1 * var(--byline-h)) 0 var(--paper),
+    0 calc(-2 * var(--byline-h)) 0 var(--paper);
+}
+
 /* Runtime chrome lives in the panel's top-right corner. */
 .lerpette-panel__tray {
   position: absolute;
