@@ -18,6 +18,52 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script is:inline define:vars={{ swPath: `${import.meta.env.BASE_URL}coi-serviceworker.js` }}>
+      /*
+       * Cross-origin isolation, without which the in-browser C++ toolchain cannot
+       * start. The dev server sends the headers itself; a static host cannot, so a
+       * service worker adds them to every response instead. See the worker for why.
+       *
+       * First visit registers and reloads once. The reload is guarded by a session
+       * flag so a browser that refuses to keep the worker never loops.
+       */
+      (() => {
+        if (window.crossOriginIsolated || !('serviceWorker' in navigator)) {
+          return;
+        }
+
+        const RELOADED = 'lerpit:coi-reloaded';
+
+        navigator.serviceWorker
+          .register(swPath)
+          .then((registration) => {
+            // Already controlled means the headers are arriving; nothing to do.
+            if (navigator.serviceWorker.controller) {
+              return;
+            }
+
+            if (sessionStorage.getItem(RELOADED) === '1') {
+              return;
+            }
+
+            const reload = () => {
+              sessionStorage.setItem(RELOADED, '1');
+              window.location.reload();
+            };
+
+            if (registration.active) {
+              reload();
+              return;
+            }
+
+            navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
+          })
+          .catch(() => {
+            // Private windows and blocked storage both land here. The page works; the
+            // compiler does not, and says so where the reader can see it.
+          });
+      })();
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#111111" />
@@ -28,6 +74,7 @@ const {
     <link
       href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&family=Archivo+Black&family=Anton&family=Poppins:wght@900&family=Bowlby+One&display=swap"
       rel="stylesheet"
+      crossorigin
     />
   </head>
   <body>
