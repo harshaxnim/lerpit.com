@@ -21,6 +21,7 @@ export const readoutPanel: LerpettePanel<ReadoutTarget> = {
   name: 'readout',
   label: 'Readout',
   hostClass: 'lerpette-panel--readout',
+  showsCaption: false,
   cadence: 'change',
   members: { required: ['draw'], optional: [] },
 

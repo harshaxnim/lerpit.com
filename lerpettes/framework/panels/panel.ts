@@ -21,6 +21,12 @@ export type LerpettePanel<Target = unknown> = {
   label: string;
   /** Modifier class the player puts on the panel's box for its lifetime. */
   hostClass: string;
+  /**
+   * Whether the stage caption shows while this panel is the open tab. The caption is a
+   * band laid over the top of the panel, which suits a drawing and covers the first
+   * lines of a panel that is itself text. Left out, it shows.
+   */
+  showsCaption?: boolean;
 
   /**
    * How often this panel wants drawing.

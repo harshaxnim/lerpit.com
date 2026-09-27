@@ -45,6 +45,7 @@ export const tablePanel: LerpettePanel<TableTarget> = {
   name: 'table',
   label: 'Table',
   hostClass: 'lerpette-panel--table',
+  showsCaption: false,
   // Rewriting a table sixty times a second destroys the reader's selection and thrashes
   // layout to show numbers that did not change. It redraws when the state moved.
   cadence: 'change',

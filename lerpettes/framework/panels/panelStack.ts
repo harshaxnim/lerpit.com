@@ -124,6 +124,11 @@ export async function createPanelStack(
       entry.box.classList.toggle('is-active', entry.panel.name === activeName);
     }
 
+    // The caption is written for the chapter as a whole, usually for its drawing, so it
+    // stands down over a panel that is text of its own rather than covering it.
+    const shown = mounted.find((entry) => entry.panel.name === activeName);
+    slot.host.classList.toggle('is-uncaptioned', shown?.panel.showsCaption === false);
+
     strip.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
       const on = button.dataset.panel === activeName;
       button.setAttribute('aria-selected', String(on));
@@ -169,6 +174,7 @@ export async function createPanelStack(
         entry.panel.destroy?.(entry.target as never, { ...slot, host: entry.box });
       }
       mounted.length = 0;
+      slot.host.classList.remove('is-uncaptioned');
       // The strip is lent and deliberately left as it is. Tearing down happens before
       // the next chapter has loaded, so emptying here would blank the strip for the
       // whole of that load. Whoever comes next replaces its contents in one operation,

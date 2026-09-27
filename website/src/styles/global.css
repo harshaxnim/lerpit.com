@@ -1508,7 +1508,8 @@ nav {
   max-width: none;
 }
 
-.lerpette-stage__status:empty {
+.lerpette-stage__status:empty,
+.lerpette-stage__panel.is-uncaptioned ~ .lerpette-stage__status {
   display: none;
 }
 
