@@ -68,9 +68,36 @@
       0 calc(-1 * var(--byline-h)) 0 var(--band),
       0 calc(-2 * var(--byline-h)) 0 var(--band);
   }
-  body[data-mode="off"]   .byline::before { display: none; }
-  body[data-mode="at0"]   .byline::before { top: 0; }
-  body[data-mode="above"] .byline::before { top: calc(-1 * var(--byline-h)); }
+  body[data-mode="off"]  .byline::before { display: none; }
+  body[data-mode="old"]  .byline::before { top: 0; height: var(--byline-h); }
+  body[data-mode="now"]  .byline::before { top: calc(-1 * var(--byline-h)); height: var(--byline-h); }
+  body[data-mode="full"] .byline::before { top: calc(-2 * var(--byline-h)); height: calc(3 * var(--byline-h)); }
+
+  /* A ruler in page coordinates, so a photograph turns the gap into a number.
+     Fixed, so 0 here is exactly where fixed top:0 lands. */
+  .ruler { position: fixed; left: 0; right: 0; top: 0; height: 0; z-index: 9; pointer-events: none; }
+  .ruler i {
+    position: absolute; left: 0; right: 0; height: 0;
+    border-top: 1px solid #7CFF3D;
+  }
+  .ruler i::after {
+    content: attr(data-y);
+    position: absolute; left: 4px; top: -8px;
+    font: 600 11px/1 "IBM Plex Mono", ui-monospace, monospace;
+    color: #06240a; background: #7CFF3D;
+    padding: 2px 4px; border-radius: 3px;
+  }
+  .ruler i.zero { border-top-width: 2px; border-color: #fff; }
+  .ruler i.zero::after { background: #fff; color: #000; }
+  body[data-ruler="off"] .ruler { display: none; }
+
+  .warn {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 11;
+    background: #ffcc00; color: #241d00;
+    font: 600 14px/1.3 "IBM Plex Mono", ui-monospace, monospace;
+    padding: .6rem 1rem; text-align: center;
+  }
+  body[data-scrolled="yes"] .warn { display: none; }
 
   main { padding: 0 1rem; }
   h2 { font-size: 15px; margin: 1.5rem 0 .4rem; }
@@ -89,7 +116,8 @@
     display: grid;
     gap: .75rem;
   }
-  .mode-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+  .mode-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+  .mode-row.two { grid-template-columns: repeat(2, 1fr); }
   .mode-row button {
     font: 600 13px/1 "IBM Plex Mono", ui-monospace, monospace;
     padding: .85rem .4rem;
@@ -110,12 +138,19 @@
 </head>
 <body>
 
+<div class="ruler" id="ruler"></div>
+<p class="warn">SCROLL DOWN so the bar pins. scrollY is still 0.</p>
+
 <p class="byline">2026-09-23 / HARSHA / META / PROBE</p>
 
 <main>
-  <h2>What to do</h2>
-  <p>Scroll down a little so this bar pins, then photograph the top of the screen in each of the three modes. The band under test is <span class="marker">bright pink</span>, so wherever it lands is obvious.</p>
-  <p>The numbers below update live. The one that matters is <code>sticky top</code>: if it reads anything but 0 while the bar is pinned, the bar is not pinning at the top of the layout viewport.</p>
+  <h2>Open this in Safari, not in-app</h2>
+  <p>The last run came from the Claude in-app browser, which has different chrome from the Safari your original screenshot came from. Tap the address and open it in Safari proper.</p>
+
+  <h2>Then scroll</h2>
+  <p>The yellow banner stays up until you have actually scrolled. Every reading in the last run had <code>scrollY: 0</code>, so the bar was sitting at the top of the document rather than pinned, which is not the state the gap lives in.</p>
+  <p>The <span class="marker">green ruler</span> is drawn in page coordinates, one line every 24px, with a white line at 0. Whatever number sits level with the top of the visible page tells me exactly how much of the page is above <code>fixed top:0</code>, which is the thing I still cannot see.</p>
+  <p>Four modes: <code>off</code> is the control, <code>old 0</code> is what you had before, <code>now -48</code> is what is live, <code>full -96</code> covers everything from 96 above to 48 below. If <code>full</code> closes the gap and <code>now</code> does not, the fix is a taller band.</p>
 
   <div class="filler">
     <h2>Filler, so there is something to scroll</h2>
@@ -136,9 +171,14 @@
 
 <div class="modes">
   <div class="mode-row">
-    <button type="button" data-set="off">no band</button>
-    <button type="button" data-set="at0">band top:0</button>
-    <button type="button" data-set="above">band top:-48</button>
+    <button type="button" data-set="off">off</button>
+    <button type="button" data-set="old">old 0</button>
+    <button type="button" data-set="now">now -48</button>
+    <button type="button" data-set="full">full -96</button>
+  </div>
+  <div class="mode-row two">
+    <button type="button" id="ruler-toggle" aria-pressed="true">ruler on</button>
+    <button type="button" id="copy">copy numbers</button>
   </div>
   <dl class="readout" id="readout"></dl>
 </div>
@@ -157,7 +197,26 @@
   buttons.forEach(function (b) {
     b.addEventListener('click', function () { setMode(b.dataset.set); });
   });
-  setMode('at0');
+  setMode('old');
+
+  // Ruler: one labelled line per 24 page-px, from 96 above the viewport to 144 below,
+  // so a photo says exactly which page coordinate the visible top edge sits at.
+  var ruler = document.getElementById('ruler');
+  for (var y = -96; y <= 144; y += 24) {
+    var tick = document.createElement('i');
+    tick.style.top = y + 'px';
+    tick.dataset.y = String(y);
+    if (y === 0) tick.className = 'zero';
+    ruler.appendChild(tick);
+  }
+
+  var rulerToggle = document.getElementById('ruler-toggle');
+  rulerToggle.addEventListener('click', function () {
+    var on = body.dataset.ruler !== 'off';
+    body.dataset.ruler = on ? 'off' : 'on';
+    rulerToggle.setAttribute('aria-pressed', String(!on));
+    rulerToggle.textContent = on ? 'ruler off' : 'ruler on';
+  });
 
   var byline = document.querySelector('.byline');
   var safeProbe = document.getElementById('safe-probe');
@@ -173,7 +232,9 @@
     ['innerHeight', function () { return window.innerHeight; }, false],
     ['innerWidth', function () { return window.innerWidth; }, false],
     ['scrollY', function () { return Math.round(window.scrollY); }, false],
-    ['dpr', function () { return window.devicePixelRatio; }, false]
+    ['dpr', function () { return window.devicePixelRatio; }, false],
+    ['byline offsetTop', function () { return byline.offsetTop; }, false],
+    ['doc rect top', function () { return Math.round(document.documentElement.getBoundingClientRect().top); }, false]
   ];
 
   function key(name) { return 'v-' + name.replace(/[^a-z0-9]/gi, ''); }
@@ -192,7 +253,20 @@
       var el = document.getElementById(key(row[0]));
       if (el) el.textContent = String(row[1]());
     });
+    body.dataset.scrolled = window.scrollY > 8 ? 'yes' : 'no';
   }
+
+  document.getElementById('copy').addEventListener('click', function (e) {
+    var text = 'mode=' + body.dataset.mode + '\n' + rows.map(function (row) {
+      return row[0] + ': ' + row[1]();
+    }).join('\n') + '\nua: ' + navigator.userAgent;
+    navigator.clipboard.writeText(text).then(function () {
+      e.target.textContent = 'copied';
+      setTimeout(function () { e.target.textContent = 'copy numbers'; }, 1500);
+    }).catch(function () {
+      e.target.textContent = 'copy failed';
+    });
+  });
 
   paint();
   addEventListener('scroll', paint, { passive: true });
