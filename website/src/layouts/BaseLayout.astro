@@ -107,7 +107,9 @@ const {
     </script>
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#111111" />
+    <!-- Ignored by Safari 26, which samples CSS instead, but still honoured by older
+         iOS and by Chrome. It described a dark page; this one is paper. -->
+    <meta name="theme-color" content="#fdfbf4" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

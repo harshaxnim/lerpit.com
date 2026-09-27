@@ -30,6 +30,12 @@
 
 html {
   scroll-behavior: smooth;
+  /* Safari 26 dropped theme-color and tints its own chrome by sampling CSS instead,
+     preferring fixed and sticky elements near the viewport edges and falling back to
+     the root. A transparent root falls back to white, so the paper has to be declared
+     here and not only on body, or the strip above the viewport is whatever Safari
+     last found to sample. */
+  background-color: var(--paper);
 }
 
 body {

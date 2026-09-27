@@ -50,7 +50,9 @@
 
   function setMode(mode) {
     // Same media query the shipped rule lives in, so this measures what ships.
-    band.textContent = '@media (max-width:1180px){' + BROW + '.is-stuck::before{' +
+    // No .is-stuck here on purpose. The class is the site's scroll handler talking;
+    // the band is what is under test, and it should be testable the moment you land.
+    band.textContent = '@media (max-width:1180px){' + BROW + '::before{content:"";' +
       MODES[mode] + ';background:#ff2f92 !important;' +
       'box-shadow:0 calc(-1 * var(--byline-h)) 0 #ff2f92,0 calc(-2 * var(--byline-h)) 0 #ff2f92 !important}}';
     Array.prototype.forEach.call(buttons, function (b) {
@@ -72,7 +74,7 @@
 
   var warn = document.createElement('p');
   warn.className = 'probe-warn';
-  warn.textContent = 'SCROLL so the byline pins.';
+  warn.textContent = 'PASS = pink above the 0 line. Scroll if this stays up.';
   document.body.appendChild(warn);
 
   var panel = document.createElement('div');
@@ -88,9 +90,14 @@
       '<button type="button" data-mode="edge">edge +8</button>' +
       '<button type="button" data-mode="half">half +24</button>' +
     '</div>' +
-    '<div class="probe-row two">' +
+    '<div class="probe-row three">' +
+      '<button type="button" id="probe-html">html pink</button>' +
+      '<button type="button" id="probe-cover">vp cover</button>' +
       '<button type="button" id="probe-ruler-toggle" aria-pressed="true">ruler on</button>' +
+    '</div>' +
+    '<div class="probe-row two">' +
       '<button type="button" id="probe-copy">copy numbers</button>' +
+      '<button type="button" id="probe-top">back to top</button>' +
     '</div>' +
     '<div class="probe-grid" id="probe-grid"></div>';
   document.body.appendChild(panel);
@@ -113,6 +120,7 @@
   var rows = [
     ['byline top', function () { var b = brow(); return b ? Math.round(b.getBoundingClientRect().top) : 'none'; }, true],
     ['is-stuck', function () { var b = brow(); return b ? (b.classList.contains('is-stuck') ? 'yes' : 'NO') : 'none'; }, true],
+    ['mode', function () { return current; }, true],
     ['band top', function () { var b = brow(); return b ? getComputedStyle(b, '::before').top : 'none'; }, true],
     ['band height', function () { var b = brow(); return b ? getComputedStyle(b, '::before').height : 'none'; }, true],
     ['band reaches to', function () {
@@ -161,7 +169,51 @@
     }).catch(function () { self.textContent = 'copy failed'; });
   });
 
-  setMode('now');
+  /* Safari 26 samples CSS to tint its chrome: fixed and sticky elements near the
+     viewport edges first, then the root. These two say which of those is in play
+     here, which decides whether the band is needed at all. */
+  var htmlOn = false;
+  document.getElementById('probe-html').addEventListener('click', function () {
+    htmlOn = !htmlOn;
+    document.documentElement.style.background = htmlOn ? '#ff2f92' : '';
+    this.setAttribute('aria-pressed', String(htmlOn));
+    this.textContent = htmlOn ? 'html PINK' : 'html pink';
+  });
+
+  var coverOn = false;
+  var vp = document.querySelector('meta[name="viewport"]');
+  document.getElementById('probe-cover').addEventListener('click', function () {
+    coverOn = !coverOn;
+    if (vp) {
+      vp.setAttribute('content',
+        'width=device-width, initial-scale=1.0' + (coverOn ? ', viewport-fit=cover' : ''));
+    }
+    this.setAttribute('aria-pressed', String(coverOn));
+    this.textContent = coverOn ? 'vp COVER' : 'vp cover';
+  });
+
+  document.getElementById('probe-top').addEventListener('click', function () {
+    document.documentElement.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+  });
+
+  setMode('off');
+
+  // Land in the pinned state. Every run so far has been photographed at scrollY 0,
+  // which is the one scroll position the bug does not live at.
+  function pin() {
+    var b = brow();
+    if (b && window.scrollY < 8) {
+      var was = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = 'auto';
+      window.scrollTo(0, Math.max(600, b.offsetTop + 400));
+      document.documentElement.style.scrollBehavior = was;
+    }
+  }
+  pin();
+  setTimeout(pin, 400);
+  setTimeout(pin, 1200);
+
   paint();
   addEventListener('scroll', paint, { passive: true });
   addEventListener('resize', paint);
