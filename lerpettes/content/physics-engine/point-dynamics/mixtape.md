@@ -1,6 +1,6 @@
 Author: Harsha | Date: 2026-09-22
 
-# Point bodies dynamics
+# Particle Engine
 
 A physics simulator solves the equations of motion using an integrator to iteratively advance the state through time. In simpler words, we use newton's laws of motion to update positions and velocities of bodies over small time steps.
 

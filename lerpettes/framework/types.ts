@@ -83,6 +83,9 @@ export type LerpetteStep = {
   panels: string[];
 };
 
+/** Mirrors LerpetteStatus in website/src/lib/control.ts, which owns the meanings. */
+export type LerpetteStatus = 'published' | 'unlisted' | 'draft';
+
 export type LerpetteMixtape = {
   slug: string;
   href: string;
@@ -99,6 +102,8 @@ export type LerpetteMixtape = {
   problems: LerpetteProblem[];
   collectionSlug?: string;
   collectionTitle?: string;
+  /** What control.toml says to do with this one. Defaults to published. */
+  status: LerpetteStatus;
   /** Which generated card style this lerpette draws. Derived, never authored:
    *  assigned across the whole library so two collections do not share one. */
   cardStyle?: string;
@@ -122,8 +127,12 @@ export type LerpetteAssetEntry = {
 
 export type LerpetteLibrary = {
   landing: LerpetteMixtape;
+  /** Each collection carries only the mixtapes that should be listed. */
   collections: LerpetteCollection[];
+  /** Listed, newest first. What shelves and collection pages draw. */
   mixtapes: LerpetteMixtape[];
+  /** Everything that gets a page built, listed or not. What routing reads. */
+  routable: LerpetteMixtape[];
   assetEntries: LerpetteAssetEntry[];
   /** Problems with the tree itself, as opposed to with one document in it. */
   problems: LerpetteProblem[];

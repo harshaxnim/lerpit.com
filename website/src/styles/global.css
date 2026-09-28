@@ -1881,11 +1881,41 @@ nav {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.cassette-card__problems {
+/* One corner, however many tags. Both are build-time notices to whoever is
+   editing the site rather than anything a reader is meant to act on, so they sit
+   together out of the artwork's way instead of each claiming the corner. */
+.cassette-card__tags {
   position: absolute;
   top: 0.55rem;
   right: 0.55rem;
   z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Only ever rendered by a local build. A production build hides these lerpettes
+   rather than labelling them, so this never reaches a reader. */
+.cassette-card__status {
+  display: inline-flex;
+  align-items: center;
+  height: 1.15rem;
+  padding: 0 0.32rem;
+  border: 1px solid var(--line-strong);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--line-strong);
+  background: var(--paper-deep);
+}
+
+.cassette-card__status[data-status='draft'] {
+  border-color: var(--warn-line);
+  color: var(--warn);
+}
+
+.cassette-card__problems {
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -5,21 +5,22 @@ import LerpettesShelf from '../components/LerpettesShelf.astro';
 import LerpetteLessonPage from '../components/LerpetteLessonPage.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getCollectionBySlug, getCollections, getMixtapeBySlugs } from '../lib/content';
+import { getCollectionBySlug, getCollections, getMixtapeBySlugs, getRoutableMixtapes } from '../lib/content';
 
 export async function getStaticPaths() {
   const collections = await getCollections();
+  // Routable, not listed: an unlisted lerpette needs its page built, since a
+  // working link is the only thing that separates unlisted from draft.
+  const routable = await getRoutableMixtapes();
   return [
     ...collections.map((collection) => ({
       params: { slug: collection.slug },
       props: { kind: 'collection', collectionSlug: collection.slug }
     })),
-    ...collections.flatMap((collection) =>
-      collection.mixtapes.map((mixtape) => ({
-        params: { slug: `${collection.slug}/${mixtape.slug}` },
-        props: { kind: 'mixtape', collectionSlug: collection.slug, mixtapeSlug: mixtape.slug }
-      }))
-    )
+    ...routable.map((mixtape) => ({
+      params: { slug: `${mixtape.collectionSlug}/${mixtape.slug}` },
+      props: { kind: 'mixtape', collectionSlug: mixtape.collectionSlug, mixtapeSlug: mixtape.slug }
+    }))
   ];
 }
 

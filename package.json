@@ -52,6 +52,7 @@
     "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
+    "smol-toml": "^1.9.0",
     "sucrase": "^3.35.1",
     "three": "^0.180.0",
     "tweakpane": "^4.0.5"

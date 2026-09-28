@@ -1,6 +1,7 @@
 ---
 import type { LerpetteMixtape } from '@lerpit/framework/types';
 import { cardArt } from '../lib/cardArt';
+import { statusTag } from '../lib/control';
 
 interface Props {
   mixtape: LerpetteMixtape;
@@ -10,6 +11,8 @@ const { mixtape } = Astro.props as Props;
 const problemCount = mixtape.problems.length;
 const collection = mixtape.collectionTitle ?? 'Lerpette';
 const chapters = mixtape.steps.length;
+// Only ever set on a local build, where unlisted and draft lerpettes are listed.
+const tag = statusTag(mixtape.status);
 
 /**
  * Generated at build time from the document's own text, so no two lerpettes
@@ -60,11 +63,16 @@ const stamp = mixtape.publishedOn.slice(0, 10).replace(/-/g, '.');
        card so the shelf reads as one print run rather than twenty exports. -->
   <span class="cassette-card__press" aria-hidden="true"></span>
 
-  {problemCount > 0 && (
-    <span
-      class="cassette-card__problems"
-      role="img"
-      aria-label={`${problemCount} authoring ${problemCount === 1 ? 'problem' : 'problems'}`}
-    >!</span>
+  {(tag || problemCount > 0) && (
+    <span class="cassette-card__tags">
+      {tag && <span class="cassette-card__status" data-status={mixtape.status}>{tag}</span>}
+      {problemCount > 0 && (
+        <span
+          class="cassette-card__problems"
+          role="img"
+          aria-label={`${problemCount} authoring ${problemCount === 1 ? 'problem' : 'problems'}`}
+        >!</span>
+      )}
+    </span>
   )}
 </a>

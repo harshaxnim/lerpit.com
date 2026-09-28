@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'vitest';
+import {
+  DRAFT,
+  PUBLISHED,
+  UNLISTED,
+  defaultControl,
+  isLandingCandidate,
+  isListed,
+  isRoutable,
+  parseControl,
+  statusTag
+} from '../control';
+
+describe('parseControl', () => {
+  it('takes every default from an empty file', () => {
+    const { control, problems } = parseControl('');
+    expect(control).toEqual({ status: PUBLISHED });
+    expect(problems).toEqual([]);
+  });
+
+  it('reads a status', () => {
+    expect(parseControl('status = "draft"').control.status).toBe(DRAFT);
+    expect(parseControl('status = "unlisted"').control.status).toBe(UNLISTED);
+  });
+
+  it('ignores comments and blank lines', () => {
+    const { control, problems } = parseControl('# hidden while I finish it\n\nstatus = "draft"\n');
+    expect(control.status).toBe(DRAFT);
+    expect(problems).toEqual([]);
+  });
+
+  it('reports an unknown status and stays published', () => {
+    const { control, problems } = parseControl('status = "hidden"');
+    expect(control.status).toBe(PUBLISHED);
+    expect(problems).toHaveLength(1);
+    expect(problems[0].what).toContain('hidden');
+    expect(problems[0].fix).toContain(UNLISTED);
+  });
+
+  it('reports a status that is not text and stays published', () => {
+    const { control, problems } = parseControl('status = 3');
+    expect(control.status).toBe(PUBLISHED);
+    expect(problems[0].what).toContain('not text');
+  });
+
+  it('reports an unknown control but keeps the ones it knows', () => {
+    const { control, problems } = parseControl('status = "unlisted"\nstatuss = "draft"');
+    expect(control.status).toBe(UNLISTED);
+    expect(problems).toHaveLength(1);
+    expect(problems[0].what).toContain('statuss');
+  });
+
+  it('falls back to every default when the file is not valid TOML', () => {
+    const { control, problems } = parseControl('status = draft');
+    expect(control).toEqual(defaultControl());
+    expect(problems).toHaveLength(1);
+    expect(problems[0].what).toContain('not valid TOML');
+  });
+
+  // Failing open would unpublish a lerpette by accident, which is the one outcome
+  // a broken control file must never produce.
+  it('never hides anything because of a bad file', () => {
+    for (const source of ['status = draft', 'status = "nope"', '[[[', 'status = []']) {
+      expect(parseControl(source).control.status).toBe(PUBLISHED);
+    }
+  });
+});
+
+describe('what each status means', () => {
+  it('routes published and unlisted everywhere, drafts only locally', () => {
+    expect(isRoutable(PUBLISHED, true)).toBe(true);
+    expect(isRoutable(UNLISTED, true)).toBe(true);
+    expect(isRoutable(DRAFT, true)).toBe(false);
+    expect(isRoutable(DRAFT, false)).toBe(true);
+  });
+
+  it('lists only published in production, everything locally', () => {
+    expect(isListed(PUBLISHED, true)).toBe(true);
+    expect(isListed(UNLISTED, true)).toBe(false);
+    expect(isListed(DRAFT, true)).toBe(false);
+    expect(isListed(UNLISTED, false)).toBe(true);
+    expect(isListed(DRAFT, false)).toBe(true);
+  });
+
+  it('lets only published reach the landing page, locally included', () => {
+    expect(isLandingCandidate(PUBLISHED)).toBe(true);
+    expect(isLandingCandidate(UNLISTED)).toBe(false);
+    expect(isLandingCandidate(DRAFT)).toBe(false);
+  });
+
+  it('tags everything except published', () => {
+    expect(statusTag(PUBLISHED)).toBeNull();
+    expect(statusTag(UNLISTED)).toBe('UNLISTED');
+    expect(statusTag(DRAFT)).toBe('DRAFT');
+  });
+});

@@ -22,6 +22,7 @@ import type {
   LerpetteStep
 } from '@lerpit/framework/types';
 import { parseHeading, resolvePanels } from './headingSpec';
+import { defaultControl, isLandingCandidate, isListed, isRoutable, parseControl } from './control';
 
 type MarkdownNode = {
   type: string;
@@ -62,6 +63,16 @@ const RUNTIME_LOADER_DIR = path.join(process.cwd(), 'website/src/lib');
 const ASSET_ROUTE_PREFIX = '/assets/lerpettes';
 // The collection whose newest lerpette is served at '/'.
 const LANDING_COLLECTION_SLUG = 'physics-engine';
+
+/** Optional, one per lerpette folder, beside mixtape.md. See lib/control.ts. */
+const CONTROL_FILE = 'control.toml';
+
+/**
+ * Hiding only happens in a production build. Locally every lerpette is listed and
+ * routed, each card tagged with its status, so an author can see their drafts
+ * without having to remember what they hid.
+ */
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const DOC_BASENAMES = new Set(['collection', 'mixtape']);
 const CODE_EXTENSIONS = new Set(['.js', '.ts', '.jsx', '.tsx', '.mts', '.cts']);
 const DOCUMENT_EXTENSIONS = new Set(['.md', '.mdx']);
@@ -104,8 +115,13 @@ export async function getCollectionBySlug(slug: string): Promise<LerpetteCollect
   return (await getLerpetteLibrary()).collections.find((collection) => collection.slug === slug);
 }
 
+/** Every lerpette that gets a page, including the unlisted ones. For routing. */
+export async function getRoutableMixtapes(): Promise<LerpetteMixtape[]> {
+  return (await getLerpetteLibrary()).routable;
+}
+
 export async function getMixtapeBySlugs(collectionSlug: string, mixtapeSlug: string): Promise<LerpetteMixtape | undefined> {
-  return (await getLerpetteLibrary()).mixtapes.find(
+  return (await getLerpetteLibrary()).routable.find(
     (mixtape) => mixtape.collectionSlug === collectionSlug && mixtape.slug === mixtapeSlug
   );
 }
@@ -208,7 +224,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
       `Create ${LERPETTE_ROOT} with one directory per collection.`
     );
 
-    return { landing: emptyMixtape(problems), collections: [], mixtapes: [], assetEntries: [], problems };
+    return { landing: emptyMixtape(problems), collections: [], mixtapes: [], routable: [], assetEntries: [], problems };
   }
 
   const directories = (await fsp.readdir(LERPETTE_ROOT, { withFileTypes: true }))
@@ -231,20 +247,43 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
     for (const mixtape of collection.mixtapes) mixtape.cardStyle = style;
   }
 
-  const mixtapes = collections
+  const newestFirst = (left: LerpetteMixtape, right: LerpetteMixtape) =>
+    right.publishedOn.localeCompare(left.publishedOn);
+
+  // Routing and listing are separate questions, so they get separate answers.
+  // An unlisted lerpette still gets a page, which is the whole point of it: the
+  // link works for whoever has it, and nothing else points there.
+  const routable = collections
     .flatMap((collection) => collection.mixtapes)
-    .sort((left, right) => right.publishedOn.localeCompare(left.publishedOn));
+    .filter((mixtape) => isRoutable(mixtape.status, IS_PRODUCTION))
+    .sort(newestFirst);
+
+  // Narrowed in place, so every shelf and collection page that reads
+  // collection.mixtapes hides the right things without knowing this exists.
+  for (const collection of collections) {
+    collection.mixtapes = collection.mixtapes.filter(
+      (mixtape) => isRoutable(mixtape.status, IS_PRODUCTION) && isListed(mixtape.status, IS_PRODUCTION)
+    );
+  }
+
+  const mixtapes = collections.flatMap((collection) => collection.mixtapes).sort(newestFirst);
 
   // The landing lesson is served at '/' AND kept in its collection listing (so it
   // still shows up under its own collection). Clone with an overridden href for the
   // homepage; the original keeps its canonical href for the listing and its own route.
+  // Published only, and the same rule locally as in production, so '/' never shows
+  // a draft at home and a different lerpette once deployed. Drafts and unlisted
+  // ones are skipped here even when the local build is listing them everywhere else.
+  const published = routable.filter((mixtape) => isLandingCandidate(mixtape.status)).sort(newestFirst);
   const landingCollection = collections.find((collection) => collection.slug === LANDING_COLLECTION_SLUG);
-  // Collection mixtapes are sorted newest-first, so the newest one is the default.
-  const newest = landingCollection?.mixtapes[0] ?? mixtapes[0];
-  if (!landingCollection || landingCollection.mixtapes.length === 0) {
+  const fromLandingCollection = published.filter(
+    (mixtape) => mixtape.collectionSlug === LANDING_COLLECTION_SLUG
+  );
+  const newest = fromLandingCollection[0] ?? published[0];
+  if (!landingCollection || fromLandingCollection.length === 0) {
     report(
-      `The landing collection has no lerpette, so '/' falls back to the newest one in the library.`,
-      `Add a lerpette under lerpettes/content/${LANDING_COLLECTION_SLUG}/.`,
+      `The landing collection has no published lerpette, so '/' falls back to the newest published one in the library.`,
+      `Add a lerpette under lerpettes/content/${LANDING_COLLECTION_SLUG}/, or set status = "published" in its ${CONTROL_FILE}.`,
       path.join(LERPETTE_ROOT, LANDING_COLLECTION_SLUG)
     );
   }
@@ -254,7 +293,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
     ? { ...newest, href: '/', problems: [...problems, ...newest.problems] }
     : emptyMixtape(problems);
   const assetEntries = await collectAssetEntries(LERPETTE_ROOT);
-  const library = { landing, collections, mixtapes, assetEntries, problems };
+  const library = { landing, collections, mixtapes, routable, assetEntries, problems };
 
   logProblems(library);
 
@@ -330,11 +369,13 @@ async function parseMixtapeDirectory(
   href: string
 ): Promise<LerpetteMixtape> {
   const { problems, report } = createProblemLog(mixtapeDir);
+  const control = await readControl(mixtapeDir, report);
   const shell = {
     slug: path.basename(mixtapeDir),
     href,
     collectionSlug,
     collectionTitle,
+    status: control.status,
     problems
   };
 
@@ -347,6 +388,33 @@ async function parseMixtapeDirectory(
     report(describeError(error), 'This one is a bug, not an authoring mistake.');
     return { ...shell, ...emptyDocument(titleFromSlug(shell.slug)) };
   }
+}
+
+/**
+ * control.toml is optional and stays optional: no file means every default, which
+ * is published and listed. A file that cannot be read is reported and then
+ * ignored, because a knob failing open would silently unpublish a lerpette.
+ */
+async function readControl(mixtapeDir: string, report: Report) {
+  const controlPath = path.join(mixtapeDir, CONTROL_FILE);
+
+  let source: string;
+  try {
+    source = await fsp.readFile(controlPath, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      report(
+        `${CONTROL_FILE} could not be read, so its settings were skipped. ${describeError(error)}`,
+        `Check the file's permissions, or delete it to take the defaults.`,
+        controlPath
+      );
+    }
+    return defaultControl();
+  }
+
+  const { control, problems } = parseControl(source);
+  for (const problem of problems) report(problem.what, problem.fix, controlPath);
+  return control;
 }
 
 async function parseMixtapeDocument(mixtapeDir: string, report: Report) {
@@ -786,6 +854,14 @@ async function walkFiles(dir: string): Promise<string[]> {
 
 function isAssetFile(filePath: string): boolean {
   const basename = path.basename(filePath);
+
+  // Build-time settings, not something to serve. Without this it ships to
+  // /assets/ alongside the images, which publishes the fact that a lerpette is
+  // hidden and roughly where to look for it.
+  if (basename === CONTROL_FILE) {
+    return false;
+  }
+
   const parsed = path.parse(basename);
   if (DOC_BASENAMES.has(parsed.name) && DOCUMENT_EXTENSIONS.has(parsed.ext)) {
     return false;
