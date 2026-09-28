@@ -37,6 +37,8 @@ function lerpitWatcher() {
 
       server.watcher.add([
         path.join(lerpettesDir, '**/*.md'),
+        path.join(lerpettesDir, '**/*.toml'),
+        path.join(lerpettesDir, '**/code/**/js/*.ts'),
         path.join(lerpettesDir, '**/wasm/*.cpp'),
         path.join(lerpettesDir, '**/wasm/*.h'),
         path.join(physicsWasmDir, '*.cpp'),
@@ -69,16 +71,60 @@ function lerpitWatcher() {
         });
       };
 
+      /*
+       * runtimeLoader.ts reaches its step runtimes through one import.meta.glob,
+       * which Vite expands to a fixed map of paths when it transforms the module.
+       * content.ts reads the disk on every dev request, so after a lerpette folder
+       * is renamed it hands out new paths while that map may still hold the old
+       * ones; nothing matches and the panel stays empty. Reloading the page does
+       * not help, since the reload re-requests the same cached module.
+       *
+       * Vite does invalidate the glob on its own for an ordinary rename, so this
+       * is a belt for the cases where it does not: an editor writing through a
+       * temporary file, a move the watcher only sees as a directory event, a
+       * server that has been up across a lot of churn.
+       */
+      const runtimeLoaderPath = path.join(root, 'website/src/lib/runtimeLoader.ts');
+      let invalidateTimer;
+
+      const invalidateRuntimeGlob = () => {
+        clearTimeout(invalidateTimer);
+        invalidateTimer = setTimeout(() => {
+          const modules = server.moduleGraph.getModulesByFile(runtimeLoaderPath);
+          if (!modules?.size) return;
+          for (const mod of modules) {
+            // Importers cached the map too, so they go with it.
+            for (const importer of mod.importers) server.moduleGraph.invalidateModule(importer);
+            server.moduleGraph.invalidateModule(mod);
+          }
+          server.config.logger.info('[lerpit] content tree changed, reloading step runtimes');
+          server.ws.send({ type: 'full-reload' });
+        }, 120);
+      };
+
       const isCpp = (f) => /\.(cpp|h|hpp|cc|cxx)$/.test(f);
       const isMd = (f) => f.endsWith('.md');
+      const isContent = (f) => f.split(path.sep).join('/').includes('/lerpettes/content/');
 
       const handler = (file) => {
         if (isMd(file)) triggerReload();
         else if (isCpp(file)) runWasmBuild();
       };
 
+      // A file appearing or vanishing is the tree changing shape, which is the only
+      // thing that can stale the glob. Editing one cannot, so 'change' is not here.
+      const structureChanged = (file) => {
+        if (isContent(file)) invalidateRuntimeGlob();
+      };
+
       server.watcher.on('change', handler);
-      server.watcher.on('add', handler);
+      server.watcher.on('add', (file) => {
+        handler(file);
+        structureChanged(file);
+      });
+      server.watcher.on('unlink', structureChanged);
+      server.watcher.on('addDir', structureChanged);
+      server.watcher.on('unlinkDir', structureChanged);
     }
   };
 }
