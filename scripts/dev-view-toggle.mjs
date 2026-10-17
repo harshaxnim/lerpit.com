@@ -49,7 +49,7 @@ function toggleMarkup(view) {
     border-radius: 999px;
     background: rgba(253, 251, 244, 0.96);
     box-shadow: 0 6px 20px rgba(32, 49, 63, 0.16);
-    font: 600 0.78rem/1 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 600 0.78rem/1 "Syne", system-ui, -apple-system, "Segoe UI", sans-serif;
     color: #20313f;
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
@@ -86,6 +86,12 @@ function toggleMarkup(view) {
   }
   #lerpit-view-toggle[data-view="public"] button[aria-pressed="true"] {
     background: #d17041;
+  }
+  /* Smaller on a phone, where the full size covers a line of prose. */
+  @media (max-width: 600px) {
+    #lerpit-view-toggle { right: 0.5rem; bottom: 0.5rem; font-size: 0.66rem; padding: 0.15rem; }
+    #lerpit-view-toggle .lvt__label { display: none; }
+    #lerpit-view-toggle button { min-height: 1.5rem; padding: 0 0.55rem; }
   }
   @media print {
     #lerpit-view-toggle { display: none; }

@@ -144,6 +144,8 @@ export default defineConfig({
   publicDir: './website/public',
   base: customDomain ? '/' : process.env.GITHUB_ACTIONS === 'true' ? `/${repo}/` : '/',
   integrations: [mdx()],
+  // Dev server only: lets a localtunnel (`lt --port 4321`) reach it from another device.
+  server: { allowedHosts: ['.loca.lt'] },
   vite: {
     resolve: {
       alias: {

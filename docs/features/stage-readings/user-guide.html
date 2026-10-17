@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Readings and controls · Lerpit</title>
+<style>
+  :root { color-scheme: light; --paper: #fdfbf4; --ink: #20313f; --muted: #506270; --line: rgba(81, 131, 173, 0.42); --accent: #2e6da4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 1.05rem/1.65 "Iowan Old Style", Georgia, serif; }
+  main { max-width: 44rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  h1 { font-weight: 500; font-size: 2rem; margin: 0 0 0.3rem; }
+  h2 { font-weight: 500; font-size: 1.35rem; margin: 2rem 0 0.3rem; }
+  p, li { color: var(--muted); }
+  b { color: var(--ink); font-weight: 600; }
+  .card { display: inline-block; padding: 0.15rem 0.5rem; border: 1px solid var(--line); font: 0.8rem system-ui, sans-serif; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Readings and controls</h1>
+  <p>Beside every lesson is the stage, where the step you are reading runs. Two small cards sit in its top corners.</p>
+
+  <h2>Controls, top right</h2>
+  <p>The <span class="card">↺</span> button restarts the simulation from the beginning. Any sliders you moved keep their values.</p>
+  <p>When a step has something you can change, the card is titled <span class="card">Controls</span>. It starts folded, so the drawing has the room. Click the word to show the sliders, and again to fold them away.</p>
+
+  <h2>Readings, top left</h2>
+  <p>Some steps report live values while they run: total energy, a count, a velocity, the frame rate. A step starts with just its first reading showing, as a small value with no label. Click it to see them all, listed under <span class="card">Readings</span>. Click that word to fold the card away.</p>
+  <p><b>Keep just one.</b> Click any reading in the full card and the card shrinks to that one value. A graph stays a small graph and a bar stays a small bar. Click the value to bring the full card back.</p>
+
+  <h2>It remembers, for one chapter</h2>
+  <p>What you open, fold or keep lasts through a restart. Each new chapter starts the way it was written to.</p>
+
+  <h2>Tabs</h2>
+  <p>When a step has more than one view, such as the drawing and a table of numbers, they are tabs at the top right of the stage, on the same line as the lesson's title trail.</p>
+
+  <h2>On a phone</h2>
+  <p>The stage opens as a drawer from the right edge. The two cards share the top of it, so neither covers the other. Fold one if you want more room for the drawing.</p>
+</main>
+</body>
+</html>

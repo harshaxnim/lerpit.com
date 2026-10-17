@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Pane } from 'tweakpane';
-import { create3DRuntime } from '@lerpit/framework/runtimes/create3DRuntime';
+import type { Readings } from '@lerpit/framework/monitors/readings';
+import { create3DRuntime, type ControlsOptions } from '@lerpit/framework/runtimes/create3DRuntime';
 import type { LerpetteStepRuntime } from '@lerpit/framework/types';
 import { syncMeshes } from './renderer';
 import { World } from './world';
@@ -11,7 +12,8 @@ export type Setup3DPhysicsContext = {
   module: PhysicsModule;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
-  controls: () => Pane;
+  controls: (options?: ControlsOptions) => Pane;
+  monitors: () => Readings;
   onFrame: (cb: (nowMs: number) => void) => void;
   onTeardown: (cb: () => void) => void;
 };

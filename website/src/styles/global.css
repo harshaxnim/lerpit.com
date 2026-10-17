@@ -2,7 +2,7 @@
   color-scheme: light;
   --font-serif: "Cardo", "Iowan Old Style", "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-sans: "Syne", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --paper: #fdfbf4;
   --paper-deep: #f7f3e7;
   --panel: rgba(253, 251, 244, 0.95);
@@ -18,11 +18,29 @@
   --warn-line: #c08a2a;
   --warn-soft: rgba(255, 200, 80, 0.18);
 
-  /* The face of a chapter box, and the same face with the accent worked into it
-     for the chapter the reader is in. Derived rather than picked, so the two can
-     never drift apart. */
+  /* The face of a chapter box, the same for the chapter the reader is in: any change
+     of face there, a tint or a lighter paper, was read as the wrong emphasis. What
+     marks it is a 2px accent rule down the left edge of its header (see
+     .lerpette-step.is-active). */
   --step-face: rgba(253, 251, 244, 0.9);
-  --step-face-active: color-mix(in srgb, var(--accent) 3%, var(--step-face));
+  /* The stage's face: mostly paper, with no texture of its own. The page's graph paper
+     shows through it at the strength this alpha leaves (see .lerpette-stage__panel). */
+  --stage-face-alpha: 0.75;
+  --stage-face: rgb(253 251 244 / var(--stage-face-alpha));
+  /* What floats over a drawing: the controls and readings cards, the caption. */
+  --chrome-face: rgba(255, 253, 246, 0.92);
+  /* The page's graph paper, as layers. Anything that covers the page edge to edge and
+     must still look like the same sheet (the stage drawer on a phone) draws these. */
+  --graph-paper:
+    radial-gradient(circle at 22% 18%, rgba(168, 142, 82, 0.035) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 76% 64%, rgba(168, 142, 82, 0.028) 0 1px, transparent 1px 100%),
+    linear-gradient(180deg, rgba(232, 206, 142, 0.035), rgba(232, 206, 142, 0.02)),
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px),
+    linear-gradient(var(--line-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-strong) 1px, transparent 1px);
+  --graph-paper-size: 180px 180px, 220px 220px, auto, 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  --graph-paper-position: 0 0, 80px 40px, 0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px;
 }
 
 * {
@@ -45,17 +63,21 @@ body {
   color: var(--ink);
   font-size: 1.1rem;
   font-family: var(--font-serif);
-  background-color: var(--paper);
-  background-image:
-    radial-gradient(circle at 22% 18%, rgba(168, 142, 82, 0.035) 0 1px, transparent 1px 100%),
-    radial-gradient(circle at 76% 64%, rgba(168, 142, 82, 0.028) 0 1px, transparent 1px 100%),
-    linear-gradient(180deg, rgba(232, 206, 142, 0.035), rgba(232, 206, 142, 0.02)),
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px),
-    linear-gradient(var(--line-strong) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line-strong) 1px, transparent 1px);
-  background-size: 180px 180px, 220px 220px, auto, 24px 24px, 24px 24px, 120px 120px, 120px 120px;
-  background-position: 0 0, 80px 40px, 0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+}
+
+/* The graph paper is fixed to the window, not the document, so it stays put as the
+   page scrolls and the stage, which has no texture of its own, shows the same sheet.
+   A fixed layer rather than background-attachment: fixed, which iOS Safari ignores.
+   body carries no paper colour so this can sit between it and html, which does. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--graph-paper);
+  background-size: var(--graph-paper-size);
+  background-position: var(--graph-paper-position);
 }
 
 a {
@@ -403,13 +425,16 @@ nav {
 .lerpette-player {
   /* The brow line: one text row, padded when it has to pin itself. --byline-h is
      what that adds up to, and everything pinning below the brow keys off it. */
-  --brow-pad: 1rem;
+  --brow-pad: 0.75rem;
   --brow-line: 1rem;
   --byline-h: calc(var(--brow-line) + var(--brow-pad) * 2);
   /* How tall the panel stands, and so how tall anything meant to match it stands. */
   --stage-h: calc(100dvh - var(--byline-h) - var(--brow-pad));
   /* Roughly what a frozen chapter header covers: 1rem + title + 0.75rem. */
   --step-head-h: 3.6rem;
+  /* Lesson and stage. The pinned byline uses the same tracks, so its crumbs end where
+     the lesson does and the stage's tabs can stand beside them. */
+  --player-columns: minmax(0, 1.1fr) minmax(360px, 0.92fr);
   /* The drawer toggle's width below 1180px, and so how much room anything
      interactive has to leave clear of it. */
   padding: 1.1rem;
@@ -594,7 +619,7 @@ nav {
 
 .lerpette-player__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.92fr);
+  grid-template-columns: var(--player-columns);
   gap: 1rem;
 }
 
@@ -618,9 +643,26 @@ nav {
   z-index: 3;
   padding: var(--brow-pad) 0;
   background: var(--paper);
+}
+
+.lerpette-brow__crumbs {
+  display: block;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Beside a stage on a wide screen the byline takes the player's two tracks: crumbs in
+   the lesson's, and the stage's tabs, which belong to the stage and are only lifted up
+   into this row, in the other. The crumbs stay centred in the row; the tab labels are
+   raised to meet them (see .lerpette-stage__tab). */
+@media (min-width: 1181px) {
+  .lerpette-player:has(.lerpette-stage) .lerpette-brow--pinned {
+    display: grid;
+    grid-template-columns: var(--player-columns);
+    column-gap: 1rem;
+  }
 }
 
 /* iOS 26 Safari draws the page behind the status bar, above the top of the viewport,
@@ -653,15 +695,52 @@ nav {
   }
 }
 
-/* Runtime chrome lives in the panel's top-right corner. */
-.lerpette-panel__tray {
+/* Runtime chrome, in the panel's top corners on the site's 1rem rhythm: what the
+   reader sets on the right (controls, restart), what the step reports on the left
+   (readings). The right one is on top, should they ever meet. */
+.lerpette-panel__tray,
+.lerpette-panel__monitors {
   position: absolute;
-  top: 0.6rem;
-  right: 0.7rem;
+  top: 1rem;
+  max-width: calc(100% - 2rem);
+}
+
+.lerpette-panel__tray {
+  right: 1rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.lerpette-panel__monitors {
+  left: 1rem;
   z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+}
+
+/* A narrow stage, the drawer on a phone most of all, splits its top edge between the
+   two cards rather than letting one cover the other. Half a card is too narrow for a
+   tweakpane row, so each control's label goes above its slider. */
+@container (width < 34rem) {
+  .lerpette-panel__tray,
+  .lerpette-panel__monitors {
+    max-width: calc(50% - 1.5rem);
+  }
+
+  /* Scoped under the tray to outrank the tweakpane theme further down the file. */
+  .lerpette-panel__tray .lerpette-stage__controls {
+    --tp-blade-value-width: 100%;
+  }
+
+  .lerpette-panel__tray .lerpette-stage__controls .tp-lblv {
+    flex-wrap: wrap;
+  }
+
+  .lerpette-panel__tray .lerpette-stage__controls .tp-lblv_l {
+    width: 100%;
+    padding-bottom: 0.2rem;
+    text-align: left;
+  }
 }
 
 /* ...and the panel names itself from the opposite corner. */
@@ -732,7 +811,17 @@ nav {
    every chapter appeared to fade as the reader scrolled past. */
 .lerpette-step.is-active {
   border-color: var(--line-strong);
-  background-color: var(--step-face-active);
+}
+
+/* The accent rule runs down the header's left edge only, beside the title, not the
+   whole chapter. It is drawn on the header, which is pinned, so it stays in view while
+   the chapter scrolls under it. The second shadow is the header's own paper fringe,
+   restated because box-shadow does not add up across rules. */
+.lerpette-step.is-active .lerpette-head {
+  /* The header's top border stands in for the box's once it is pinned, so it takes
+     the active box's stronger line, and meets the stage's top edge in the same one. */
+  border-top-color: var(--line-strong);
+  box-shadow: inset 2px 0 0 var(--accent), 0 6px 0 var(--paper);
 }
 
 /* The frozen header, shared by the intro box and every chapter box. */
@@ -980,6 +1069,8 @@ nav {
 
 .live-code__mode {
   position: relative;
+  /* 24px, the smallest a finger can hit reliably; the type alone made it 22. */
+  min-height: 1.5rem;
   padding: 0.22rem 0.5rem;
   border: 1px solid var(--line);
   background: transparent;
@@ -1518,9 +1609,8 @@ nav {
 
 .lerpette-stage__status {
   position: absolute;
-  /* The strip's height plus the site's 1rem rhythm, rather than a number measured
-     against whatever happened to be at the top of the column that week. */
-  top: calc(var(--stage-tab-h, 1.95rem) + 1rem);
+  /* At the foot of the stage; the top belongs to the controls and the restart button. */
+  bottom: 1rem;
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -1609,29 +1699,52 @@ nav {
   display: flex;
   flex-direction: column;
   min-height: 520px;
-  border: 1px solid var(--line);
-  /* Fainter grain than the page and much fainter rules: the stage sits behind a
-     drawing, so its texture has to read as paper and never as content. */
-  background:
-    radial-gradient(circle at 22% 18%, rgba(168, 142, 82, 0.016) 0 1px, transparent 1px 100%),
-    radial-gradient(circle at 76% 64%, rgba(168, 142, 82, 0.012) 0 1px, transparent 1px 100%),
-    linear-gradient(180deg, rgba(232, 206, 142, 0.018), rgba(232, 206, 142, 0.009)),
-    linear-gradient(rgba(81, 131, 173, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(81, 131, 173, 0.12) 1px, transparent 1px),
-    linear-gradient(rgba(81, 131, 173, 0.24) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(81, 131, 173, 0.24) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 253, 246, 0.78), rgba(243, 238, 224, 0.9));
-  background-size: 180px 180px, 220px 220px, auto, 24px 24px, 24px 24px, 120px 120px, 120px 120px, auto;
-  background-position: 0 0, 80px 40px, 0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px, 0 0;
-  overflow: hidden;
+  /* No frame and no texture here: the tab row draws the top edge and the panel the
+     other three. */
+  /* The corner cards split the top edge when the stage is narrow. */
+  container-type: inline-size;
 }
 
 /* A flex item under the strip, not laid over the surface: absolutely positioned it
    filled the tab strip too and, coming later in the markup, took every tap meant for
    the tabs. */
 .lerpette-stage__panel {
+  position: relative;
+  isolation: isolate;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-top: 0;
+  background: var(--stage-face);
+}
+
+/* A window in the sheet. The player is a sheet of paper laid on the graph-paper page,
+   so there is no grid behind the stage to see through its face. This draws the page's
+   own grid, pinned to the window as the page's is so the two line up, at the strength
+   a face of this alpha would let through. Under everything the panel holds, and in the
+   open tab too, which is the same window. */
+.lerpette-stage__panel::before,
+.lerpette-stage__tab[aria-selected='true']::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--graph-paper);
+  background-size: var(--graph-paper-size);
+  background-position: var(--graph-paper-position);
+  background-attachment: fixed;
+  opacity: calc(1 - var(--stage-face-alpha));
+}
+
+/* The phone drawer brings its own sheet of graph paper (see .lerpette-stage below), so
+   there the face really is see-through and this would draw the grid twice. */
+@media (max-width: 1180px) {
+  .lerpette-stage__panel::before,
+  .lerpette-stage__tab[aria-selected='true']::before {
+    display: none;
+  }
 }
 
 .lerpette-stage__surface canvas {
@@ -1640,12 +1753,71 @@ nav {
   height: 100%;
 }
 
-.lerpette-stage__reset {
+/* The two corner cards share one shell, so a reader who learns one knows both.
+   Each has a head whose title is the fold toggle: it reads as a label, and the hover
+   and pointer are the hint that it opens and closes what it names. */
+.lerpette-stage__card {
+  background: var(--chrome-face);
+  border: 1px solid var(--line-strong);
+  backdrop-filter: blur(3px);
+}
+
+/* A fixed width capped by the corner, not a percentage: the corner shrinks to fit its
+   card, so a percentage here would have nothing to resolve against. */
+.lerpette-stage__card:has(.lerpette-stage__card-body):not(.is-collapsed, .is-mini) {
+  width: 15rem;
+  max-width: 100%;
+}
+
+.lerpette-stage__card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.15rem;
+}
+
+.lerpette-stage__card-title {
+  flex: 1;
+  min-width: 0;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* Each title sits against its own card's outer edge: the right card reads from the
+   corner in, beside the restart button. */
+.lerpette-panel__tray .lerpette-stage__card-title {
+  text-align: right;
+}
+
+.lerpette-stage__card-title:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.lerpette-stage__card-title:focus-visible,
+.lerpette-stage__icon:focus-visible,
+.lerpette-reading:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.lerpette-stage__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
   padding: 0;
   color: var(--muted);
   background: transparent;
@@ -1654,18 +1826,189 @@ nav {
   line-height: 0;
 }
 
-.lerpette-stage__reset:hover {
-  color: var(--accent);
+.lerpette-stage__icon svg {
+  width: 14px;
+  height: 14px;
 }
 
-.lerpette-stage__controls {
+.lerpette-stage__icon:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.lerpette-stage__card-body {
+  border-top: 1px solid var(--line);
+}
+
+.lerpette-stage__card.is-collapsed .lerpette-stage__card-body {
+  display: none;
+}
+
+/* ---- Readings: one row per reading, label left, value right in tabular figures
+   with a fixed number of digits, so a changing number never jitters sideways. */
+.lerpette-reading {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.35rem 0.6rem 0.45rem;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.lerpette-reading + .lerpette-reading {
+  border-top: 1px dashed rgba(81, 131, 173, 0.25);
+}
+
+.lerpette-stage__card:not(.is-mini) .lerpette-reading:hover {
+  background: var(--accent-soft);
+}
+
+.lerpette-reading__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lerpette-reading__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lerpette-reading__value {
+  flex: none;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.lerpette-reading__value.is-bad {
+  color: var(--warn);
+}
+
+.lerpette-reading__unit {
+  margin-left: 0.2em;
+  color: var(--muted);
+}
+
+.lerpette-reading__vector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lerpette-reading__vector span {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lerpette-reading__axis {
+  margin-right: 0.25em;
+  color: var(--muted);
+}
+
+.lerpette-reading__graph {
+  display: block;
+  width: 100%;
+  height: 28px;
+}
+
+.lerpette-reading__meter {
+  position: relative;
+  height: 6px;
+  margin-top: 0.15rem;
+  background: rgba(81, 131, 173, 0.16);
+}
+
+.lerpette-reading__fill {
   position: absolute;
-  bottom: 0.6rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(80%, 22rem);
-  z-index: 2;
-  --tp-base-background-color: rgba(255, 253, 246, 0.92);
+  inset: 0 auto 0 0;
+  background: var(--accent);
+}
+
+.lerpette-reading__mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--ink);
+}
+
+.lerpette-reading__dot {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.35em;
+  border-radius: 50%;
+  background: var(--muted);
+  vertical-align: 0.05em;
+}
+
+.lerpette-reading__dot[data-tone='ok'] { background: #2f6b46; }
+.lerpette-reading__dot[data-tone='info'] { background: var(--accent); }
+.lerpette-reading__dot[data-tone='warn'] { background: var(--accent-warm); }
+
+/* A mini card: shrunk to one reading, no head and no label. A graph
+   stays a small graph and a meter a small bar, each with its number after it.
+   Clicking it brings the whole card back. */
+.lerpette-stage__card.is-mini .lerpette-stage__card-head,
+.lerpette-stage__card.is-mini .lerpette-reading:not(.is-mini) {
+  display: none;
+}
+
+.lerpette-stage__card.is-mini .lerpette-stage__card-body {
+  border-top: 0;
+}
+
+.lerpette-reading.is-mini {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.lerpette-reading.is-mini:hover {
+  background: var(--accent-soft);
+}
+
+.lerpette-reading.is-mini .lerpette-reading__label {
+  display: none;
+}
+
+.lerpette-reading.is-mini .lerpette-reading__graph {
+  order: -1;
+  flex: none;
+  align-self: center;
+  width: 5.5rem;
+  height: 18px;
+}
+
+.lerpette-reading.is-mini .lerpette-reading__meter {
+  order: -1;
+  flex: none;
+  align-self: center;
+  width: 4.5rem;
+  margin-top: 0;
+}
+
+.lerpette-reading.is-mini .lerpette-reading__vector {
+  order: -1;
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* Tweakpane's theme. The card draws the frame and the paper, so the pane's own
+   background is clear. */
+.lerpette-stage__controls {
+  --tp-base-background-color: transparent;
   --tp-base-border-radius: 0px;
   --tp-base-font-family: var(--font-sans);
   --tp-base-shadow-color: rgba(32, 49, 63, 0.08);
@@ -1689,8 +2032,6 @@ nav {
   --tp-label-foreground-color: var(--muted);
   --tp-monitor-background-color: rgba(255, 253, 246, 0.95);
   --tp-monitor-foreground-color: var(--ink);
-  border: 1px solid var(--line-strong);
-  backdrop-filter: blur(3px);
 }
 
 .lerpette-stage__controls .tp-lblv_l,
@@ -1703,6 +2044,14 @@ nav {
 
 .lerpette-stage__controls .tp-lblv_l {
   text-align: right;
+  /* The card is narrow, so a long label wraps; it should break between words. */
+  hyphens: manual;
+}
+
+.lerpette-stage__controls {
+  /* Tweakpane gives the value a fixed 160px by default, which leaves a 15rem card's
+     labels about five letters a line. */
+  --tp-blade-value-width: 52%;
 }
 
 /* ------------------------------------------------------------------ cards
@@ -1962,7 +2311,12 @@ nav {
     z-index: 40;
     padding: 1rem;
     border: 0;
-    background: var(--panel);
+    /* The drawer covers the prose, so it brings its own sheet: paper and the same
+       grid, which lines up with the page's because both start at the window's corner. */
+    background-color: var(--paper);
+    background-image: var(--graph-paper);
+    background-size: var(--graph-paper-size);
+    background-position: var(--graph-paper-position);
     transform: translateX(100%);
     transition: transform 180ms ease;
     grid-template-rows: minmax(0, 1fr);
@@ -2080,38 +2434,80 @@ nav {
 /* ----------------------------------------------------------------------------
    Panels: the column a chapter's headings asked for.
 
-   One strip across the top of the column, whatever is under it. A chapter with a
-   single panel gets one tab reading its name, which is what the corner label used
-   to be; a chapter with several gets one each. Same element, same height, so the
-   panel underneath never shifts as the reader moves between chapters.
+   One row of tabs across the top of the column, whatever is under it. A chapter
+   with a single panel gets one tab reading its name, which is what the corner label
+   used to be; a chapter with several gets one each. Same element, same height, so
+   the panel underneath never shifts as the reader moves between chapters.
 
-   It is deliberately the same strip as the editor's in the prose: a reader meets
-   this pattern twice on a page and should only have to learn it once.
+   The editor's strip in the prose is a band inside its own box; these are folder
+   tabs on the stage's edge, because the stage has no box of its own to sit in.
    ---------------------------------------------------------------------------- */
 
 .lerpette-stage__tabs {
-  /* Height comes from the surface, which is also where the caption reads it. */
-  min-height: var(--stage-tab-h);
+  /* Tabs stand on the stage's top edge, like a folder's. There is no strip: the row
+     itself draws that edge, under every closed tab and along the rest of the width,
+     so the open tab can leave a gap in it and join the panel, even though the panel's
+     face is translucent and could not paint over a line. */
+  height: var(--stage-tab-h);
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  padding: 0 0.5rem;
-  border-bottom: 1px solid var(--line);
-  align-items: center;
+  align-items: flex-end;
   flex: none;
+}
+
+/* The rest of the top edge, to the left: the tabs are right-aligned, against the
+   corner where the controls are. */
+.lerpette-stage__tabs::before {
+  content: "";
+  flex: 1;
+  align-self: stretch;
+  margin-right: -1px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+/* On a wide screen the tabs stand in the byline's row, above the stage rather than
+   inside it, so the panel gets the full height of the column. They still stand on its
+   top edge, so the open one still joins it. Above the byline, which is pinned too. */
+@media (min-width: 1181px) {
+  .lerpette-stage__tabs {
+    position: absolute;
+    left: 0;
+    right: 0;
+    /* 1px into the panel, so the edge the row draws lands on the panel's first pixel
+       row, level with the top border of the lesson's pinned chapter header beside it
+       rather than a pixel above. */
+    bottom: calc(100% - 1px);
+    /* Over the panel, which would otherwise paint its face across that shared row. */
+    z-index: 1;
+  }
+
+  /* A tab stands on the panel's edge, so its label is centred lower than the crumbs,
+     which are centred in the whole row. Standing the tabs nearly the row's full height
+     brings the two within a couple of pixels while each label stays centred in its tab. */
+  .lerpette-stage__surface {
+    --stage-tab-h: calc(var(--byline-h) - 0.25rem);
+  }
+
+  /* The stage is sticky, which makes it a stacking context of its own, so the tabs can
+     only rise above the byline (z-index 3) if the whole stage does. Nothing else of it
+     reaches into the byline's row. */
+  .lerpette-stage {
+    z-index: 4;
+  }
 }
 
 .lerpette-stage__tab {
   flex: none;
-  padding: 0.45rem 0.7rem;
-  border: 0;
-  background: transparent;
+  /* Closed tabs sit a little lower, in darker paper, behind the open one. */
+  height: calc(var(--stage-tab-h) - 0.3rem);
+  margin-left: -1px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--line);
+  border-bottom-color: var(--line-strong);
+  background: var(--paper-deep);
   color: var(--muted);
   font-family: var(--font-sans);
   font-size: 0.74rem;
   cursor: pointer;
-  /* The open tab is marked inside its own box, so the strip never changes height. */
-  box-shadow: inset 0 -2px 0 transparent;
 }
 
 .lerpette-stage__tab:hover:not(:disabled) {
@@ -2124,8 +2520,13 @@ nav {
 }
 
 .lerpette-stage__tab[aria-selected='true'] {
-  color: var(--accent);
-  box-shadow: inset 0 -2px 0 var(--accent);
+  position: relative;
+  z-index: 1;
+  height: var(--stage-tab-h);
+  color: var(--ink);
+  background: var(--stage-face);
+  border-color: var(--line-strong);
+  border-bottom-color: transparent;
 }
 
 /* A lone tab is the panel's name, not a choice. It still looks like the selected
