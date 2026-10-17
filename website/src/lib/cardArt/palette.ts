@@ -183,13 +183,28 @@ export const NEUTRAL_LIGHT = 50;
  * on the panel's mean still leaves members at a hundred, and it is those that
  * read as neon however good the average looks. So the set is compressed towards
  * the target rather than scaled to it, and nothing is let past a ceiling. The
- * extra trim is honest too: the swatches came off a JPEG of a printed thing, and
+ * trim is honest too: the swatches came off a JPEG of a printed thing, and
  * compression pushes chroma up, so a set picked that way is hotter than the ink
- * ever was.
+ * ever was. It is a light trim, though. The cards sit beside the site's cassette
+ * spine, which prints the 90min swatches as they are, and at 0.88 with a harder
+ * squeeze every card read a step duller than the spine; at the full swatch they
+ * read louder than it.
  */
-const SAT_CEIL = 84;
-const SAT_TRIM = 0.88;
-const SAT_SQUEEZE = 0.55;
+const SAT_CEIL = 88;
+const SAT_TRIM = 0.94;
+const SAT_SQUEEZE = 0.65;
+
+/**
+ * How much of a downward swing a sampled palette takes. The document's hash swings
+ * each card's saturation and lightness either way, but a palette that is already
+ * at its poster's value has little room to go down before it reads as dirty. So
+ * the downward half is held back: most of it for lightness, where a darker card
+ * was what made the shelf look dim, and less for saturation, so that cards still
+ * differ in how loud they are.
+ */
+const LIGHT_DOWN = 0.4;
+const SAT_DOWN = 0.7;
+const swingDown = (d: number, keep: number): number => (d < 0 ? d * keep : d);
 
 /**
  * Real ink does not hold one saturation and one lightness the whole way round
@@ -233,9 +248,9 @@ export function buildRamp(o: RampOptions): Ramp {
   }
 
   const alt = (o.alternate / 100) * (generated ? 1 : 0.4);
-  // a sampled palette already sits where its poster sits, so the knob can knock
-  // it a long way back and barely push it up
-  const offset = generated ? 0 : clamp(o.sat - NEUTRAL_SAT, -26, 4);
+  // a sampled palette already sits where its poster sits, so the knob can barely
+  // push it up, and knocks it back only part of the way (SAT_DOWN)
+  const offset = generated ? 0 : swingDown(clamp(o.sat - NEUTRAL_SAT, -26, 4), SAT_DOWN);
 
   return (i, n) => {
     let h: number;
@@ -249,7 +264,7 @@ export function buildRamp(o: RampOptions): Ramp {
       const p = members[((i % members.length) + members.length) % members.length]!;
       h = p[0];
       s = p[1] + (p[1] > 18 ? offset : 0);
-      l = p[2] + (o.light - NEUTRAL_LIGHT);
+      l = p[2] + swingDown(o.light - NEUTRAL_LIGHT, LIGHT_DOWN);
     }
     return css([h, clamp(s, 0, SAT_CEIL), l * (i % 2 ? 1 - alt * 0.42 : 1 + alt * 0.14)]);
   };

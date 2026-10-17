@@ -1,7 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Lerpit Favicon</title>
-  <line x1="14" y1="46" x2="50" y2="18" stroke="#2E6DA4" stroke-width="3" stroke-linecap="round" />
-  <circle cx="14" cy="46" r="7" fill="#20313F" />
-  <circle cx="50" cy="18" r="7" fill="#20313F" />
-  <circle cx="28" cy="35" r="8" fill="#D17041" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 78.13 64">
+  <title>Lerpit</title>
+  <!-- The cassette spine, the site's mark (docs/brand/identity.md): the 90min label's five
+       bands, widest outside, leaning at the italic It's 14 degrees. A square-ish 136:140
+       crop of it, since an icon has no panel to take its width from. -->
+  <polygon fill="#f2b021" points="15.96,0 36.1,0 20.14,64 0,64" />
+  <polygon fill="#e7752c" points="36.1,0 51.64,0 35.69,64 20.14,64" />
+  <polygon fill="#e7212c" points="51.64,0 63.52,0 47.56,64 35.69,64" />
+  <polygon fill="#a51e4d" points="63.52,0 72.22,0 56.27,64 47.56,64" />
+  <polygon fill="#63164d" points="72.22,0 78.13,0 62.17,64 56.27,64" />
 </svg>

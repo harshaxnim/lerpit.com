@@ -1,0 +1,18 @@
+---
+/**
+ * The cassette spine: the site's mark, after the lerpette cards. Five bands of the
+ * 90min videocassette label, widest outside, leaning at the italic It's 14 degrees.
+ * See docs/brand/identity.md.
+ *
+ * It places itself, absolutely, in the nearest positioned ancestor: at --spine-at of a
+ * reference box's width, --spine-share of that width wide, from --spine-top to
+ * --spine-bottom. The reference box is the bordered panel the spine belongs to, so the
+ * header's and the footer's line up, and both keep their proportions on any screen.
+ * A host whose own box is not that panel says how much wider the panel is, with
+ * --spine-box and --spine-inset (see .lerpette-player__bar).
+ *
+ * Decoration only, so it is hidden from assistive technology.
+ */
+---
+
+<span class="brand-spine" aria-hidden="true"></span>

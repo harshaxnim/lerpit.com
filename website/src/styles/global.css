@@ -27,6 +27,20 @@
      shows through it at the strength this alpha leaves (see .lerpette-stage__panel). */
   --stage-face-alpha: 0.75;
   --stage-face: rgb(253 251 244 / var(--stage-face-alpha));
+  /* The cassette spine, the site's mark (docs/brand/identity.md, BrandSpine.astro):
+     five bands of the 90min videocassette label (website/src/lib/cardArt/palette.ts),
+     narrowest first; the lean mirrors them so the widest is outside, and slants them at
+     the italic It's 14 degrees. It stands at --spine-at of its panel's width and is
+     --spine-share of it wide, in the header and the footer alike, so the two line up
+     and it keeps its proportions on every screen. website/public/favicon.svg draws it. */
+  --spine-bands: linear-gradient(90deg,
+    #63164d 0 9.5%, #a51e4d 9.5% 23.5%, #e7212c 23.5% 42.6%, #e7752c 42.6% 67.6%, #f2b021 67.6% 100%);
+  --spine-lean: scaleX(-1) skewX(14deg);
+  --spine-at: 0.66;
+  --spine-share: 0.14;
+  /* The tooth of the stock: greyscale fractal noise, tiled. The cards and the spine lay
+     it over their colour in overlay, so both are printed on the same paper. */
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   /* What floats over a drawing: the controls and readings cards, the caption. */
   --chrome-face: rgba(255, 253, 246, 0.92);
   /* The page's graph paper, as layers. Anything that covers the page edge to edge and
@@ -164,12 +178,66 @@ nav {
 }
 
 .site-footer__card {
+  /* The card is the spine's panel, so it stands where the header's does and is cut
+     level by the card's own top and bottom (see .brand-spine). */
+  position: relative;
+  overflow: hidden;
   margin: 0;
   padding: 1.1rem;
   border: 1px solid var(--line-strong);
   background: var(--panel);
   text-align: center;
   color: var(--muted);
+}
+
+/* On a phone the centred line would run into the spine, which stands at the same
+   place in the card at every width; here the line sits left and stops short of it. */
+@media (max-width: 640px) {
+  .site-footer__card {
+    padding-right: calc((1 - var(--spine-at)) * 100% + 1.1rem);
+    text-align: left;
+  }
+}
+
+/* The site's mark (BrandSpine.astro). Absolutely placed in its host by tokens, so any
+   panel can carry it: --spine-at and --spine-share are fractions of the panel's width,
+   --spine-top and --spine-bottom where it is cut. --spine-box is that width as the host
+   sees it, and --spine-inset how far the host sits inside the panel; a host that is
+   the panel leaves both alone. The lean pivots on the centre, so it is the left edge
+   halfway up that stands at --spine-at. */
+.brand-spine {
+  position: absolute;
+  top: var(--spine-top, 0);
+  bottom: var(--spine-bottom, 0);
+  left: calc(var(--spine-at) * var(--spine-box, 100%) - var(--spine-inset, 0px));
+  width: calc(var(--spine-share) * var(--spine-box, 100%));
+  transform: var(--spine-lean);
+  /* Cut level at the top and bottom, however the bands below are softened; the sides
+     are free to spread. */
+  clip-path: inset(0 -2px);
+  pointer-events: none;
+}
+
+/* Pressed like the cards: the bands take the same half-pixel ink spread as the card art,
+   and the grain sits on top, unblurred, as the cards' does. The bands run a pixel past
+   the cut, so the blur feathers only the slanted sides. */
+.brand-spine::before,
+.brand-spine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.brand-spine::before {
+  inset: -1px 0;
+  background: var(--spine-bands);
+  filter: blur(0.5px);
+}
+
+.brand-spine::after {
+  opacity: 0.19;
+  mix-blend-mode: overlay;
+  background-image: var(--paper-grain);
 }
 
 .site-footer__card em {
@@ -548,6 +616,12 @@ nav {
 }
 
 .lerpette-player__bar {
+  /* The spine's host. Its panel is the sheet around the bar, whose padding is 1.1rem on
+     each side: the spine runs from the sheet's top edge down to the rule. */
+  --spine-box: (100% + 2.2rem);
+  --spine-inset: 1.1rem;
+  --spine-top: -1.1rem;
+  position: relative;
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -575,16 +649,33 @@ nav {
 .lerpette-player__heading {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  flex-wrap: wrap;
+  /* One row at every width: wrapped, the links fell under the wordmark. */
+  flex-wrap: nowrap;
   gap: 1rem;
 }
 
+.lerpette-player__heading > h1 {
+  flex: none;
+  align-self: center;
+}
+
 .lerpette-player__meta {
+  /* Takes the row's spare width and sits the links at the right of it. */
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 0.8rem;
+}
+
+/* Above the spine wherever the two meet: on a phone the links stand over it. */
+.lerpette-player__heading > h1,
+.lerpette-player__actions {
+  position: relative;
+  z-index: 1;
 }
 
 .lerpette-player__actions {
@@ -604,7 +695,12 @@ nav {
   border: 1px solid var(--line-strong);
   background: rgba(255, 255, 255, 0.56);
   color: var(--ink);
-  font-size: 1.1rem;
+  /* The sans the site's other small labels use, at every size; the phone block only
+     makes it smaller. */
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
@@ -2192,7 +2288,9 @@ nav {
    is a cast on pale cards only: a warm multiplied into a black ground is still
    black. Age moves both ends, so the multiply pulls the blue out of the lights
    and the midtones and a screen with a dark warm lifts the blacks off neutral
-   the way a print left in a window does. */
+   the way a print left in a window does. Both are kept light, so a card holds the
+   tone of the cassette spine in the header: at 0.19 and 0.15 every card read a
+   step darker and duller than the spine beside it. */
 .cassette-card__press {
   position: absolute;
   inset: 0;
@@ -2209,13 +2307,13 @@ nav {
 
 .cassette-card__press::before {
   background: #f3d89b;
-  opacity: 0.19;
+  opacity: 0.12;
   mix-blend-mode: multiply;
 }
 
 .cassette-card__press::after {
   background: #4a3312;
-  opacity: 0.15;
+  opacity: 0.08;
   mix-blend-mode: screen;
 }
 
@@ -2232,7 +2330,7 @@ nav {
   pointer-events: none;
   opacity: 0.19;
   mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: var(--paper-grain);
 }
 
 /* One corner, however many tags. Both are build-time notices to whoever is
@@ -2383,7 +2481,8 @@ nav {
 
 @media (max-width: 900px) {
   .site-shell,
-  .site-shell--lesson {
+  .site-shell--lesson,
+  .site-footer {
     width: min(100%, calc(100% - 1rem));
   }
 
@@ -2402,7 +2501,8 @@ nav {
      where the wordmark and both links fit side by side with room to spare. */
   .lerpette-player__meta {
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    min-width: 0;
   }
 }
 
@@ -2418,16 +2518,16 @@ nav {
     gap: 0.3rem;
   }
 
+  /* On a phone the spine keeps its proportions and so reaches under the links, which
+     take a solid face to read over its bands. */
   .lerpette-player__action {
+    background: var(--paper);
     /* 28px, over the 24px floor for a tap target, with the two of them still
        shorter together than one of the buttons they replace. */
     min-height: 1.75rem;
     padding: 0.25rem 0.55rem;
     border-color: var(--line);
-    font-family: var(--font-sans);
     font-size: 0.7rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
 }
 

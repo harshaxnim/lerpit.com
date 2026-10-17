@@ -1,5 +1,6 @@
 ---
 import { getCollections } from '../lib/content';
+import BrandSpine from './BrandSpine.astro';
 
 interface Props {
   title?: string;
@@ -16,6 +17,8 @@ const why = collections
 ---
 
 <div class="lerpette-player__bar">
+  {/* The site's mark, from the sheet's top edge down to the rule. See BrandSpine. */}
+  <BrandSpine />
   <div class="lerpette-player__heading">
     <h1>
       <a href={`${import.meta.env.BASE_URL}`}>
