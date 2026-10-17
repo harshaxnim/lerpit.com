@@ -3,7 +3,7 @@
  *
  * A local build lists and routes every lerpette, drafts and unlisted ones
  * included, so an author can see what they are working on. That makes it hard to
- * see what a reader will actually get. This puts a floating switch on every page
+ * see what a reader will actually get. This puts a floating button on every page
  * the dev server sends: public view hides exactly what a production build hides,
  * because content.ts runs the same rules (see hidesLikeProduction there), not a
  * stylesheet imitating them. A draft is a 404 in public view, as it is once deployed.
@@ -28,82 +28,56 @@ function readView(req) {
 }
 
 function toggleMarkup(view) {
-  const option = (value, label, hint) => `
-    <button type="button" data-view="${value}" aria-pressed="${view === value}" title="${hint}">${label}</button>`;
+  // One round button carrying the current view's initial, L or P. Pressing it
+  // switches to the other view; the tooltip says which one that is.
+  const next = view === PUBLIC ? LOCAL : PUBLIC;
+  const hint = view === PUBLIC
+    ? 'Public view: only what a production build shows. Click for local view.'
+    : 'Local view: everything, drafts and unlisted included, each tagged. Click for public view.';
 
   return `
-<div id="lerpit-view-toggle" role="group" aria-label="Dev server view" data-view="${view}">
-  <span class="lvt__label">View</span>${option(LOCAL, 'Local', 'Everything, drafts and unlisted included, each tagged')}${option(PUBLIC, 'Public', 'Only what a production build shows')}
-</div>
+<button type="button" id="lerpit-view-toggle" data-view="${view}" data-next="${next}" aria-label="${hint}" title="${hint}">${view === PUBLIC ? 'P' : 'L'}</button>
 <style>
   #lerpit-view-toggle {
     position: fixed;
     right: 1rem;
     bottom: 1rem;
     z-index: 2147483000;
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-    padding: 0.25rem;
-    border: 1px solid rgba(81, 131, 173, 0.72);
-    border-radius: 999px;
-    background: rgba(253, 251, 244, 0.96);
-    box-shadow: 0 6px 20px rgba(32, 49, 63, 0.16);
-    font: 600 0.78rem/1 "Syne", system-ui, -apple-system, "Segoe UI", sans-serif;
-    color: #20313f;
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-  }
-  #lerpit-view-toggle[data-view="public"] {
-    border-color: #d17041;
-  }
-  #lerpit-view-toggle .lvt__label {
-    padding: 0 0.35rem 0 0.55rem;
-    color: #506270;
-    font-weight: 400;
-  }
-  #lerpit-view-toggle button {
-    min-height: 1.75rem;
-    padding: 0 0.7rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
     border: 0;
     border-radius: 999px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
+    background: #2e6da4;
+    box-shadow: 0 6px 20px rgba(32, 49, 63, 0.16);
+    color: #fdfbf4;
+    font: 700 0.85rem/1 "Syne", system-ui, -apple-system, "Segoe UI", sans-serif;
     cursor: pointer;
   }
-  #lerpit-view-toggle button:hover {
-    background: rgba(46, 109, 164, 0.08);
-  }
-  #lerpit-view-toggle button:focus-visible {
-    outline: 2px solid #2e6da4;
-    outline-offset: 1px;
-  }
-  #lerpit-view-toggle button[aria-pressed="true"] {
-    background: #2e6da4;
-    color: #fdfbf4;
-    cursor: default;
-  }
-  #lerpit-view-toggle[data-view="public"] button[aria-pressed="true"] {
+  #lerpit-view-toggle[data-view="public"] {
     background: #d17041;
+  }
+  #lerpit-view-toggle:hover {
+    filter: brightness(1.08);
+  }
+  #lerpit-view-toggle:focus-visible {
+    outline: 2px solid #20313f;
+    outline-offset: 2px;
   }
   /* Smaller on a phone, where the full size covers a line of prose. */
   @media (max-width: 600px) {
-    #lerpit-view-toggle { right: 0.5rem; bottom: 0.5rem; font-size: 0.66rem; padding: 0.15rem; }
-    #lerpit-view-toggle .lvt__label { display: none; }
-    #lerpit-view-toggle button { min-height: 1.5rem; padding: 0 0.55rem; }
+    #lerpit-view-toggle { right: 0.5rem; bottom: 0.5rem; width: 1.6rem; height: 1.6rem; font-size: 0.72rem; }
   }
   @media print {
     #lerpit-view-toggle { display: none; }
   }
 </style>
 <script>
-  document.querySelectorAll('#lerpit-view-toggle button').forEach((button) => {
-    button.addEventListener('click', () => {
-      if (button.getAttribute('aria-pressed') === 'true') return;
-      document.cookie = '${COOKIE}=' + button.dataset.view + '; path=/; max-age=31536000; SameSite=Lax';
-      location.reload();
-    });
+  document.getElementById('lerpit-view-toggle').addEventListener('click', (event) => {
+    document.cookie = '${COOKIE}=' + event.currentTarget.dataset.next + '; path=/; max-age=31536000; SameSite=Lax';
+    location.reload();
   });
 </script>
 `;
