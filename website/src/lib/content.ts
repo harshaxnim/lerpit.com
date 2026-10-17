@@ -71,8 +71,14 @@ const CONTROL_FILE = 'control.toml';
  * Hiding only happens in a production build. Locally every lerpette is listed and
  * routed, each card tagged with its status, so an author can see their drafts
  * without having to remember what they hid.
+ *
+ * The dev server's view toggle (scripts/dev-view-toggle.mjs) can ask for the public
+ * view instead, which hides exactly what production hides. Read per build, since
+ * the toggle flips it between requests.
  */
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+function hidesLikeProduction(): boolean {
+  return process.env.NODE_ENV === 'production' || process.env.LERPIT_VIEW === 'public';
+}
 const DOC_BASENAMES = new Set(['collection', 'mixtape']);
 const CODE_EXTENSIONS = new Set(['.js', '.ts', '.jsx', '.tsx', '.mts', '.cts']);
 const DOCUMENT_EXTENSIONS = new Set(['.md', '.mdx']);
@@ -217,6 +223,7 @@ function createRenderProcessor(docDir: string, report: Report, codeDir: string |
 
 async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   const { problems, report } = createProblemLog(LERPETTE_ROOT);
+  const isProduction = hidesLikeProduction();
 
   if (!fs.existsSync(LERPETTE_ROOT)) {
     report(
@@ -255,14 +262,14 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   // link works for whoever has it, and nothing else points there.
   const routable = collections
     .flatMap((collection) => collection.mixtapes)
-    .filter((mixtape) => isRoutable(mixtape.status, IS_PRODUCTION))
+    .filter((mixtape) => isRoutable(mixtape.status, isProduction))
     .sort(newestFirst);
 
   // Narrowed in place, so every shelf and collection page that reads
   // collection.mixtapes hides the right things without knowing this exists.
   for (const collection of collections) {
     collection.mixtapes = collection.mixtapes.filter(
-      (mixtape) => isRoutable(mixtape.status, IS_PRODUCTION) && isListed(mixtape.status, IS_PRODUCTION)
+      (mixtape) => isRoutable(mixtape.status, isProduction) && isListed(mixtape.status, isProduction)
     );
   }
 

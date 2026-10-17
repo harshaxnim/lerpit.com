@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { devViewToggle } from './scripts/dev-view-toggle.mjs';
 
 /**
  * The in-browser C++ toolchain runs its tools in workers backed by
@@ -155,6 +156,6 @@ export default defineConfig({
       // fails; left unbundled, Vite's own ?raw handling resolves it.
       exclude: ['@gameguild/emception-browser', '@gameguild/emception-xterm', 'emception']
     },
-    plugins: [crossOriginIsolation(), lerpitWatcher()]
+    plugins: [crossOriginIsolation(), lerpitWatcher(), devViewToggle()]
   }
 });
