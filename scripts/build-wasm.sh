@@ -85,6 +85,7 @@ needs_rebuild() {
   local src_file="$1"
   local output_js="$2"
   local output_wasm="$3"
+  shift 3
 
   [[ -f "$output_js" ]] || return 0
   [[ -f "$output_wasm" ]] || return 0
@@ -94,17 +95,49 @@ needs_rebuild() {
   [[ "$SCRIPT_FILE" -nt "$output_wasm" ]] && return 0
   [[ "$EMCC" -nt "$output_js" ]] && return 0
   [[ "$EMCC" -nt "$output_wasm" ]] && return 0
+  # A library this module links has changed: its code is inside the module.
+  local lib_a
+  for lib_a in "$@"; do
+    [[ "$lib_a" -nt "$output_wasm" ]] && return 0
+  done
 
   return 1
 }
 
 LIB_ROOT="$ROOT_DIR/lerpettes/libs"
-LIB_ARGS=()
+LIB_ARCHIVES=()
+
+# Which libraries a source needs, from what it includes. A module that includes a
+# library's header (`#include "world.h"` for physics) is linked against that library;
+# one that includes none of them is not. Linking every library into every module used
+# to put the physics bindings into modules that never asked for them, where their
+# Embind names (Sphere, World) collided with the lesson's own.
+libs_for() {
+  local src_file="$1"
+  local lib_a lib_dir header
+  for lib_a in "${LIB_ARCHIVES[@]+"${LIB_ARCHIVES[@]}"}"; do
+    lib_dir="$(dirname "$(dirname "$lib_a")")"
+    for header in "$lib_dir"/wasm/*.h; do
+      [[ -f "$header" ]] || continue
+      if grep -Eq "^[[:space:]]*#[[:space:]]*include[[:space:]]*\"$(basename "$header")\"" "$src_file"; then
+        echo "$lib_a"
+        break
+      fi
+    done
+  done
+}
 
 build_step_module() {
   local src_file="$1"
   local output_js="$2"
+  shift 2
   local output_tsd="${output_js%.js}.d.ts"
+  local LIB_ARGS=()
+  local lib_a lib_dir
+  for lib_a in "$@"; do
+    lib_dir="$(dirname "$(dirname "$lib_a")")"
+    LIB_ARGS+=(-Wl,--whole-archive "$lib_a" -Wl,--no-whole-archive -I"$lib_dir/wasm")
+  done
 
   # Try with --emit-tsd first; fall back without it if tsgen fails. Two known causes:
   # embind bindings spanning a static lib + the source file, and emscripten running its
@@ -139,8 +172,7 @@ done < <(find "$LIB_ROOT" -path '*/wasm/build.sh' 2>/dev/null | sort)
 
 while IFS= read -r lib_a; do
   [[ -n "$lib_a" ]] || continue
-  lib_dir="$(dirname "$(dirname "$lib_a")")"
-  LIB_ARGS+=(-Wl,--whole-archive "$lib_a" -Wl,--no-whole-archive -I"$lib_dir/wasm")
+  LIB_ARCHIVES+=("$lib_a")
 done < <(find "$LIB_ROOT" -path '*/build/lib*.a' 2>/dev/null | sort)
 
 found_step_src_dir=0
@@ -167,9 +199,14 @@ while IFS= read -r step_src_dir; do
     output_js="$target_dir/$module_name.js"
     output_wasm="$target_dir/$module_name.wasm"
 
-    if needs_rebuild "$step_src" "$output_js" "$output_wasm"; then
+    step_libs=()
+    while IFS= read -r lib_a; do
+      [[ -n "$lib_a" ]] && step_libs+=("$lib_a")
+    done < <(libs_for "$step_src")
+
+    if needs_rebuild "$step_src" "$output_js" "$output_wasm" "${step_libs[@]+"${step_libs[@]}"}"; then
       mkdir -p "$target_dir"
-      build_step_module "$step_src" "$output_js"
+      build_step_module "$step_src" "$output_js" "${step_libs[@]+"${step_libs[@]}"}"
       echo "  [build] $(rel "$step_src") → $(rel "$target_dir")/$module_name.{js,wasm}"
       BUILT_COUNT=$((BUILT_COUNT + 1))
     else

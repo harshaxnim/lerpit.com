@@ -1,0 +1,38 @@
+/*
+ * Several panels in one column: one grid cell, the open one visible.
+ *
+ * Lives beside panelStack.ts, which imports it, so the styles ship with the code that builds
+ * the markup and a page that never loads that code never loads them. Tokens (colours,
+ * fonts, --stage-h and friends) come from :root in website/src/styles/global.css.
+ */
+.lerpette-panel--stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Every box occupies the same cell, so the stage is as tall as the column and a
+   hidden panel still has a size to be measured at the moment it is shown. */
+.lerpette-panel__stage {
+  display: grid;
+  grid-template-areas: 'panel';
+  flex: 1;
+  min-height: 0;
+}
+
+.lerpette-panel__box {
+  grid-area: panel;
+  min-width: 0;
+  min-height: 0;
+  visibility: hidden;
+}
+
+.lerpette-panel__box.is-active {
+  visibility: visible;
+}
+
+.lerpette-panel__box canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

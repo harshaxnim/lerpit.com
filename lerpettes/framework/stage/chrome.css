@@ -1,0 +1,355 @@
+/*
+ * The stage chrome: the two corners, the controls and readings cards, and the tweakpane theme.
+ *
+ * Lives beside chrome.ts, which imports it, so the styles ship with the code that builds
+ * the markup and a page that never loads that code never loads them. Tokens (colours,
+ * fonts, --stage-h and friends) come from :root in website/src/styles/global.css.
+ */
+/* Runtime chrome, in the panel's top corners on the site's 1rem rhythm: what the
+   reader sets on the right (controls, restart), what the step reports on the left
+   (readings). The right one is on top, should they ever meet. */
+.lerpette-panel__tray,
+.lerpette-panel__monitors {
+  position: absolute;
+  top: 1rem;
+  max-width: calc(100% - 2rem);
+}
+
+.lerpette-panel__tray {
+  right: 1rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.lerpette-panel__monitors {
+  left: 1rem;
+  z-index: 1;
+}
+
+/* A narrow stage, the drawer on a phone most of all, splits its top edge between the
+   two cards rather than letting one cover the other. Half a card is too narrow for a
+   tweakpane row, so each control's label goes above its slider. */
+@container (width < 34rem) {
+  .lerpette-panel__tray,
+.lerpette-panel__monitors {
+    max-width: calc(50% - 1.5rem);
+  }
+
+  /* Scoped under the tray to outrank the tweakpane theme further down the file. */
+  .lerpette-panel__tray .lerpette-stage__controls {
+    --tp-blade-value-width: 100%;
+  }
+
+  .lerpette-panel__tray .lerpette-stage__controls .tp-lblv {
+    flex-wrap: wrap;
+  }
+
+  .lerpette-panel__tray .lerpette-stage__controls .tp-lblv_l {
+    width: 100%;
+    padding-bottom: 0.2rem;
+    text-align: left;
+  }
+}
+
+/* The two corner cards share one shell, so a reader who learns one knows both.
+   Each has a head whose title is the fold toggle: it reads as a label, and the hover
+   and pointer are the hint that it opens and closes what it names. */
+.lerpette-stage__card {
+  background: var(--chrome-face);
+  border: 1px solid var(--line-strong);
+  backdrop-filter: blur(3px);
+}
+
+/* A fixed width capped by the corner, not a percentage: the corner shrinks to fit its
+   card, so a percentage here would have nothing to resolve against. */
+.lerpette-stage__card:has(.lerpette-stage__card-body):not(.is-collapsed, .is-mini) {
+  width: 15rem;
+  max-width: 100%;
+}
+
+.lerpette-stage__card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.15rem;
+}
+
+.lerpette-stage__card-title {
+  flex: 1;
+  min-width: 0;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* Each title sits against its own card's outer edge: the right card reads from the
+   corner in, beside the restart button. */
+.lerpette-panel__tray .lerpette-stage__card-title {
+  text-align: right;
+}
+
+.lerpette-stage__card-title:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.lerpette-stage__card-title:focus-visible,
+.lerpette-stage__icon:focus-visible,
+.lerpette-reading:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.lerpette-stage__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.lerpette-stage__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.lerpette-stage__icon:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.lerpette-stage__card-body {
+  border-top: 1px solid var(--line);
+}
+
+.lerpette-stage__card.is-collapsed .lerpette-stage__card-body {
+  display: none;
+}
+
+/* ---- Readings: one row per reading, label left, value right in tabular figures
+   with a fixed number of digits, so a changing number never jitters sideways. */
+.lerpette-reading {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.35rem 0.6rem 0.45rem;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.lerpette-reading + .lerpette-reading {
+  border-top: 1px dashed rgba(81, 131, 173, 0.25);
+}
+
+.lerpette-stage__card:not(.is-mini) .lerpette-reading:hover {
+  background: var(--accent-soft);
+}
+
+.lerpette-reading__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lerpette-reading__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lerpette-reading__value {
+  flex: none;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.lerpette-reading__value.is-bad {
+  color: var(--warn);
+}
+
+.lerpette-reading__unit {
+  margin-left: 0.2em;
+  color: var(--muted);
+}
+
+.lerpette-reading__vector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lerpette-reading__vector span {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lerpette-reading__axis {
+  margin-right: 0.25em;
+  color: var(--muted);
+}
+
+.lerpette-reading__graph {
+  display: block;
+  width: 100%;
+  height: 28px;
+}
+
+.lerpette-reading__meter {
+  position: relative;
+  height: 6px;
+  margin-top: 0.15rem;
+  background: rgba(81, 131, 173, 0.16);
+}
+
+.lerpette-reading__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+}
+
+.lerpette-reading__mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--ink);
+}
+
+.lerpette-reading__dot {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.35em;
+  border-radius: 50%;
+  background: var(--muted);
+  vertical-align: 0.05em;
+}
+
+.lerpette-reading__dot[data-tone='ok'] { background: var(--ok); }
+.lerpette-reading__dot[data-tone='info'] { background: var(--accent); }
+.lerpette-reading__dot[data-tone='warn'] { background: var(--accent-warm); }
+
+/* A mini card: shrunk to one reading, no head and no label. A graph
+   stays a small graph and a meter a small bar, each with its number after it.
+   Clicking it brings the whole card back. */
+.lerpette-stage__card.is-mini .lerpette-stage__card-head,
+.lerpette-stage__card.is-mini .lerpette-reading:not(.is-mini) {
+  display: none;
+}
+
+.lerpette-stage__card.is-mini .lerpette-stage__card-body {
+  border-top: 0;
+}
+
+.lerpette-reading.is-mini {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.lerpette-reading.is-mini:hover {
+  background: var(--accent-soft);
+}
+
+.lerpette-reading.is-mini .lerpette-reading__label {
+  display: none;
+}
+
+.lerpette-reading.is-mini .lerpette-reading__graph {
+  order: -1;
+  flex: none;
+  align-self: center;
+  width: 5.5rem;
+  height: 18px;
+}
+
+.lerpette-reading.is-mini .lerpette-reading__meter {
+  order: -1;
+  flex: none;
+  align-self: center;
+  width: 4.5rem;
+  margin-top: 0;
+}
+
+.lerpette-reading.is-mini .lerpette-reading__vector {
+  order: -1;
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* Tweakpane's theme. The card draws the frame and the paper, so the pane's own
+   background is clear. */
+.lerpette-stage__controls {
+  --tp-base-background-color: transparent;
+  --tp-base-border-radius: 0px;
+  --tp-base-font-family: var(--font-sans);
+  --tp-base-shadow-color: rgba(32, 49, 63, 0.08);
+  --tp-blade-border-radius: 0px;
+  --tp-button-background-color: rgba(46, 109, 164, 0.12);
+  --tp-button-background-color-active: rgba(46, 109, 164, 0.32);
+  --tp-button-background-color-focus: rgba(46, 109, 164, 0.24);
+  --tp-button-background-color-hover: rgba(46, 109, 164, 0.18);
+  --tp-button-foreground-color: var(--ink);
+  --tp-container-background-color: rgba(46, 109, 164, 0.06);
+  --tp-container-background-color-active: rgba(46, 109, 164, 0.18);
+  --tp-container-background-color-focus: rgba(46, 109, 164, 0.14);
+  --tp-container-background-color-hover: rgba(46, 109, 164, 0.10);
+  --tp-container-foreground-color: var(--ink);
+  --tp-groove-foreground-color: rgba(81, 131, 173, 0.28);
+  --tp-input-background-color: rgba(255, 253, 246, 0.95);
+  --tp-input-background-color-active: rgba(46, 109, 164, 0.16);
+  --tp-input-background-color-focus: rgba(46, 109, 164, 0.10);
+  --tp-input-background-color-hover: rgba(46, 109, 164, 0.06);
+  --tp-input-foreground-color: var(--ink);
+  --tp-label-foreground-color: var(--muted);
+  --tp-monitor-background-color: rgba(255, 253, 246, 0.95);
+  --tp-monitor-foreground-color: var(--ink);
+}
+
+.lerpette-stage__controls .tp-lblv_l,
+.lerpette-stage__controls .tp-txtv_i,
+.lerpette-stage__controls .tp-sldtxtv_t {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.lerpette-stage__controls .tp-lblv_l {
+  text-align: right;
+  /* The card is narrow, so a long label wraps; it should break between words. */
+  hyphens: manual;
+}
+
+.lerpette-stage__controls {
+  /* Tweakpane gives the value a fixed 160px by default, which leaves a 15rem card's
+     labels about five letters a line. */
+  --tp-blade-value-width: 52%;
+}

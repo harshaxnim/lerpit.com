@@ -1,130 +1,170 @@
-import { createPanelStack, type MountedPanel, type PanelStack } from '@lerpit/framework/panels/panelStack';
-import type { LerpetteCtx, ModelExports, PointerState, SceneState, ViewExports } from '@lerpit/framework/panels/contract';
-import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '@lerpit/framework/types';
-import { compileCpp, compileJsFiles, type EditorFile, type FileEditor, type WasmModule } from '@lerpit/libs/live-code/js';
+import type { MountedPanel, PanelStack } from '../panels/panelStack';
+import type { PanelScope } from '../panels/panel';
+import {
+  MODEL_NAMES,
+  type ChapterDefinition,
+  type LerpetteCtx,
+  type PointerState,
+  type SceneState,
+  type ViewExports,
+  type WasmExports
+} from '../panels/contract';
+import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '../types';
+import { loadModule } from '../wasm/loadModule';
+import { clampDelta } from './frameLoop';
+import { byBuild } from '@lerpit/libs/live-code/js/languages';
+import { compileCpp, compileJsFiles, type EditorFile, type FileEditor } from '@lerpit/libs/live-code/js';
 
 /**
- * A chapter: one model, any number of panels, and an editor wherever the prose left a
- * fence.
+ * A chapter: one model, a view per panel, and an editor wherever the prose left a fence.
  *
- * The three are independent, which is the whole point of this file. A chapter may have
- * panels and no editor, an editor and no panels, both, or neither. Nothing here decides
- * what fills the right column; the document does, and the panels arrive already built.
+ * This is the only runtime most chapters ever run under. A chapter's code reaches it
+ * one of two ways, and both are the same shape (see panels/contract.ts):
  *
- * What this owns is the clock and the wiring between them: advance the model once per
- * frame, then hand the same state to every panel that wants drawing.
+ *   module source  `defineChapter({...})` in code/<id>/js/index.ts, bundled with the site
+ *   editor source  the files a `lerpit` fence names, built in the reader's tab
+ *
+ * When a chapter has both, a build replaces the module's names one by one, so a lesson
+ * can ship a working chapter and still hand the reader one function to rewrite.
+ *
+ * What this owns is the clock and the wiring: one requestAnimationFrame loop, `dt` in
+ * seconds and already clamped, the model advanced once per frame and the same state
+ * handed to whichever panel is on screen. The panels arrive built; the stage chrome
+ * (controls, readings, caption, restart) arrives as ctx.stage. Nothing here decides
+ * what fills the column.
  */
 
-const CPP_FILE = /\.(cpp|cc|cxx|c)$/;
-const JS_FILE = /\.(js|ts|mjs|cjs)$/;
+type Model<S extends SceneState = SceneState> = Pick<ChapterDefinition<S>, 'setup' | 'step' | 'dispose'>;
 
-/** A frame longer than this is a gap, not a slow frame. Integrating it throws a scene. */
-const MAX_FRAME_SECONDS = 1 / 30;
-
-export type ChapterConfig = {
-  /** What the band under the panel says once a build is running. */
-  caption?: string;
-  /** What the editor's status line says before the first build. */
-  idleStatus?: string;
-};
-
-function clampDelta(elapsedMs: number): number {
-  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {
-    return 0;
+/** The names of a definition that are code rather than configuration. */
+function codeOf(source: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(source)) {
+    if (name === 'state' || name === 'setup' || name === 'step' || name === 'dispose' || name === 'wasm') out[name] = value;
+    else if (!(MODEL_NAMES as readonly string[]).includes(name) && value && typeof value === 'object') out[name] = value;
   }
-
-  return Math.min(elapsedMs / 1000, MAX_FRAME_SECONDS);
+  return out;
 }
 
-export function createChapterRuntime(panelNames: readonly string[], config: ChapterConfig = {}): LerpetteStepRuntime {
-  let stack: PanelStack | null = null;
-  let state: SceneState = {};
-  let model: ModelExports = {};
-  let views = new Map<string, ViewExports<unknown>>();
-  let wasm: WasmModule | null = null;
+/** A fresh copy of the starting state, so one run never sees what the last one left. */
+function freshState(source: unknown): SceneState {
+  if (typeof source === 'function') return (source as () => SceneState)() ?? {};
+  if (!source || typeof source !== 'object') return {};
+  try {
+    return structuredClone(source as SceneState);
+  } catch {
+    // Something uncloneable in it (a class instance, a function): a shallow copy, as before.
+    return { ...(source as SceneState) };
+  }
+}
 
-  let raf = 0;
+export function createChapterRuntime<S extends SceneState = SceneState>(
+  definition: ChapterDefinition<S> = {} as ChapterDefinition<S>
+): LerpetteStepRuntime<any> {
+  const def = definition as ChapterDefinition;
+  const moduleCode = codeOf(def as Record<string, unknown>);
+  const hasModuleCode = Object.keys(moduleCode).some((name) => name !== 'wasm') || Boolean(def.wasm);
+
+  let ctx: LerpetteRuntimeContext<any> | null = null;
+  let stack: PanelStack | null = null;
+  /** What each panel's view is handed: the panel's own target, or this chapter's scope of it. */
+  const targets = new Map<string, unknown>();
+  const scopes = new Map<string, PanelScope<unknown>>();
+
+  let state: SceneState = {};
+  let model: Model = {};
+  let views = new Map<string, ViewExports>();
+  let wasm: WasmExports | null = null;
   let running = false;
+  let entered = false;
+  let raf = 0;
   let lastMs = 0;
-  let startedMs = 0;
+  let time = 0;
   /** Set whenever the model moved, so a `change` panel knows it has work to do. */
   let dirty = true;
+  /** Bumped by every run, so an older run still awaiting its setup knows to give up. */
+  let runToken = 0;
+  /** Whether a run has started, i.e. whether there is anything to end. */
+  let live = false;
+  /** What restart repeats: the last build, or the module again. */
+  let rerun: (() => void) | null = null;
 
   let reporter: FileEditor | null = null;
   let faulted = false;
-
-  /** Pointer state per panel, kept by the listeners the stack's boxes carry. */
+  let listeners: AbortController | null = null;
   const pointers = new Map<string, PointerState>();
   const idlePointer: PointerState = { x: 0, y: 0, down: false, inside: false };
 
   const fault = (where: string, error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     faulted = true;
-    reporter?.status(`Your ${where} threw: ${message}`, 'bad');
-    reporter?.log(`${where}: ${message}`);
+    if (reporter) {
+      reporter.status(`Your ${where} threw: ${message}`, 'bad');
+      reporter.log(`${where}: ${message}`);
+    } else {
+      // A module chapter has no editor to report in, so it says so where the reader looks.
+      console.error(`[lerpit] ${ctx?.currentStepId ?? 'chapter'}: ${where} threw`, error);
+      ctx?.stage.caption(`This chapter's ${where} threw: ${message}`);
+    }
   };
 
-  const ctxFor = (mounted: MountedPanel | null): LerpetteCtx => ({
-    wasm,
-    view: mounted && stack ? stack.sizeOf(mounted) : { width: 0, height: 0, dpr: 1 },
-    input: mounted ? pointers.get(mounted.panel.name) ?? idlePointer : idlePointer,
-    time: startedMs ? (performance.now() - startedMs) / 1000 : 0
-  });
+  const ctxFor = (mounted: MountedPanel | null): LerpetteCtx => {
+    const stage = ctx!.stage;
+    return {
+      wasm,
+      view: mounted && stack ? stack.sizeOf(mounted) : stack?.active() ? stack.sizeOf(stack.active()!) : { width: 0, height: 0, dpr: 1 },
+      input: mounted ? pointers.get(mounted.panel.name) ?? idlePointer : idlePointer,
+      time,
+      controls: (options) => stage.controls(options),
+      monitors: () => stage.monitors(),
+      caption: (value) => stage.caption(value)
+    };
+  };
 
   const drawPanel = (mounted: MountedPanel) => {
-    const view = views.get(mounted.panel.name);
-    if (!view?.draw || !stack) {
-      return;
-    }
-
+    if (!stack || !live) return;
     const size = stack.sizeOf(mounted);
-    if (size.width === 0 || size.height === 0) {
-      return;
-    }
+    if (size.width === 0 || size.height === 0) return;
 
-    mounted.panel.resize?.(mounted.target as never, size);
-    mounted.panel.begin?.(mounted.target as never, size);
-    try {
-      view.draw(mounted.target, state, ctxFor(mounted));
-    } catch (error) {
-      // Unwrapped, this throw takes the loop with it and every later chapter dies too.
-      views.set(mounted.panel.name, { ...view, draw: undefined });
-      fault(`${mounted.panel.name}.draw`, error);
+    const target = targets.get(mounted.panel.name) as never;
+    const view = views.get(mounted.panel.name);
+    mounted.panel.resize?.(target, size);
+    mounted.panel.begin?.(target, size);
+    if (view?.draw) {
+      try {
+        view.draw(target, state, ctxFor(mounted));
+      } catch (error) {
+        // Unwrapped, this throw takes the loop with it and the panel freezes silently.
+        views.set(mounted.panel.name, { ...view, draw: undefined });
+        fault(`${mounted.panel.name}.draw`, error);
+      }
     }
-    mounted.panel.end?.(mounted.target as never, size);
+    mounted.panel.end?.(target, size);
   };
 
-  /** One pass: advance the model, then show it wherever it is being shown. */
+  /** One frame: advance the model, show it on the panel on screen, sample the readings. */
   const tick = (dt: number) => {
-    if (model.step && dt > 0) {
-      try {
-        model.step(state, dt, ctxFor(stack?.active() ?? null));
-        dirty = true;
-      } catch (error) {
-        model.step = undefined;
-        fault('step', error);
+    if (dt > 0 && live) {
+      time += dt;
+      if (model.step) {
+        try {
+          model.step(state, dt, ctxFor(stack?.active() ?? null));
+          dirty = true;
+        } catch (error) {
+          model.step = undefined;
+          fault('step', error);
+        }
       }
     }
 
     const active = stack?.active();
-    if (!active) {
-      return;
-    }
-
-    // Only the panel on screen is drawn. A tab nobody is looking at costs nothing, and
-    // is brought up to date the moment it is chosen.
-    if (active.panel.cadence === 'frame' || dirty) {
-      drawPanel(active);
-    }
-
+    if (active && (active.panel.cadence === 'frame' || dirty)) drawPanel(active);
     dirty = false;
+    if (live) ctx?.stage.tick(performance.now());
   };
 
   const frame = (nowMs: number) => {
-    if (!running) {
-      return;
-    }
-
+    if (!running) return;
     if (document.hidden) {
       // Hidden tabs throttle rather than stop, which burns battery drawing what nobody
       // is looking at. The clock is reset so returning is not one enormous step.
@@ -132,19 +172,18 @@ export function createChapterRuntime(panelNames: readonly string[], config: Chap
       raf = window.requestAnimationFrame(frame);
       return;
     }
-
     const dt = lastMs ? clampDelta(nowMs - lastMs) : 0;
     lastMs = nowMs;
     tick(dt);
     raf = window.requestAnimationFrame(frame);
   };
 
-  const start = () => {
+  function start() {
     stop();
     running = true;
     lastMs = 0;
     raf = window.requestAnimationFrame(frame);
-  };
+  }
 
   function stop() {
     running = false;
@@ -154,107 +193,134 @@ export function createChapterRuntime(panelNames: readonly string[], config: Chap
     }
   }
 
-  const watchPointer = (mounted: MountedPanel) => {
-    const name = mounted.panel.name;
-    pointers.set(name, { x: 0, y: 0, down: false, inside: false });
-
-    const read = (event: PointerEvent) => {
-      const at = mounted.panel.locate?.(mounted.target as never, event.clientX, event.clientY);
-      const box = mounted.box.getBoundingClientRect();
-      const current = pointers.get(name)!;
-      current.x = at ? at.x : event.clientX - box.left;
-      current.y = at ? at.y : event.clientY - box.top;
-      // A `change` panel would otherwise not notice a drag at all.
-      dirty = true;
-    };
-
-    mounted.box.addEventListener('pointermove', read);
-    mounted.box.addEventListener('pointerdown', (event) => {
-      pointers.get(name)!.down = true;
-      read(event);
-    });
-    mounted.box.addEventListener('pointerup', () => {
-      pointers.get(name)!.down = false;
-      dirty = true;
-    });
-    mounted.box.addEventListener('pointerenter', () => {
-      pointers.get(name)!.inside = true;
-    });
-    mounted.box.addEventListener('pointerleave', () => {
-      const current = pointers.get(name)!;
-      current.inside = false;
-      current.down = false;
-      dirty = true;
-    });
+  const watchPointers = (panels: MountedPanel[], signal: AbortSignal) => {
+    for (const mounted of panels) {
+      const name = mounted.panel.name;
+      const pointer: PointerState = { x: 0, y: 0, down: false, inside: false };
+      pointers.set(name, pointer);
+      const read = (event: PointerEvent) => {
+        const at = mounted.panel.locate?.(mounted.target as never, event.clientX, event.clientY);
+        const box = mounted.box.getBoundingClientRect();
+        pointer.x = at ? at.x : event.clientX - box.left;
+        pointer.y = at ? at.y : event.clientY - box.top;
+        // A `change` panel would otherwise not notice a drag at all.
+        dirty = true;
+      };
+      const options = { signal };
+      mounted.box.addEventListener('pointermove', read, options);
+      mounted.box.addEventListener('pointerdown', (event) => ((pointer.down = true), read(event)), options);
+      mounted.box.addEventListener('pointerup', () => ((pointer.down = false), (dirty = true)), options);
+      mounted.box.addEventListener('pointerenter', () => (pointer.inside = true), options);
+      mounted.box.addEventListener('pointerleave', () => ((pointer.inside = false), (pointer.down = false), (dirty = true)), options);
+    }
   };
 
-  /** Split a build's exports into the one model and the per-panel views. */
-  const adopt = (exports: Record<string, unknown>) => {
-    model = {
-      state: exports.state as SceneState | undefined,
-      setup: exports.setup as ModelExports['setup'],
-      step: exports.step as ModelExports['step']
-    };
-
-    views = new Map();
-    for (const mounted of stack?.panels ?? []) {
-      const view = exports[mounted.panel.name];
-      if (view && typeof view === 'object') {
-        views.set(mounted.panel.name, view as ViewExports<unknown>);
+  /** End the run on screen: its own dispose, its scenes, its cards (choices kept). */
+  const endRun = () => {
+    if (!live) return;
+    live = false;
+    if (model.dispose) {
+      try {
+        model.dispose(state, ctxFor(null));
+      } catch (error) {
+        fault('dispose', error);
       }
     }
+    scopes.forEach((scope) => scope.clear());
+    ctx?.stage.reset(true);
+  };
 
-    // A fresh state each build, so pressing run is a clean start rather than a
-    // continuation of whatever the last attempt left behind.
-    state = { ...(model.state ?? {}) };
-    startedMs = performance.now();
+  /**
+   * Start a run from a set of exports: the model, the views, a fresh state, setup, then
+   * each view's build. `builtWasm` is the editor's module; undefined means load the
+   * definition's prebuilt one, if it has one.
+   */
+  const run = async (code: Record<string, unknown>, builtWasm?: WasmExports | null) => {
+    const token = ++runToken;
+    endRun();
+
+    let nextWasm: WasmExports | null = builtWasm ?? null;
+    if (builtWasm === undefined && typeof code.wasm === 'function') {
+      try {
+        nextWasm = await loadModule(code.wasm as () => Promise<unknown>);
+      } catch (error) {
+        fault('wasm', error);
+        return;
+      }
+      if (token !== runToken) return;
+    }
+
+    wasm = nextWasm;
+    model = {
+      setup: typeof code.setup === 'function' ? (code.setup as Model['setup']) : undefined,
+      step: typeof code.step === 'function' ? (code.step as Model['step']) : undefined,
+      dispose: typeof code.dispose === 'function' ? (code.dispose as Model['dispose']) : undefined
+    };
+    views = new Map();
+    for (const mounted of stack?.panels ?? []) {
+      const view = code[mounted.panel.name];
+      if (view && typeof view === 'object') views.set(mounted.panel.name, view as ViewExports);
+    }
+
+    state = freshState(code.state);
+    time = 0;
+    live = true;
 
     if (model.setup) {
       try {
-        model.setup(state, ctxFor(stack?.active() ?? null));
+        await model.setup(state, ctxFor(null));
       } catch (error) {
         fault('setup', error);
       }
+      if (token !== runToken) return;
     }
 
     for (const mounted of stack?.panels ?? []) {
       const view = views.get(mounted.panel.name);
-      if (!view?.build) {
-        continue;
-      }
-
+      if (!view?.build) continue;
       try {
-        view.build(mounted.target, ctxFor(mounted));
+        await view.build(targets.get(mounted.panel.name), state, ctxFor(mounted));
       } catch (error) {
         fault(`${mounted.panel.name}.build`, error);
       }
+      if (token !== runToken) return;
     }
 
+    ctx?.stage.settle();
+    const restartable = def.restart ?? Boolean(model.step);
+    ctx?.stage.restartable(restartable ? () => rerun?.() : null);
     dirty = true;
+    tick(0);
+  };
+
+  const runModule = async () => {
+    reporter = null;
+    faulted = false;
+    rerun = () => void runModule();
+    await run(moduleCode);
   };
 
   const compileAndRun = async (editor: FileEditor, files: EditorFile[]) => {
     editor.log(null);
     editor.status('Compiling…', 'busy');
-
     const started = performance.now();
     reporter = editor;
     faulted = false;
 
-    const cpp = files.filter((file) => CPP_FILE.test(file.name));
-    const js = files.filter((file) => JS_FILE.test(file.name));
+    const split = byBuild(files);
+    const builtWasm = split.wasm.length > 0 ? await compileCpp(split.wasm, (line) => editor.log(line)) : null;
+    const exports = split.module.length > 0 ? (compileJsFiles(split.module) as Record<string, unknown>) : {};
 
-    wasm = cpp.length > 0 ? await compileCpp(cpp, (line) => editor.log(line)) : null;
-    adopt(js.length > 0 ? (compileJsFiles(js) as Record<string, unknown>) : {});
-
-    tick(0);
-    start();
+    // Restart rebuilds rather than rerunning the old instance: a C++ module keeps its
+    // statics, so the only clean start for compiled code is a fresh one.
+    rerun = () => void editor.run();
+    await run({ ...moduleCode, ...exports }, builtWasm);
+    if (entered && !running) start();
 
     if (faulted) {
       // The first frame already ran, so announcing success now would paint over it.
       return;
     }
-
     const seconds = (performance.now() - started) / 1000;
     editor.status(
       seconds < 1 ? `Running. Built in ${Math.round(seconds * 1000)}ms.` : `Running. Built in ${seconds.toFixed(1)}s.`,
@@ -263,58 +329,87 @@ export function createChapterRuntime(panelNames: readonly string[], config: Chap
   };
 
   return {
-    async mount(ctx: LerpetteRuntimeContext) {
-      stack = await createPanelStack({ ...ctx }, panelNames, (shown) => {
-        // A tab that was not being drawn while hidden is stale the moment it appears.
-        drawPanel(shown);
-      });
+    panels: def.panels,
 
-      stack.panels.forEach(watchPointer);
+    async mount(next) {
+      ctx = next;
+      stack = next.panels;
+      for (const mounted of stack.panels) {
+        const scope = mounted.panel.scope?.(mounted.target as never) as PanelScope<unknown> | undefined;
+        if (scope) scopes.set(mounted.panel.name, scope);
+        targets.set(mounted.panel.name, scope ? scope.target : mounted.target);
+      }
 
-      // Always written, never only when there is something to say: the caption band
-      // belongs to the slot and survives a chapter change, so a chapter that says
-      // nothing would otherwise leave the previous one's sentence on screen. A name
-      // the registry does not know wins over the chapter's own caption, because an
-      // author who mistyped a panel needs telling more than a reader needs the blurb.
-      ctx.setCaption(
+      listeners = new AbortController();
+      watchPointers(stack.panels, listeners.signal);
+
+      // Always written, never only when there is something to say: a chapter that says
+      // nothing must not inherit the last one's sentence. An unknown panel name wins
+      // over the chapter's own caption, because the author needs telling more.
+      next.stage.caption(
         stack.unknown.length > 0
           ? `This chapter asks for a panel called "${stack.unknown[0]}", which does not exist.`
-          : config.caption ?? ''
+          : def.caption ?? ''
       );
 
       // The boxes are already on the page. This only says where run builds to.
-      ctx.editors?.claim(ctx.currentStepId, (editor, files) => compileAndRun(editor, files));
+      next.editors?.claim(next.currentStepId, (editor, files) => compileAndRun(editor, files));
+
+      if (hasModuleCode) await runModule();
 
       // The first box builds on arrival, so a chapter is never dead on one the reader
-      // has only scrolled into. A chapter with no editor has nothing to build.
-      ctx.editors?.editorsFor(ctx.currentStepId)[0]?.run();
+      // has only scrolled into. Not awaited: run activates the chapter first, and this
+      // is that activation.
+      void next.editors?.editorsFor(next.currentStepId)[0]?.run();
     },
 
-    enter() {
+    enter(next) {
+      ctx = next;
+      entered = true;
+      scopes.forEach((scope) => scope.focus());
+      dirty = true;
+      tick(0);
       start();
     },
 
     exit() {
+      entered = false;
       stop();
+      scopes.forEach((scope) => scope.blur());
+    },
+
+    resume() {
+      // The loop pauses itself while the tab is hidden; this only makes sure it is
+      // running again if it should be. Nothing is rebuilt.
+      if (entered && !running) start();
     },
 
     resize() {
       dirty = true;
       const active = stack?.active();
-      if (active) {
-        drawPanel(active);
-      }
+      if (active) drawPanel(active);
     },
 
-    dispose(ctx) {
+    dispose(next) {
       stop();
+      runToken += 1;
+      endRun();
       // The editors themselves stay: they are the page's, not this runtime's.
-      ctx.editors?.release(ctx.currentStepId);
-      stack?.destroy();
+      next.editors?.release(next.currentStepId);
+      listeners?.abort();
+      listeners = null;
+      scopes.forEach((scope) => scope.release());
+      scopes.clear();
+      targets.clear();
+      pointers.clear();
       stack = null;
+      ctx = null;
+      entered = false;
       reporter = null;
+      rerun = null;
       views = new Map();
       model = {};
+      wasm = null;
     }
   };
 }

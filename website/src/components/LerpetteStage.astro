@@ -1,0 +1,34 @@
+---
+interface Props {
+  /** Unique per player, for the drawer toggle's aria-controls. */
+  playerId: string;
+}
+
+const { playerId } = Astro.props as Props;
+---
+
+{/* The stage: the right-hand column on a wide screen, a drawer below 1180px. The player
+    (lib/player/stagePlayer.ts) fills it; nothing here knows which panels a chapter has. */}
+<aside class="lerpette-stage">
+  <button
+    class="lerpette-stage__toggle"
+    type="button"
+    data-stage-toggle
+    aria-expanded="false"
+    aria-controls={`${playerId}-panel-surface`}
+    aria-label="Show panel"
+  >
+    <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
+    <span class="lerpette-stage__toggle-text" data-panel-label></span>
+    <span class="lerpette-stage__toggle-arrow" data-stage-toggle-arrow aria-hidden="true">◀</span>
+  </button>
+  <div class="lerpette-stage__surface">
+    {/* One strip across the top, whatever is below it: one tab that names a single
+        panel, one per panel otherwise. Same markup, same height, so the panel below
+        never moves between chapters. Outside the host, which is emptied on a swap. */}
+    <div class="lerpette-stage__tabs" role="tablist" data-panel-tabs></div>
+    {/* The host holds the panel stack and the two corner cards. */}
+    <div class="lerpette-stage__panel" data-panel-host id={`${playerId}-panel-surface`}></div>
+    <p class="lerpette-stage__status" data-stage-status></p>
+  </div>
+</aside>

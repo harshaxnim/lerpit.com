@@ -1,5 +1,6 @@
 import type { LerpettePanel } from '../panel';
 import type { LerpettePanelSlot } from '../types';
+import '../textPanels.css';
 
 /**
  * Lines of monospace text. The simplest thing a panel can be, and the one to reach for

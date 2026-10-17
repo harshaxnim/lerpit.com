@@ -1,0 +1,42 @@
+---
+import type { LerpetteMixtape } from '@lerpit/framework/types';
+import { site } from '../site.config';
+
+interface Props {
+  lerpette: LerpetteMixtape;
+}
+
+const { lerpette } = Astro.props as Props;
+const collectionLabel = lerpette.collectionTitle ?? site.looseCollectionLabel;
+const collectionHref = lerpette.collectionSlug ? `${import.meta.env.BASE_URL}${lerpette.collectionSlug}/` : null;
+---
+
+{/* The page's only wayfinding: date / author / collection / title, and the chapter the
+    reader is in as a fifth crumb (written by the page chrome as they scroll). Pinned
+    under the top edge. On a wide screen the stage's tabs stand in the other track of
+    this same line; see .lerpette-brow--pinned. */}
+<p class="eyebrow lerpette-brow lerpette-brow--pinned">
+  <span class="lerpette-brow__crumbs">
+    {lerpette.publishedOn && (
+      <>
+        <span>{lerpette.publishedOn}</span>
+        <span class="lerpette-player__byline-sep"> / </span>
+      </>
+    )}
+    <span>{lerpette.author}</span>
+    <span class="lerpette-player__byline-sep"> / </span>
+    {collectionHref ? (
+      <a class="lerpette-player__lesson-collection-link" href={collectionHref}>
+        {collectionLabel}
+      </a>
+    ) : (
+      <span>{collectionLabel}</span>
+    )}
+    <span class="lerpette-player__byline-sep"> / </span>
+    <span class="lerpette-player__byline-title" data-byline-title>{lerpette.title}</span>
+    <span class="lerpette-player__byline-section" data-byline-section hidden>
+      <span class="lerpette-player__byline-sep"> / </span>
+      <span data-byline-now></span>
+    </span>
+  </span>
+</p>

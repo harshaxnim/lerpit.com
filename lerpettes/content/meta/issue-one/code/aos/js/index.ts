@@ -1,29 +1,26 @@
-import { drawBlankViewport } from '../../shared/blankViewport';
-import type { LerpetteStepRuntime } from '@lerpit/framework/types';
-import factory from '../build/aos.js';
+import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
-let mod: Awaited<ReturnType<typeof factory>> | null = null;
+type Vec3 = { x: number; y: number; z: number };
+type Sphere = { index: number; radius: number; pos: Vec3; vel: Vec3 };
+type SphereVector = { size(): number; get(i: number): Sphere; delete(): void };
 
-const stepRuntime: LerpetteStepRuntime = {
-  async mount(ctx) {
-    mod = await factory();
-  },
+const vec = (v: Vec3) => `(${v.x}, ${v.y}, ${v.z})`;
 
-  async enter(ctx) {
-    drawBlankViewport(ctx);
-    const spheres = mod!.getSpheres();
-    const lines: string[] = [];
-
-    for (let i = 0; i < spheres.size(); i++) {
-      const s = spheres.get(i);
-      lines.push(
-        `[${s.index}] r=${s.radius}  pos=(${s.pos.x}, ${s.pos.y}, ${s.pos.z})  vel=(${s.vel.x}, ${s.vel.y}, ${s.vel.z})`
-      );
+/** An array of structs: each row is one whole sphere, laid out together in memory. */
+export default defineChapter({
+  panels: ['table'],
+  wasm: () => import('../build/aos.js'),
+  table: {
+    draw(out: TableTarget, _s: unknown, ctx: LerpetteCtx) {
+      const spheres = (ctx.wasm?.getSpheres as (() => SphereVector) | undefined)?.();
+      if (!spheres) return;
+      for (let i = 0; i < spheres.size(); i++) {
+        const s = spheres.get(i);
+        out.row({ index: s.index, radius: s.radius, pos: vec(s.pos), vel: vec(s.vel) });
+      }
+      // The vector is a copy Embind made for us, and it is ours to free.
+      spheres.delete();
     }
-
-    ctx.setCaption(lines.join('\n'));
-    spheres.delete();
   }
-};
-
-export default stepRuntime;
+});

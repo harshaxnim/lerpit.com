@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { LerpettePanel } from '../panel';
 import type { ViewSize } from '../contract';
 import type { LerpettePanelSlot } from '../types';
+import { createThreeBundle, type ThreeBundle } from '../../three/bundle';
 import { createSketch2D, type Sketch2D } from './sketch2d';
 
 /**
@@ -23,7 +24,7 @@ export type Viewport2dTarget = Sketch2D;
 
 type Bundle = {
   canvas: HTMLCanvasElement;
-  renderer: THREE.WebGLRenderer;
+  three: ThreeBundle;
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
   sketch: ReturnType<typeof createSketch2D>;
@@ -43,14 +44,13 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
     canvas.setAttribute('aria-label', `Live drawing for ${slot.lessonTitle}`);
     slot.host.append(canvas);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(size.dpr);
+    const three = createThreeBundle(canvas, size);
 
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(0, Math.max(size.width, 1), Math.max(size.height, 1), 0, -1, 1);
 
     const sketch = createSketch2D(scene, slot.setCaption);
-    bundles.set(sketch.api, { canvas, renderer, scene, camera, sketch });
+    bundles.set(sketch.api, { canvas, three, scene, camera, sketch });
     return sketch.api;
   },
 
@@ -70,7 +70,7 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
     }
 
     bundle.sketch.end();
-    bundle.renderer.render(bundle.scene, bundle.camera);
+    bundle.three.render(bundle.scene, bundle.camera);
   },
 
   resize(target, size) {
@@ -79,10 +79,7 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
       return;
     }
 
-    bundle.renderer.setPixelRatio(size.dpr);
-    // `false` because the driver already wrote the element's CSS size; letting three
-    // write it too is how the two end up disagreeing about what a pixel is.
-    bundle.renderer.setSize(size.width, size.height, false);
+    bundle.three.resize(size);
 
     bundle.camera.right = Math.max(size.width, 1);
     bundle.camera.top = Math.max(size.height, 1);
@@ -108,8 +105,7 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
     bundle.sketch.dispose();
     // A browser hands out only a handful of live WebGL contexts, and a reader moving
     // between chapters builds a panel each time, so this has to be given back.
-    bundle.renderer.dispose();
-    bundle.renderer.forceContextLoss();
+    bundle.three.dispose();
     bundles.delete(target);
   }
 };

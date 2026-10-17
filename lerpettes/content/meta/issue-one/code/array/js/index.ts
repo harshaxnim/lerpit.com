@@ -1,23 +1,15 @@
-import { drawBlankViewport } from '../../shared/blankViewport';
-import type { LerpetteStepRuntime } from '@lerpit/framework/types';
-import factory from '../build/fibArray.js';
+import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
-let fibList: Awaited<ReturnType<typeof factory>> | null = null;                                                                                                                                                
-
-const stepRuntime: LerpetteStepRuntime = {
-  async mount(ctx) {
-    fibList = await factory();
-  },
-
-  async enter(ctx) {
-    drawBlankViewport(ctx);
-    let fibArray = fibList!.getFibArray();
-    let log: string = '';
-    for (let i = 0; i < 8; i++) {
-      log += `${fibArray[i]}\n`;
+/** A typed view straight onto the vector's memory: no copy, one row per element. */
+export default defineChapter({
+  panels: ['table'],
+  wasm: () => import('../build/fibArray.js'),
+  table: {
+    draw(out: TableTarget, _s: unknown, ctx: LerpetteCtx) {
+      const fib = (ctx.wasm?.getFibArray as (() => Int32Array) | undefined)?.();
+      if (!fib) return;
+      for (let i = 0; i < fib.length; i++) out.row({ i, 'fibArray[i]': fib[i] });
     }
-    ctx.setCaption(`fibby numbers:\n${log}`);
   }
-};
-
-export default stepRuntime;
+});

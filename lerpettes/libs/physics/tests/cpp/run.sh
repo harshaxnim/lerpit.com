@@ -13,6 +13,7 @@ CXX="${CXX:-c++}"
   "$SCRIPT_DIR"/main.cpp \
   "$SCRIPT_DIR"/test_world.cpp \
   "$SCRIPT_DIR"/test_shapes.cpp \
+  "$SCRIPT_DIR"/test_motion.cpp \
   "$SCRIPT_DIR/../../wasm/world.cpp" \
   -o "$BUILD_DIR/physics_tests"
 

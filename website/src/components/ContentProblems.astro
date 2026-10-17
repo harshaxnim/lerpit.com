@@ -40,7 +40,8 @@ function toHtml(text: string): string {
           <li class="content-problems__item">
             <p class="content-problems__message" set:html={toHtml(problem.message)} />
             {problem.fix && <p class="content-problems__fix" set:html={toHtml(problem.fix)} />}
-            <span class="content-problems__where">{problem.where}</span>
+            {/* The id is what docs/authoring/problems.md is organised by. */}
+            <span class="content-problems__where">{problem.where} · {problem.id}</span>
           </li>
         ))}
       </ul>

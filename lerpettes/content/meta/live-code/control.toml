@@ -1,0 +1,4 @@
+# What the C++ chapter's code box says before its first build. The first build
+# fetches the compiler, which is the slow part, so the reader is told before pressing.
+[idle_status]
+cpp = "Press run to fetch the toolchain and build."

@@ -6,3 +6,4 @@ dist/
 lerpettes/libs/physics/build/
 lerpettes/libs/physics/tests/cpp/.build/
 lerpettes/content/**/code/**/build/
+test-results/

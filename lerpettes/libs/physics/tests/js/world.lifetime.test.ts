@@ -3,15 +3,26 @@ import { World } from '../../js/world';
 import { createFakeModule } from './fakeModule';
 
 describe('World lifetime', () => {
-  it('destroy() deletes every tracked handle and the world handle', async () => {
+  // The native world owns its bodies: world.cpp deletes them in destroy() and remove().
+  // Deleting the JS handle as well frees the same C++ object twice, so the wrapper
+  // destroys and deletes the world and leaves the handles alone.
+  it('destroy() destroys and deletes the native world, which frees its bodies', async () => {
     const fake = createFakeModule();
     const world = await World.create(async () => fake);
     const a = world.addParticle(new fake.TestBody([0, 0, 0], [0, 0, 0]));
-    const b = world.addParticle(new fake.TestBody([0, 0, 0], [0, 0, 0]));
     world.destroy();
-    expect(a.deleted).toBe(true);
-    expect(b.deleted).toBe(true);
     expect(fake._worlds[0]).toMatchObject({ deleted: true, destroyed: true });
+    expect(a.deleted).toBe(false);
+    expect(world.handles()).toEqual([]);
+  });
+
+  it('remove() hands the body to the native world to free, without deleting the handle too', async () => {
+    const fake = createFakeModule();
+    const world = await World.create(async () => fake);
+    const a = world.addParticle(new fake.TestBody([0, 0, 0], [0, 0, 0]));
+    world.remove(a);
+    expect(a.deleted).toBe(false);
+    expect(world.bodyCount()).toBe(0);
   });
 
   it('destroy() is idempotent', async () => {

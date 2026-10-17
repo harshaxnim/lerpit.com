@@ -8,7 +8,7 @@ I document as I try to make a simple WASM (CPP using Emscripten) + JS (TS + Thre
 
 I setup the emscripten sdk. We start simple, pipe a number from CPP to JS. From there we work our way up through global variables, arrays, structs, and arrays of structs, and end up at Structure of Arrays (SoA), which is the most efficient and common pattern in data heavy applications like physics simulations, rendering, etc.
 
-I only use the caption field in the viewport in this lesson to show the data being passed from CPP to JS.
+Each chapter shows the data passed from CPP to JS as a table in the panel on the right.
 
 ## Simple Function {#function}
 
@@ -108,13 +108,10 @@ function("getDefaultSphere", +[]() { return mySphere; });
 
 On the JS side, you get a plain object with named properties. This is a copy — embind marshals each field across:
 ```ts
-const sphere = structModule!.getDefaultSphere();
-ctx.setCaption(
-  `Sphere #${sphere.index}\n` +
-  `  radius: ${sphere.radius}\n` +
-  `  pos: (${sphere.pos.x}, ${sphere.pos.y}, ${sphere.pos.z})\n` +
-  `  vel: (${sphere.vel.x}, ${sphere.vel.y}, ${sphere.vel.z})`
-);
+const sphere = ctx.wasm.getDefaultSphere();
+out.row({ field: 'index', value: sphere.index });
+out.row({ field: 'radius', value: sphere.radius });
+out.row({ field: 'pos', value: `(${sphere.pos.x}, ${sphere.pos.y}, ${sphere.pos.z})` });
 ```
 
 ## Array of Structs - AoS {#aos}

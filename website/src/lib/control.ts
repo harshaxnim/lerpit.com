@@ -5,7 +5,16 @@
  * default, which is the shipped-and-listed behaviour, so adding controls never
  * changes what an existing lerpette does.
  *
- *   status = "draft"
+ *   status = "draft"          # published | unlisted | draft
+ *   landing = true            # serve this one at '/'
+ *   order = 2                 # place in its collection, before the undated newest-first rest
+ *   card_style = "sleeve"     # pick the generated card's style instead of having one assigned
+ *
+ *   [caption]                 # the band under the panel, per chapter id
+ *   dynamics = "The sphere moves at constant speed."
+ *
+ *   [idle_status]             # what a chapter's code box says before its first build
+ *   cpp = "Press run to fetch the toolchain and build."
  *
  * Adding a control is one entry in FIELDS below plus one line in LerpetteControl.
  * Everything else — defaults, validation, the unknown-key check, the problem
@@ -13,6 +22,7 @@
  */
 
 import { parse as parseToml } from 'smol-toml';
+import { STYLE_IDS } from './cardArt/styles';
 
 /** Listed and routed. */
 export const PUBLISHED = 'published';
@@ -26,10 +36,20 @@ export type LerpetteStatus = (typeof STATUSES)[number];
 
 export type LerpetteControl = {
   status: LerpetteStatus;
+  /** Serve this lerpette at '/'. Only a published one can be the landing page. */
+  landing: boolean;
+  /** Its place in its collection; ordered ones come first, lowest first. */
+  order: number | null;
+  /** The generated card's style, by id (see cardArt/styles.ts), or null to be assigned one. */
+  cardStyle: string | null;
+  /** Per chapter id: the caption under the panel, overriding the chapter's code. */
+  caption: Record<string, string>;
+  /** Per chapter id: the code box's status line before its first build. */
+  idleStatus: Record<string, string>;
 };
 
 /** What went wrong and what to do about it, in the shape content.ts reports. */
-export type ControlIssue = { what: string; fix: string };
+export type ControlIssue = { id: 'control-syntax' | 'control-unknown-key' | 'control-bad-value'; what: string; fix: string };
 
 type FieldSpec<T> = {
   fallback: T;
@@ -42,6 +62,7 @@ function oneOf<T extends string>(allowed: readonly T[]) {
     if (typeof raw !== 'string') {
       return {
         issue: {
+          id: 'control-bad-value',
           what: `control.toml sets ${key} to something that is not text.`,
           fix: `Write ${key} = "${allowed[0]}". One of: ${allowed.join(', ')}.`
         }
@@ -52,6 +73,7 @@ function oneOf<T extends string>(allowed: readonly T[]) {
     if (!match) {
       return {
         issue: {
+          id: 'control-bad-value',
           what: `control.toml sets ${key} = "${raw}", which is not a ${key} this site knows.`,
           fix: `Use one of: ${allowed.join(', ')}.`
         }
@@ -62,17 +84,55 @@ function oneOf<T extends string>(allowed: readonly T[]) {
   };
 }
 
-const FIELDS: { [K in keyof LerpetteControl]: FieldSpec<LerpetteControl[K]> } = {
-  status: { fallback: PUBLISHED, read: oneOf(STATUSES) }
+function bool(raw: unknown, key: string): { value: boolean } | { issue: ControlIssue } {
+  if (typeof raw === 'boolean') return { value: raw };
+  return { issue: { id: 'control-bad-value', what: `control.toml sets ${key} to something that is not true or false.`, fix: `Write ${key} = true, without quotes.` } };
+}
+
+function position(raw: unknown, key: string): { value: number | null } | { issue: ControlIssue } {
+  if (typeof raw === 'number' && Number.isInteger(raw)) return { value: raw };
+  return { issue: { id: 'control-bad-value', what: `control.toml sets ${key} to something that is not a whole number.`, fix: `Write ${key} = 1, without quotes.` } };
+}
+
+function styleId(raw: unknown, key: string): { value: string | null } | { issue: ControlIssue } {
+  const read = oneOf(STYLE_IDS)(raw, key);
+  return 'issue' in read ? read : { value: read.value };
+}
+
+/** A table of chapter id to text, like [caption]. Which ids exist is content.ts's to check. */
+function textTable(raw: unknown, key: string): { value: Record<string, string> } | { issue: ControlIssue } {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return { issue: { id: 'control-bad-value', what: `control.toml's ${key} is not a table.`, fix: `Write it as a [${key}] section with one line per chapter: step-id = "text".` } };
+  }
+  const out: Record<string, string> = {};
+  for (const [id, value] of Object.entries(raw)) {
+    if (typeof value !== 'string') {
+      return { issue: { id: 'control-bad-value', what: `control.toml's [${key}] gives ${id} something that is not text.`, fix: `Quote it: ${id} = "…".` } };
+    }
+    out[id] = value;
+  }
+  return { value: out };
+}
+
+/** File keys as authors write them, mapped to the fields they fill. */
+const FIELDS: { [K in keyof LerpetteControl]: FieldSpec<LerpetteControl[K]> & { key: string } } = {
+  status: { key: 'status', fallback: PUBLISHED, read: oneOf(STATUSES) },
+  landing: { key: 'landing', fallback: false, read: bool },
+  order: { key: 'order', fallback: null, read: position },
+  cardStyle: { key: 'card_style', fallback: null, read: styleId },
+  caption: { key: 'caption', fallback: {}, read: textTable },
+  idleStatus: { key: 'idle_status', fallback: {}, read: textTable }
 };
 
 const KEYS = Object.keys(FIELDS) as (keyof LerpetteControl)[];
+const FILE_KEYS = KEYS.map((field) => FIELDS[field].key);
 
 /** Every default, which is what a lerpette with no control.toml gets. */
 export function defaultControl(): LerpetteControl {
   const control = {} as LerpetteControl;
   for (const key of KEYS) {
-    (control as Record<string, unknown>)[key] = FIELDS[key].fallback;
+    const fallback = FIELDS[key].fallback;
+    (control as Record<string, unknown>)[key] = fallback && typeof fallback === 'object' ? { ...fallback } : fallback;
   }
   return control;
 }
@@ -95,6 +155,7 @@ export function parseControl(source: string): ControlResult {
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     problems.push({
+      id: 'control-syntax',
       what: `control.toml is not valid TOML, so all of it was ignored. ${detail}`,
       fix: `Each line is one setting, like status = "${DRAFT}". Quote the value.`
     });
@@ -102,21 +163,23 @@ export function parseControl(source: string): ControlResult {
   }
 
   for (const key of Object.keys(table)) {
-    if (!(KEYS as string[]).includes(key)) {
+    if (!FILE_KEYS.includes(key)) {
       problems.push({
+        id: 'control-unknown-key',
         what: `control.toml sets ${key}, which is not a control this site has.`,
-        fix: `Known controls: ${KEYS.join(', ')}. Remove the line or fix the spelling.`
+        fix: `Known controls: ${FILE_KEYS.join(', ')}. Remove the line or fix the spelling.`
       });
     }
   }
 
-  for (const key of KEYS) {
+  for (const field of KEYS) {
+    const { key, read } = FIELDS[field];
     if (!(key in table)) continue;
-    const result = FIELDS[key].read(table[key], key);
+    const result = read(table[key], key);
     if ('issue' in result) {
       problems.push(result.issue);
     } else {
-      (control as Record<string, unknown>)[key] = result.value;
+      (control as Record<string, unknown>)[field] = result.value;
     }
   }
 

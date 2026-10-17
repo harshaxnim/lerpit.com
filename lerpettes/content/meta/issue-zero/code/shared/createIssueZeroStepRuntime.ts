@@ -1,180 +1,97 @@
 import * as THREE from 'three';
-import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '@lerpit/framework/types';
-import { loadLerpModule } from './lerpLoader';
+import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import type { Viewport3dTarget } from '@lerpit/framework/panels/viewport3d/viewport3dPanel';
+import { hex } from '@lerpit/framework/theme';
+
+/**
+ * Issue zero's one picture: a segment from A to B and a point that moves along it to
+ * wherever the chapter's `t` says, using the lerp compiled from C++.
+ *
+ * Each chapter is the same scene with a different target. Where the point is, is kept
+ * here rather than per chapter, so scrolling from one chapter to the next glides the
+ * point from the last chapter's t to this one's instead of jumping back to A.
+ */
 
 type IssueZeroConfig = {
   target: number;
   status: string;
 };
 
-type IssueZeroSharedScene = {
-  setTarget: (target: number) => void;
-  renderNow: () => void;
-  resize: () => void;
-  dispose: () => void;
+type LerpModule = { lerp_f32: (a: number, b: number, t: number) => number };
+
+type State = {
+  mover: THREE.Object3D | null;
+  glow: THREE.Object3D | null;
 };
 
-export function createIssueZeroStepRuntime(config: IssueZeroConfig): LerpetteStepRuntime {
-  const sharedWasmPath = '../shared/build/lerp_demo.wasm';
+/** Where the point is along the segment, shared by every chapter of the lesson. */
+let current = 0;
 
-  return {
-    async mount(ctx) {
-      await ensureIssueZeroScene(ctx, ctx.resolveAssetUrl(sharedWasmPath));
-    },
-    async enter(ctx) {
-      const scene = await ensureIssueZeroScene(ctx, ctx.resolveAssetUrl(sharedWasmPath));
-      ctx.setCaption(config.status);
-      scene.setTarget(config.target);
-      scene.renderNow();
-    },
-    resize(ctx) {
-      const scene = ctx.shared.get('issue-zero-scene') as IssueZeroSharedScene | undefined;
-      scene?.resize();
-    },
-    dispose(ctx) {
-      const scene = ctx.shared.get('issue-zero-scene') as IssueZeroSharedScene | undefined;
-      scene?.dispose();
-      ctx.shared.delete('issue-zero-scene');
-    }
-  };
-}
+const A = new THREE.Vector3(-3.5, -1.25, 0);
+const B = new THREE.Vector3(3.75, 1.9, 0);
 
-async function ensureIssueZeroScene(ctx: LerpetteRuntimeContext, wasmUrl: string): Promise<IssueZeroSharedScene> {
-  const existing = ctx.shared.get('issue-zero-scene') as IssueZeroSharedScene | undefined;
-  if (existing) {
-    return existing;
+function buildScene(target: Viewport3dTarget, state: State) {
+  // A diagram, looked at straight on, that keeps the whole segment in view on a wide
+  // desk or a tall phone drawer.
+  target.orthographic(6, 4.5);
+
+  target.lights.clear();
+  target.lights.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const key = new THREE.DirectionalLight(0xffffff, 1.25);
+  key.position.set(4, 8, 6);
+  target.lights.add(key);
+
+  const scene = target.scene;
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([A, B]), new THREE.LineBasicMaterial({ color: hex.accent })));
+
+  const dot = new THREE.SphereGeometry(0.2, 32, 32);
+  const anchor = new THREE.MeshStandardMaterial({ color: hex.ink, roughness: 0.32 });
+  for (const at of [A, B]) {
+    const mesh = new THREE.Mesh(dot, anchor);
+    mesh.position.copy(at);
+    scene.add(mesh);
   }
 
-  const module = await loadLerpModule(wasmUrl);
-  const renderer = new THREE.WebGLRenderer({
-    canvas: ctx.surface.canvas,
-    alpha: true,
-    antialias: true,
-    powerPreference: 'high-performance'
-  });
-
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-
-  const scene = new THREE.Scene();
-  const baseHalfWidth = 6;
-  const baseHalfHeight = 4.5;
-  const baseAspect = baseHalfWidth / baseHalfHeight;
-  const camera = new THREE.OrthographicCamera(-baseHalfWidth, baseHalfWidth, baseHalfHeight, -baseHalfHeight, 0.1, 50);
-  camera.position.set(0, 0, 10);
-  camera.lookAt(0, 0, 0);
-
-  const pointA = new THREE.Vector3(-3.5, -1.25, 0);
-  const pointB = new THREE.Vector3(3.75, 1.9, 0);
-
-  const lineMaterial = new THREE.LineBasicMaterial({ color: 0x2e6da4 });
-  const lineGeometry = new THREE.BufferGeometry().setFromPoints([pointA, pointB]);
-  scene.add(new THREE.Line(lineGeometry, lineMaterial));
-
-  const dotGeometry = new THREE.SphereGeometry(0.2, 32, 32);
-  const pointMaterial = new THREE.MeshStandardMaterial({ color: 0x20313f, roughness: 0.32 });
-  const moverMaterial = new THREE.MeshStandardMaterial({ color: 0xd17041, roughness: 0.24 });
-
-  const anchorA = new THREE.Mesh(dotGeometry, pointMaterial);
-  anchorA.position.copy(pointA);
-  scene.add(anchorA);
-
-  const anchorB = new THREE.Mesh(dotGeometry, pointMaterial);
-  anchorB.position.copy(pointB);
-  scene.add(anchorB);
-
-  const mover = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), moverMaterial);
-  mover.position.copy(pointA);
-  scene.add(mover);
-
+  const mover = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), new THREE.MeshStandardMaterial({ color: hex.accentWarm, roughness: 0.24 }));
   const glow = new THREE.Mesh(
     new THREE.RingGeometry(0.36, 0.42, 48),
-    new THREE.MeshBasicMaterial({ color: 0xd17041, transparent: true, opacity: 0.28 })
+    new THREE.MeshBasicMaterial({ color: hex.accentWarm, transparent: true, opacity: 0.28 })
   );
-  glow.position.copy(pointA);
-  scene.add(glow);
+  scene.add(mover, glow);
+  state.mover = mover;
+  state.glow = glow;
+}
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+export function createIssueZeroStepRuntime(config: IssueZeroConfig) {
+  const goal = Math.min(Math.max(config.target, 0), 1);
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.25);
-  keyLight.position.set(4, 8, 6);
-  scene.add(keyLight);
+  return defineChapter<State>({
+    panels: ['viewport3d'],
+    caption: config.status,
+    // Restarting a lerp to where it already is would do nothing a reader could see.
+    restart: false,
+    wasm: () => import('./build/lerp_demo.js'),
+    state: () => ({ mover: null, glow: null }),
 
-  let target = 0;
-  let current = 0;
-  let rafId = 0;
-  let disposed = false;
-
-  const resize = () => {
-    const width = ctx.host.clientWidth;
-    const height = Math.max(ctx.host.clientHeight, 320);
-    renderer.setSize(width, height, false);
-
-    const safeHeight = Math.max(height, 1);
-    const aspect = width / safeHeight;
-    const isWiderThanBase = aspect >= baseAspect;
-    const halfWidth = isWiderThanBase ? baseHalfHeight * aspect : baseHalfWidth;
-    const halfHeight = isWiderThanBase ? baseHalfHeight : baseHalfWidth / Math.max(aspect, 0.0001);
-
-    camera.left = -halfWidth;
-    camera.right = halfWidth;
-    camera.top = halfHeight;
-    camera.bottom = -halfHeight;
-    camera.updateProjectionMatrix();
-  };
-
-  const renderFrame = () => {
-    if (disposed) {
-      return;
-    }
-
-    current += (target - current) * 0.08;
-    if (Math.abs(target - current) < 0.0001) {
-      current = target;
-    }
-
-    const x = module.lerp(pointA.x, pointB.x, current);
-    const y = module.lerp(pointA.y, pointB.y, current);
-    mover.position.set(x, y, 0);
-    glow.position.set(x, y, 0);
-    glow.rotation.z += 0.01;
-
-    renderer.render(scene, camera);
-
-    if (!document.hidden) {
-      rafId = window.requestAnimationFrame(renderFrame);
-    }
-  };
-
-  resize();
-  renderFrame();
-
-  const shared: IssueZeroSharedScene = {
-    setTarget(nextTarget) {
-      target = Math.min(Math.max(nextTarget, 0), 1);
-      if (!rafId) {
-        renderFrame();
-      }
+    step(_s, dt) {
+      // Ease toward the target at the rate the hand-written loop used (8% a frame at
+      // 60 fps), scaled by dt so a 120 Hz display does not run it twice as fast.
+      const k = 1 - Math.pow(1 - 0.08, dt * 60);
+      current += (goal - current) * k;
+      if (Math.abs(goal - current) < 0.0001) current = goal;
     },
-    renderNow() {
-      resize();
-      renderer.render(scene, camera);
-    },
-    resize,
-    dispose() {
-      if (disposed) {
-        return;
-      }
 
-      disposed = true;
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
+    viewport3d: {
+      build: buildScene,
+      draw(_target: Viewport3dTarget, s: State, ctx: LerpetteCtx) {
+        const lerp = (ctx.wasm as LerpModule | null)?.lerp_f32;
+        if (!lerp || !s.mover || !s.glow) return;
+        const x = lerp(A.x, B.x, current);
+        const y = lerp(A.y, B.y, current);
+        s.mover.position.set(x, y, 0);
+        s.glow.position.set(x, y, 0);
+        s.glow.rotation.z += 0.01;
       }
-
-      renderer.dispose();
-      renderer.forceContextLoss();
     }
-  };
-
-  ctx.shared.set('issue-zero-scene', shared);
-  return shared;
+  });
 }

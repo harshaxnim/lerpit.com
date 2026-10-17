@@ -1,0 +1,43 @@
+---
+interface Props {
+  /** The section's id: `intro` for the opening, the chapter id otherwise. */
+  id: string;
+  /** `00` for the intro, then `01`, `02`… */
+  index: string;
+  title: string;
+  html: string;
+  intro?: boolean;
+  /** Whether this chapter has code of its own; the `!` mark says so when it does not. */
+  hasOwnRuntime?: boolean;
+}
+
+const { id, index, title, html, intro = false, hasOwnRuntime = true } = Astro.props as Props;
+---
+
+{/* One chapter: a frozen header with its number and title, then its prose. A `lerpit`
+    fence in the prose renders an empty .lerpette-code box, which the editor layer fills
+    when the page loads. */}
+{intro ? (
+  <section class="lerpette-intro" id={id} data-section-id={id}>
+    <div class="lerpette-head">
+      <span class="lerpette-head__index-row">
+        <span class="lerpette-head__index">{index}</span>
+      </span>
+      <h2 class="lerpette-intro__title">{title}</h2>
+    </div>
+    <div class="prose-block" set:html={html}></div>
+  </section>
+) : (
+  <section class="lerpette-step" id={id} data-section-id={id} aria-labelledby={`${id}-title`}>
+    <div class="lerpette-head">
+      <span class="lerpette-head__index-row">
+        <span class="lerpette-head__index">{index}</span>
+        {!hasOwnRuntime && (
+          <span class="lerpette-step__missing-runtime" role="img" aria-label="Missing code folder" data-tooltip="missing code folder">!</span>
+        )}
+      </span>
+      <h2 id={`${id}-title`}>{title}</h2>
+    </div>
+    <div class="prose-block" set:html={html}></div>
+  </section>
+)}

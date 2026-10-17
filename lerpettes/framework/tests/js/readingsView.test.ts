@@ -10,7 +10,6 @@ describe('resolveReadingsView', () => {
 
   it('follows what the step asked for', () => {
     expect(resolveReadingsView(null, { mode: 'expanded', mini: null }, labels)).toEqual({ mode: 'expanded', mini: null });
-    expect(resolveReadingsView(null, { mode: 'collapsed', mini: null }, labels)).toEqual({ mode: 'collapsed', mini: null });
     expect(resolveReadingsView(null, { mode: 'mini', mini: 't' }, labels)).toEqual({ mode: 'mini', mini: 't' });
   });
 
@@ -21,7 +20,6 @@ describe('resolveReadingsView', () => {
   it('puts back what the reader left on a restart, over what the step asked for', () => {
     const authored = { mode: 'expanded' as const, mini: null };
     expect(resolveReadingsView({ mode: 'mini', mini: 'fps' }, authored, labels)).toEqual({ mode: 'mini', mini: 'fps' });
-    expect(resolveReadingsView({ mode: 'collapsed', mini: null }, authored, labels)).toEqual({ mode: 'collapsed', mini: null });
   });
 
   it('has nothing to show mini with no readings, and says so with a null label', () => {
@@ -30,6 +28,11 @@ describe('resolveReadingsView', () => {
 
   it('drops a stray label from a view that is not mini', () => {
     expect(resolveReadingsView({ mode: 'expanded', mini: 't' }, null, labels)).toEqual({ mode: 'expanded', mini: null });
+  });
+
+  it('has two modes: a folded view left by an older build reads as mini', () => {
+    const old = { mode: 'collapsed', mini: null } as unknown as Parameters<typeof resolveReadingsView>[0];
+    expect(resolveReadingsView(old, null, labels)).toEqual({ mode: 'mini', mini: 'PE + KE' });
   });
 
   it('keeps the default as the first reading, alone', () => {

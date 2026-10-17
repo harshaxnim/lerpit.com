@@ -3,15 +3,16 @@ import CollectionShowcase from '../components/CollectionShowcase.astro';
 import ContentProblems from '../components/ContentProblems.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../site.config';
 import { getCollections, getLerpetteLibrary } from '../lib/content';
 
 const collections = await getCollections();
 const { problems } = await getLerpetteLibrary();
 ---
 
-<BaseLayout title="Library · Lerpit" description="Library of lerpettes grouped by collections.">
+<BaseLayout title={`Library · ${site.titleSuffix}`} description="Library of lerpettes grouped by collections.">
   <main class="site-shell">
-    <section class="lerpette-player">
+    <section class="sheet">
       <SiteHeader />
       <header class="collection-header">
         <h2>The lerpette library</h2>

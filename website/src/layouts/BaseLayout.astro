@@ -2,14 +2,21 @@
 import '../styles/global.css';
 import 'katex/dist/katex.min.css';
 import BrandSpine from '../components/BrandSpine.astro';
+import { site } from '../site.config';
 
 interface Props {
   title?: string;
   description?: string;
 }
 
+const base = import.meta.env.BASE_URL;
+// Absolute, because a link preview is fetched by someone else's server, which has no
+// page to resolve a relative URL against. Astro.site is set in astro.config.mjs.
+const origin = Astro.site ?? new URL(Astro.url.origin);
+const pageUrl = new URL(Astro.url.pathname, origin).toString();
+const shareImage = new URL(`${base}og-image.png`, origin).toString();
 const {
-  title = 'Lerpit',
+  title = site.titleSuffix,
   description = 'Interactive lessons on simulation, rendering, and animation.'
 } = Astro.props;
 ---
@@ -100,8 +107,30 @@ const {
     <!-- Ignored by Safari 26, which samples CSS instead, but still honoured by older
          iOS and by Chrome. It described a dark page; this one is paper. -->
     <meta name="theme-color" content="#fdfbf4" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon.svg" />
+    {/* From the base URL, so a deploy under /<repo>/ finds its icon too. */}
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <link rel="shortcut icon" href={`${base}favicon.svg`} />
+    {/* The brand spine as the icon wherever the site is saved or shared: the home screen
+        (iOS reads apple-touch-icon, Android the manifest) and every link preview
+        (WhatsApp, iMessage, Slack and X read Open Graph). Rendered by
+        scripts/brand-icons.mjs. Preview images must be absolute URLs. */}
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
+    <link rel="manifest" href={`${base}site.webmanifest`} />
+    <meta name="apple-mobile-web-app-title" content={site.titleSuffix} />
+    <meta property="og:site_name" content={site.titleSuffix} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:image" content={shareImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={`${site.titleSuffix}: five bands of a cassette label leaning beside the wordmark.`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={shareImage} />
+    <link rel="canonical" href={pageUrl} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -114,7 +143,7 @@ const {
     <slot />
     <footer class="site-footer">
       <p class="site-footer__card">
-        <em>Meticulously lerped by Harsha</em> (2026)
+        <em>{site.footer} {site.author}</em> ({site.year})
         <BrandSpine />
       </p>
     </footer>

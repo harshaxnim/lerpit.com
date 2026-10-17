@@ -5,9 +5,10 @@ gave it two corner cards, a reading API for step authors, and a new frame.
 
 - **Top right: Controls.** The restart button, and the step's tweakpane once it asks for
   one. The word "Controls" is the fold toggle. It starts folded.
-- **Top left: Readings.** Live values the step reports. The word "Readings" folds the
-  card. Clicking a reading shrinks the card to that reading alone, without its label. It
-  starts shrunk to the first reading.
+- **Top left: Readings.** Live values the step reports, in two modes: full (every
+  reading, under the word "Readings") and mini (one reading alone, without its label).
+  It starts mini, on the first reading. Clicking the mini reading opens the full card;
+  clicking a reading in the full card, or the word "Readings", shrinks it again.
 - **Frame.** Folder tabs stand on the stage's top edge, right-aligned. On a wide screen
   they sit in the pinned byline's row. The panel is 75% paper, and the page's graph paper
   shows through it.
@@ -55,7 +56,6 @@ monitors()
   .graph('PE + KE', () => totalEnergy(world))
   .number('t', () => world.time, { unit: 's' })
   .expand();        // every reading showing
-// or .collapse()   // folded to the title
 // or .mini('t')    // shrunk to a reading other than the first
 ```
 
@@ -81,8 +81,8 @@ never needs `onFrame` for one.
 | `lerpettes/framework/monitors/view.ts` | `resolveReadingsView`: the start-state rule (restored, then authored, then default) and the fallback for an unknown mini label. |
 | `lerpettes/framework/tests/js/readingsFormat.test.ts`, `readingsView.test.ts` | Tests for `format.ts` and `view.ts`. |
 | `website/src/components/LerpettePlayer.astro` | Wraps the byline's crumbs in `.lerpette-brow__crumbs`, so they can take the lesson's track. |
-| `lerpettes/framework/runtimes/create3DRuntime.ts` | Builds the Controls card (title toggle, Lucide `rotate-ccw` restart, `controls({ expanded })`) and the Readings card, settles the readings view after setup, ticks readings after the step's frame callbacks, keeps the reader's states for a restart and clears them on `enter`. |
-| `lerpettes/framework/panels/canvasViewport/canvasViewportPanel.ts` | Gives runtimes two corners: `tray` (top right) and `monitors` (top left). |
+| `lerpettes/framework/stage/chrome.ts` | The stage chrome, one set of cards per chapter: the Controls card (title toggle, Lucide `rotate-ccw` restart, `controls({ expanded })`) and the Readings card. Settles the readings view after setup, keeps the reader's choices across a restart, hides a chapter's cards when another is shown. (Moved here from `create3DRuntime.ts` by the authoring-platform work, so every chapter has them.) |
+| `website/src/lib/player/stagePlayer.ts` | Owns the two corners, `.lerpette-panel__tray` (top right) and `.lerpette-panel__monitors` (top left), and puts them back into the panel box after every stack swap. |
 | `lerpettes/libs/physics/js/create3DPhysicsRuntime.ts` | Passes `monitors` through to physics steps. |
 | `website/src/styles/global.css` | `--stage-face`, `--chrome-face`, the `--graph-paper` layers and the fixed `body::before`, the folder tabs, the cards and the readings. |
 
@@ -92,11 +92,12 @@ never needs `onFrame` for one.
   value, options, now)`, and optionally `sample` (for history) and `everyFrame`. To add a
   kind, add an entry there and a method on `Readings`. Panel kinds and `control.toml`
   fields grow the same way.
-- **Memory lasts one step.** `ctx.shared` holds `3d:controls-collapsed` and
-  `3d:readings` (a `ReadingsView`: `{ mode: 'expanded' | 'collapsed' | 'mini', mini }`).
-  Every change the reader makes is written there. A restart reads it back. `enter`
-  deletes it, so a new chapter starts from its own code.
-- **The view settles after setup.** The builder records `expand()`, `collapse()` and
+- **Memory lasts one chapter.** Each chapter's stage owner keeps `stage:controls-collapsed`,
+  `stage:readings` (a `ReadingsView`: `{ mode: 'expanded' | 'mini', mini }`; two modes, full and mini)
+  and, across a restart, `stage:pane` (the slider values). A restart reads them back; a
+  chapter seen for the first time starts from its own code. Leaving a chapter hides its
+  cards and returning shows them as the reader left them.
+- **The view settles after setup.** The builder records `expand()` and
   `mini()` as they are called. `settle()` runs once setup resolves and has every label,
   so a step can name its view before or after adding readings. A reading added later
   joins the current view.
@@ -151,9 +152,9 @@ never needs `onFrame` for one.
 
 ## Known limits
 
-- Only `create3DRuntime` offers `monitors()` today. The card is runtime-agnostic, so the
-  2D sketch runtime can adopt it by calling `createReadingsCard` with its own corner and
-  calling `tick` from its frame loop.
+- Every chapter reaches the cards through `ctx.monitors()` / `ctx.controls()`; the chapter
+  runtime ticks readings after each frame. A hand-written runtime must call
+  `ctx.stage.tick(now)` itself.
 - Designed for later but not built: groups of readings, graphs with several series, and
   histograms.
 - A reading is kept by its label. Two readings with the same label in one step would be

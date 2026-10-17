@@ -1,20 +1,13 @@
-import { drawBlankViewport } from '../../shared/blankViewport';
-import type { LerpetteStepRuntime } from '@lerpit/framework/types';
-import factory from '../build/answerToUniverse.js';
+import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
-let answerGen: Awaited<ReturnType<typeof factory>> | null = null;                                                                                                                                                
-
-const stepRuntime: LerpetteStepRuntime = {
-  async mount(ctx) {
-    answerGen = await factory();
-    const answer = answerGen.answerToUniverse();
-    ctx.setCaption(`answerToUniverse() returned ${answer}`);
-  },
-  
-  async enter(ctx) {
-    drawBlankViewport(ctx);
-    ctx.setCaption(`answerToUniverse() returned ${answerGen?.answerToUniverse()}`);
+/** One call across the boundary, and what came back. */
+export default defineChapter({
+  panels: ['table'],
+  wasm: () => import('../build/answerToUniverse.js'),
+  table: {
+    draw(out: TableTarget, _s: unknown, ctx: LerpetteCtx) {
+      out.row({ call: 'answerToUniverse()', returned: ctx.wasm?.answerToUniverse() });
+    }
   }
-}
-
-export default stepRuntime;
+});

@@ -1,0 +1,38 @@
+---
+import type { LerpetteCollection, LerpetteMixtape } from '@lerpit/framework/types';
+import CassetteCard from './CassetteCard.astro';
+
+/**
+ * A band at the foot of a page that points somewhere else in the library: cassette cards
+ * for lerpettes, or a row of buttons for collections. One component, so the two shelves
+ * a page can carry always match.
+ */
+type Props = {
+  eyebrow: string;
+  heading: string;
+  headingId: string;
+} & ({ mixtapes: LerpetteMixtape[] } | { collections: LerpetteCollection[] });
+
+const props = Astro.props as Props;
+const { eyebrow, heading, headingId } = props;
+---
+
+<section class="lerpette-shelf" aria-labelledby={headingId}>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">{eyebrow}</p>
+      <h2 id={headingId}>{heading}</h2>
+    </div>
+    <a class="button button--ghost button--sans" href={`${import.meta.env.BASE_URL}library/`}>Open the library</a>
+  </div>
+
+  {'mixtapes' in props ? (
+    <div class="cassette-grid">
+      {props.mixtapes.map((entry) => <CassetteCard mixtape={entry} />)}
+    </div>
+  ) : (
+    <div class="collections-grid">
+      {props.collections.map((collection) => <a class="button button--ghost" href={collection.href}>{collection.title}</a>)}
+    </div>
+  )}
+</section>

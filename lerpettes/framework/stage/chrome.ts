@@ -1,0 +1,276 @@
+import { RotateCcw } from 'lucide-static';
+import { Pane } from 'tweakpane';
+import { createReadingsCard, type Readings, type ReadingsCard } from '../monitors/readings';
+import type { ReadingsView } from '../monitors/view';
+import './chrome.css';
+
+/*
+ * The stage's own chrome: the controls card with restart in the top right, the
+ * readings card in the top left, and the caption band at the foot.
+ *
+ * These used to belong to the 3D runtime, which is why only 3D chapters had them. They
+ * belong to the stage instead, the slot the player owns, so every chapter gets them
+ * whatever panel it draws into: a 2D sketch can graph its energy, a table can have a
+ * slider, and restart means the same thing everywhere.
+ *
+ * Each chapter gets its own set of cards (an owner). Moving to another chapter hides
+ * the set rather than destroying it, so coming back finds the cards as the reader
+ * left them; restarting a chapter rebuilds its cards but keeps the reader's choices
+ * (folded or not, which reading is showing, the slider values). A chapter seen for the
+ * first time starts as its own code asks.
+ */
+
+export type ControlsOptions = {
+  /** Start with the controls showing rather than folded. */
+  expanded?: boolean;
+};
+
+/** What a chapter's code reaches the stage through. */
+export type StageOwner = {
+  /** The tweakpane in the top-right card, made on first call. Starts folded. */
+  controls(options?: ControlsOptions): Pane;
+  /** The readings in the top-left card, made on first call. See monitors/readings.ts. */
+  monitors(): Readings;
+  /** The band at the foot of the stage. The last value set stands. */
+  caption(value: string): void;
+  /**
+   * A caption the author fixed outside the code (control.toml's `[caption]`), shown in
+   * place of whatever the code says. null lets the code speak again.
+   */
+  pin(value: string | null): void;
+  /** Offer a restart button that calls this, or take it away with null. */
+  restartable(run: (() => void) | null): void;
+  /** The chapter has finished adding readings: apply the starting view. */
+  settle(): void;
+  /** Sample the readings that are due. Once per frame, after the frame was drawn. */
+  tick(now: number): void;
+  /** Put this chapter's cards and caption on the stage. */
+  show(): void;
+  /** Take them off again, keeping them for the next show(). */
+  hide(): void;
+  /**
+   * Throw the cards away. `keepChoices` is a restart: the reader's folds, reading and
+   * slider values are remembered and handed to the next cards this owner builds.
+   */
+  reset(keepChoices: boolean): void;
+};
+
+export type StageChrome = {
+  owner(id: string): StageOwner;
+  /** Forget an owner entirely, cards and choices. */
+  drop(id: string): void;
+  dropAll(): void;
+};
+
+export type StageChromeOptions = {
+  /** Top-right corner. */
+  tray: HTMLElement;
+  /** Top-left corner. */
+  monitors: HTMLElement;
+  setCaption(value: string): void;
+};
+
+/** Stage choices are kept under these, one map per owner. */
+const KEY = {
+  controlsCollapsed: 'stage:controls-collapsed',
+  readings: 'stage:readings',
+  pane: 'stage:pane'
+} as const;
+
+let controlsIds = 0;
+
+export function createStageChrome(options: StageChromeOptions): StageChrome {
+  const owners = new Map<string, StageOwner & { dispose(): void }>();
+  let shown: string | null = null;
+
+  const make = (id: string) => {
+    /** What the reader chose, kept across a restart and cleared by a fresh start. */
+    const choices = new Map<string, unknown>();
+    let caption = '';
+    let pinned: string | null = null;
+    let restartRun: (() => void) | null = null;
+
+    // Each corner's contents live in a wrapper that takes no box of its own, so the
+    // cards lay out exactly as if they were the corner's direct children.
+    const trayItems = document.createElement('div');
+    trayItems.style.display = 'contents';
+    const monitorItems = document.createElement('div');
+    monitorItems.style.display = 'contents';
+
+    let card: HTMLElement | null = null;
+    let head: HTMLElement | null = null;
+    let restartButton: HTMLButtonElement | null = null;
+    let pane: Pane | null = null;
+    let readings: ReadingsCard | null = null;
+
+    const ensureCard = () => {
+      if (card && head) return { card, head };
+      card = document.createElement('div');
+      card.className = 'lerpette-stage__card';
+      head = document.createElement('div');
+      head.className = 'lerpette-stage__card-head';
+      card.append(head);
+      trayItems.append(card);
+      return { card, head };
+    };
+
+    const syncRestart = () => {
+      if (!restartRun) {
+        restartButton?.remove();
+        restartButton = null;
+        if (card && !pane) {
+          card.remove();
+          card = null;
+          head = null;
+        }
+        return;
+      }
+
+      if (restartButton) return;
+      const parts = ensureCard();
+      restartButton = document.createElement('button');
+      restartButton.type = 'button';
+      restartButton.className = 'lerpette-stage__icon';
+      restartButton.setAttribute('aria-label', 'Restart');
+      restartButton.title = 'Restart';
+      restartButton.innerHTML = RotateCcw;
+      restartButton.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+      restartButton.addEventListener('click', () => restartRun?.());
+      parts.head.append(restartButton);
+    };
+
+    const owner: StageOwner & { dispose(): void } = {
+      controls(opts: ControlsOptions = {}) {
+        if (pane) return pane;
+        const parts = ensureCard();
+
+        const container = document.createElement('div');
+        container.className = 'lerpette-stage__card-body lerpette-stage__controls';
+        container.id = `lerpette-controls-${++controlsIds}`;
+        parts.card.append(container);
+
+        const title = document.createElement('button');
+        title.type = 'button';
+        title.className = 'lerpette-stage__card-title';
+        title.textContent = 'Controls';
+        title.setAttribute('aria-controls', container.id);
+        const setCollapsed = (collapsed: boolean) => {
+          parts.card.classList.toggle('is-collapsed', collapsed);
+          title.setAttribute('aria-expanded', String(!collapsed));
+          title.title = collapsed ? 'Show controls' : 'Hide controls';
+          choices.set(KEY.controlsCollapsed, collapsed);
+        };
+        title.addEventListener('click', () => setCollapsed(!parts.card.classList.contains('is-collapsed')));
+        parts.head.prepend(title);
+        const restored = choices.get(KEY.controlsCollapsed) as boolean | undefined;
+        setCollapsed(restored ?? !opts.expanded);
+
+        pane = new Pane({ container });
+        return pane;
+      },
+
+      monitors() {
+        if (!readings) {
+          const restored = (choices.get(KEY.readings) as ReadingsView | undefined) ?? null;
+          readings = createReadingsCard(monitorItems, restored, (view) => choices.set(KEY.readings, view));
+        }
+        return readings.readings;
+      },
+
+      caption(value) {
+        caption = value;
+        if (shown === id) options.setCaption(pinned ?? value);
+      },
+
+      pin(value) {
+        pinned = value;
+        if (shown === id) options.setCaption(pinned ?? caption);
+      },
+
+      restartable(run) {
+        restartRun = run;
+        syncRestart();
+      },
+
+      settle() {
+        readings?.settle();
+        // Slider values the reader set before a restart go back on the new pane, which
+        // the chapter has rebuilt with its own defaults by now.
+        const saved = choices.get(KEY.pane);
+        if (saved && pane) {
+          try {
+            pane.importState(saved as never);
+          } catch {
+            // A chapter whose controls changed shape since: keep its own defaults.
+          }
+        }
+        choices.delete(KEY.pane);
+      },
+
+      tick(now) {
+        readings?.tick(now);
+      },
+
+      show() {
+        if (shown && shown !== id) owners.get(shown)?.hide();
+        shown = id;
+        options.tray.append(trayItems);
+        options.monitors.append(monitorItems);
+        options.setCaption(pinned ?? caption);
+      },
+
+      hide() {
+        trayItems.remove();
+        monitorItems.remove();
+        if (shown === id) shown = null;
+      },
+
+      reset(keepChoices) {
+        if (keepChoices && pane) {
+          choices.set(KEY.pane, pane.exportState());
+        }
+        if (!keepChoices) choices.clear();
+        pane?.dispose();
+        pane = null;
+        readings?.remove();
+        readings = null;
+        card?.remove();
+        card = null;
+        head = null;
+        restartButton = null;
+        trayItems.replaceChildren();
+        monitorItems.replaceChildren();
+        // Restart is offered by the runtime, not by the cards, so it survives them.
+        syncRestart();
+      },
+
+      dispose() {
+        owner.reset(false);
+        restartRun = null;
+        caption = '';
+        owner.hide();
+      }
+    };
+
+    return owner;
+  };
+
+  return {
+    owner(id) {
+      let found = owners.get(id);
+      if (!found) {
+        found = make(id);
+        owners.set(id, found);
+      }
+      return found;
+    },
+    drop(id) {
+      owners.get(id)?.dispose();
+      owners.delete(id);
+    },
+    dropAll() {
+      owners.forEach((owner) => owner.dispose());
+      owners.clear();
+    }
+  };
+}

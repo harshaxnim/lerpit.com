@@ -1,19 +1,21 @@
-import { drawBlankViewport } from '../../shared/blankViewport';
-import type { LerpetteStepRuntime } from '@lerpit/framework/types';
-import factory from '../build/otherFavouriteNumber.js';
+import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
-let favModule: Awaited<ReturnType<typeof factory>> | null = null;                                                                                                                                                
-
-const stepRuntime: LerpetteStepRuntime = {
-  async mount(ctx) {
-    favModule = await factory();
-  },
-
-  async enter(ctx) {
-    drawBlankViewport(ctx);
-    let otherFavouriteNumber = favModule!.HEAP32[favModule!.otherFavouriteNumberAddress / 4];
-    ctx.setCaption(`otherFavouriteNumber is ${otherFavouriteNumber}`);
+/** A global is an address in linear memory; reading it is indexing the heap. */
+export default defineChapter({
+  panels: ['table'],
+  wasm: () => import('../build/otherFavouriteNumber.js'),
+  table: {
+    draw(out: TableTarget, _s: unknown, ctx: LerpetteCtx) {
+      const wasm = ctx.wasm;
+      if (!wasm) return;
+      const address = wasm.otherFavouriteNumberAddress as number;
+      out.row({
+        name: 'otherFavouriteNumber',
+        address,
+        'HEAP32 index': address / 4,
+        value: (wasm.HEAP32 as Int32Array)[address / 4]
+      });
+    }
   }
-};
-
-export default stepRuntime;
+});

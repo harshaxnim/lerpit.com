@@ -1,3 +1,7 @@
+import type { Pane } from 'tweakpane';
+import type { Readings } from '../monitors/readings';
+import type { ControlsOptions } from '../stage/chrome';
+
 /**
  * What a chapter implements, and what it is handed when it runs.
  *
@@ -7,17 +11,23 @@
  * the name of the panel they feed, because a chapter can have several and each belongs
  * to one panel:
  *
- *   export const state = { value: 1 };                  // the model
- *   export function step(s, dt, ctx) { }                // the model
- *   export const viewport2d = { draw(g, s, ctx) { } };  // a view
- *   export const table = { draw(out, s, ctx) { } };     // another view
+ *   export const state = { value: 1 };                       // the model
+ *   export function setup(s, ctx) { }                        // the model, once per run
+ *   export function step(s, dt, ctx) { }                     // the model, every frame
+ *   export const viewport2d = { draw(g, s, ctx) { } };       // a view
+ *   export const table = { draw(out, s, ctx) { } };          // another view
+ *
+ * The same names work wherever the chapter's code comes from: a module in the chapter's
+ * code folder (`defineChapter({...})` in `code/<id>/js/index.ts`), or the files a
+ * `lerpit` fence puts in an editor. When both exist, what the reader builds replaces
+ * what the module said, name by name.
  *
  * The namespace is what lets every panel call its render function `draw`. Two panels
  * in one chapter can each have one and they cannot collide, so a reader learns one
  * verb rather than one per panel.
  */
 
-/** A compiled C++ module's exports. Plain functions and numbers; no Embind classes. */
+/** A compiled C++ module's exports. */
 export type WasmExports = Record<string, unknown>;
 
 /** Where the pointer is, in the coordinates of the panel being drawn. */
@@ -41,39 +51,73 @@ export type ViewSize = {
  * The last argument to every function a chapter writes, model or view alike.
  *
  * One object rather than a different tail per function, so moving code between `step`
- * and `draw` never rewrites a signature. Read it; nothing here is yours to change.
+ * and `draw` never rewrites a signature.
  */
 export type LerpetteCtx = {
-  /** The compiled C++ exports, or null when this chapter has no .cpp in it. */
+  /** The compiled C++ exports, or null when this chapter has none. */
   wasm: WasmExports | null;
   /**
-   * The size of the panel being drawn. During `step`, which belongs to no panel, it is
-   * the size of the chapter's first panel.
+   * The size of the panel being drawn. During `setup` and `step`, which belong to no
+   * panel, it is the size of the panel on screen.
    */
   view: ViewSize;
   /** Pointer state for the panel being drawn, all zero on a panel nobody is over. */
   input: PointerState;
-  /** Seconds since this build started running. Reset by every run. */
+  /** Seconds this run has been running. Stops while the chapter is off screen. */
   time: number;
+  /** The stage's controls card: a tweakpane, folded unless asked otherwise. */
+  controls(options?: ControlsOptions): Pane;
+  /** The stage's readings card. See monitors/readings.ts. */
+  monitors(): Readings;
+  /** The band at the foot of the stage. */
+  caption(value: string): void;
 };
 
 /** The state a chapter carries. Whatever the author puts in it. */
-export type SceneState = Record<string, unknown>;
+export type SceneState = Record<string, any>;
 
-/** The model half: the two names a chapter may export bare. */
-export type ModelExports = {
-  state?: SceneState;
-  setup?: (state: SceneState, ctx: LerpetteCtx) => void;
-  step?: (state: SceneState, dt: number, ctx: LerpetteCtx) => void;
+/**
+ * A view: what a chapter exports under one panel's name.
+ *
+ * `draw` is the one every panel has. `build` is for panels that hold a scene between
+ * frames rather than repainting it, and runs once per run, after `setup`, before the
+ * first draw. Each run starts from an empty scene, so `build` never has to clean up.
+ */
+export type ViewExports<Target = any, S = SceneState> = {
+  build?: (target: Target, state: S, ctx: LerpetteCtx) => void | Promise<void>;
+  draw?: (target: Target, state: S, ctx: LerpetteCtx) => void;
 };
 
 /**
- * The view half: what a chapter exports under one panel's name.
+ * Everything a chapter may say, whichever way it is written.
  *
- * `draw` is the one every panel has. `build` is for panels that hold a scene between
- * frames rather than repainting it, and runs once per build before the first draw.
+ * Only the model names and view namespaces are code; the rest is configuration a
+ * module source can carry and an editor build cannot (it is read before anything runs).
  */
-export type ViewExports<Target> = {
-  build?: (target: Target, ctx: LerpetteCtx) => void;
-  draw?: (target: Target, state: SceneState, ctx: LerpetteCtx) => void;
-};
+export type ChapterDefinition<S extends SceneState = SceneState> = {
+  /**
+   * The panels to show when the heading names none. A heading's `+name` list always
+   * wins, so the document stays the place that says what the stage shows.
+   */
+  panels?: readonly string[];
+  /** The band under the panel. control.toml's `[caption]` overrides it. */
+  caption?: string;
+  /**
+   * Prebuilt C++ for this chapter, as `() => import('../build/name.js')`. Loaded once,
+   * instantiated once per page, and handed over as `ctx.wasm`.
+   */
+  wasm?: () => Promise<unknown>;
+  /** Where it starts. A function for a state that must not be shared between runs. */
+  state?: S | (() => S);
+  /** Once per run, before the first frame. May be async (to load something). */
+  setup?: (state: S, ctx: LerpetteCtx) => void | Promise<void>;
+  /** Advance the state. `dt` is seconds, already clamped. */
+  step?: (state: S, dt: number, ctx: LerpetteCtx) => void;
+  /** The run is ending (restart, a new build, the chapter going away). */
+  dispose?: (state: S, ctx: LerpetteCtx) => void;
+  /** Whether the stage offers restart. Defaults to whether the chapter has a `step`. */
+  restart?: boolean;
+} & { [panel: string]: unknown };
+
+/** The model names, which can never be a panel's name. */
+export const MODEL_NAMES = ['panels', 'caption', 'wasm', 'state', 'setup', 'step', 'dispose', 'restart'] as const;

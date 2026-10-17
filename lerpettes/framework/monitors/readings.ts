@@ -14,9 +14,12 @@ import { resolveReadingsView, type ReadingsView } from './view';
  * The framework calls those functions while the step is on screen and throws the
  * whole card away when the step ends, so no step keeps state just to feed a reading.
  *
- * The card starts shrunk to its first reading. A step that wants it otherwise says so
- * anywhere in the chain: .expand() for the whole card, .collapse() for just its title,
- * .mini('label') to start on a reading other than the first. The last one said wins.
+ * The card has two modes: every reading (full), or one reading alone (mini). It starts
+ * mini, on its first reading. A step that wants it otherwise says so anywhere in the
+ * chain: .expand() for the whole card, .mini('label') to start on a reading other than
+ * the first. The last one said wins. The reader moves between the two by clicking: the
+ * title of the full card shrinks it to the reading it was last on, a reading in the full
+ * card shrinks it to that reading, and the mini card opens back up.
  *
  * Each kind is one entry in KINDS: how to build its row, and how to show a value.
  * Adding a kind is one entry there plus one method on Readings.
@@ -45,8 +48,6 @@ export type Readings = {
   fps(label?: string): Readings;
   /** Start with every reading showing. */
   expand(): Readings;
-  /** Start folded to the card's title. */
-  collapse(): Readings;
   /** Start shrunk to one reading, the first unless a label is given. This is the default. */
   mini(label?: string): Readings;
 };
@@ -288,13 +289,15 @@ export function createReadingsCard(
   let authored: ReadingsView | null = null;
   let settled = false;
   let view: ReadingsView = { mode: 'expanded', mini: null };
+  /** The reading the card was last shrunk to, which the title returns to. */
+  let lastMini: string | null = null;
 
   const show = (next: ReadingsView) => {
     view = next;
-    card.classList.toggle('is-collapsed', next.mode === 'collapsed');
+    if (next.mode === 'mini' && next.mini != null) lastMini = next.mini;
     card.classList.toggle('is-mini', next.mode === 'mini' && next.mini != null);
     title.setAttribute('aria-expanded', String(next.mode === 'expanded'));
-    title.title = next.mode === 'collapsed' ? 'Show readings' : 'Hide readings';
+    title.title = 'Show one reading';
     for (const row of rows) {
       const alone = next.mode === 'mini' && row.label === next.mini;
       row.node.classList.toggle('is-mini', alone);
@@ -308,7 +311,8 @@ export function createReadingsCard(
     remember({ ...next });
   };
 
-  title.addEventListener('click', () => choose({ mode: view.mode === 'collapsed' ? 'expanded' : 'collapsed', mini: null }));
+  // The title only shows on the full card; it shrinks it to the reading last shown alone.
+  title.addEventListener('click', () => choose(resolveReadingsView({ mode: 'mini', mini: lastMini }, null, labels())));
 
   const labels = () => rows.map((row) => row.label);
 
@@ -370,10 +374,6 @@ export function createReadingsCard(
     },
     expand() {
       authored = { mode: 'expanded', mini: null };
-      return readings;
-    },
-    collapse() {
-      authored = { mode: 'collapsed', mini: null };
       return readings;
     },
     mini(label) {

@@ -89,7 +89,8 @@ export type EditorLayerOptions = {
   codePathFor: (stepId: string) => string | null;
   /** Make this chapter the active one before its build lands in the panel. */
   activate: (stepId: string) => Promise<void>;
-  idleStatus?: string;
+  /** What a box says before its first build, per chapter. control.toml's `[idle_status]`. */
+  idleStatusFor?: (stepId: string) => string | undefined;
 };
 
 export async function createEditorLayer(options: EditorLayerOptions): Promise<EditorLayer> {
@@ -146,7 +147,7 @@ export async function createEditorLayer(options: EditorLayerOptions): Promise<Ed
 
       const editor: FileEditor = createFileEditor(host, {
         tabs,
-        idleStatus: options.idleStatus ?? 'Press run to build.',
+        idleStatus: options.idleStatusFor?.(stepId) ?? 'Press run to build.',
         storageScope: codePath,
         onRun: run,
         onRunSolution: run

@@ -51,3 +51,30 @@ describe('World.advance accumulator', () => {
     expect(body.updateCallCount).toBe(1);
   });
 });
+
+describe('World.advanceBy', () => {
+  it('steps in fixed 1/120 s steps and carries the remainder', async () => {
+    const { world, fake } = await makeWorld();
+    const body = world.addParticle(new fake.TestBody([0, 0, 0], [0, 0, 0]));
+    world.advanceBy(STEP * 1.5);
+    expect(body.updateCallCount).toBe(1);
+    world.advanceBy(STEP * 0.5);
+    expect(body.updateCallCount).toBe(2);
+  });
+
+  it('ignores zero, negative and non-finite dt', async () => {
+    const { world, fake } = await makeWorld();
+    const body = world.addParticle(new fake.TestBody([0, 0, 0], [0, 0, 0]));
+    world.advanceBy(0);
+    world.advanceBy(-1);
+    world.advanceBy(Number.NaN);
+    expect(body.updateCallCount).toBe(0);
+  });
+
+  it('clamps a huge dt rather than spiralling', async () => {
+    const { world, fake } = await makeWorld();
+    const body = world.addParticle(new fake.TestBody([0, 0, 0], [0, 0, 0]));
+    world.advanceBy(10);
+    expect(body.updateCallCount).toBeLessThanOrEqual(30);
+  });
+});

@@ -1,5 +1,7 @@
 export { World } from './world';
 export { bindMesh, unbindMesh, syncMeshes } from './renderer';
+export { addSphere, addBoundsBox, totalEnergy, randomVec3 } from './helpers';
+export type { SphereOptions, BoundsBoxOptions, EnergyOptions } from './helpers';
 export { ensureWorld, disposeWorld } from './ensureWorld';
 export { loadPhysicsModule } from './loader';
 export { create3DPhysicsRuntime } from './create3DPhysicsRuntime';

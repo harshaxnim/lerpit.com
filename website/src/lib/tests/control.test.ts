@@ -14,7 +14,7 @@ import {
 describe('parseControl', () => {
   it('takes every default from an empty file', () => {
     const { control, problems } = parseControl('');
-    expect(control).toEqual({ status: PUBLISHED });
+    expect(control).toEqual({ status: PUBLISHED, landing: false, order: null, cardStyle: null, caption: {}, idleStatus: {} });
     expect(problems).toEqual([]);
   });
 
@@ -63,6 +63,36 @@ describe('parseControl', () => {
     for (const source of ['status = draft', 'status = "nope"', '[[[', 'status = []']) {
       expect(parseControl(source).control.status).toBe(PUBLISHED);
     }
+  });
+});
+
+describe('the newer fields', () => {
+  it('reads landing, order, card_style and the per-chapter tables', () => {
+    const { control, problems } = parseControl(
+      'landing = true\norder = 3\ncard_style = "sleeve"\n[caption]\nloop = "A loop."\n[idle_status]\nloop = "Wait."\n'
+    );
+    expect(problems).toEqual([]);
+    expect(control).toMatchObject({ landing: true, order: 3, cardStyle: 'sleeve', caption: { loop: 'A loop.' }, idleStatus: { loop: 'Wait.' } });
+  });
+
+  it('gives every issue an id', () => {
+    for (const source of ['landing = "yes"', 'order = 1.5', 'card_style = "plaid"', 'caption = "x"', '[caption]\na = 1', 'colour = 1', '[[[']) {
+      const { problems } = parseControl(source);
+      expect(problems.length, source).toBe(1);
+      expect(problems[0].id, source).toMatch(/^control-/);
+    }
+  });
+
+  it('keeps the default when a value is wrong', () => {
+    expect(parseControl('order = "first"').control.order).toBeNull();
+    expect(parseControl('card_style = "plaid"').control.cardStyle).toBeNull();
+    expect(parseControl('landing = 1').control.landing).toBe(false);
+  });
+
+  it('does not share default tables between files', () => {
+    const a = defaultControl();
+    a.caption.x = 'mutated';
+    expect(defaultControl().caption).toEqual({});
   });
 });
 

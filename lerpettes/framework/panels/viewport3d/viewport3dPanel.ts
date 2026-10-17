@@ -1,41 +1,104 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { LerpettePanel } from '../panel';
+import type { LerpettePanel, PanelScope } from '../panel';
 import type { ViewSize } from '../contract';
 import type { LerpettePanelSlot } from '../types';
+import {
+  addLights,
+  createThreeBundle,
+  disposeTree,
+  fitCamera,
+  orthoFitCamera,
+  perspectiveCamera,
+  type ThreeBundle
+} from '../../three/bundle';
 
 /**
  * A lit 3D scene the reader can orbit.
  *
- * This is the one panel whose contract has two halves, and the reason is honest rather
+ * This is the one panel whose view has two halves, and the reason is honest rather
  * than incidental: a scene graph is built once and then moved, so creating meshes and
  * positioning them are different jobs happening at different rates. `build` runs once
- * per build, `draw` runs every frame, and a chapter that tried to do both in `draw`
+ * per run, `draw` runs every frame, and a chapter that tried to do both in `draw`
  * would allocate a mesh sixty times a second.
  *
- * The 2D panel hides this distinction behind a pool because a flat sketch has no
- * persistent objects worth naming. Here the objects are the subject, so they stay.
+ * Every chapter gets its own scene, camera and orbit controls on the panel's one GL
+ * context (see `scope`), so two 3D chapters in a row never see each other's meshes and
+ * each keeps the camera the reader left it at.
  */
 
 export type Viewport3dTarget = {
   scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
+  /** Perspective unless `orthographic()` was asked for. */
+  camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   /** Orbit, pan and zoom. Already wired; a chapter rarely touches it. */
   controls: OrbitControls;
+  /** The lights the scene starts with. Empty it to light the scene yourself. */
+  lights: THREE.Group;
+  /** Swap the default studio lights for even, flat light. */
+  flatLight(): void;
   /**
-   * The band under the tabs, for a sentence about what the scene is showing. The same
-   * call as the 2D panel's, so moving a chapter between them does not rewrite it.
-   * The last value set stands; it is not cleared between frames.
+   * Switch to an orthographic camera that keeps `halfWidth` either side of the origin
+   * and `halfHeight` above and below in view whatever the panel's shape. Orbiting is
+   * turned off; a diagram is looked at straight on.
    */
+  orthographic(halfWidth: number, halfHeight: number): void;
+  /** The band at the foot of the stage. The last value set stands. */
   caption(value: string): void;
 };
 
-type Bundle = Viewport3dTarget & {
-  canvas: HTMLCanvasElement;
-  renderer: THREE.WebGLRenderer;
+type Shared = {
+  bundle: ThreeBundle;
+  /** The scope on screen, which is what end() renders. */
+  current: Viewport3dTarget | null;
+  /** The panel's own target, for a chapter that asks for no scope. */
+  root: Viewport3dTarget;
+  size: ViewSize;
+  slot: LerpettePanelSlot;
 };
 
-const bundles = new WeakMap<Viewport3dTarget, Bundle>();
+const shared = new WeakMap<Viewport3dTarget, Shared>();
+
+function makeTarget(state: Shared, size: ViewSize): Viewport3dTarget {
+  const scene = new THREE.Scene();
+  const lights = new THREE.Group();
+  lights.name = 'lights';
+  addLights(lights, 'studio');
+  scene.add(lights);
+
+  const camera = perspectiveCamera(size, { position: [0, 2, 7] });
+  const controls = new OrbitControls(camera, state.bundle.canvas);
+  controls.enableDamping = true;
+
+  let caption = '';
+  const target: Viewport3dTarget = {
+    scene,
+    camera,
+    controls,
+    lights,
+    flatLight() {
+      disposeTree(lights);
+      lights.clear();
+      addLights(lights, 'flat');
+    },
+    orthographic(halfWidth, halfHeight) {
+      target.controls.dispose();
+      target.camera = orthoFitCamera(halfWidth, halfHeight);
+      target.controls = new OrbitControls(target.camera, state.bundle.canvas);
+      target.controls.enabled = false;
+      fitCamera(target.camera, state.size);
+    },
+    caption(value) {
+      // Only when it changed: this runs inside a frame, and rewriting the same text
+      // sixty times a second drops the reader's selection every time.
+      if (value === caption) return;
+      caption = value;
+      state.slot.setCaption(value);
+    }
+  };
+  shared.set(target, state);
+  return target;
+}
 
 export const viewport3dPanel: LerpettePanel<Viewport3dTarget> = {
   name: 'viewport3d',
@@ -49,77 +112,77 @@ export const viewport3dPanel: LerpettePanel<Viewport3dTarget> = {
     canvas.setAttribute('aria-label', `Live 3D scene for ${slot.lessonTitle}`);
     slot.host.append(canvas);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(size.dpr);
+    const state = { bundle: createThreeBundle(canvas, size), current: null, size, slot } as unknown as Shared;
+    state.root = makeTarget(state, size);
+    state.current = state.root;
+    return state.root;
+  },
 
-    const scene = new THREE.Scene();
-    // Enough light that a chapter which adds a plain mesh sees it, without taking the
-    // decision away from one that wants to light the scene itself.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const key = new THREE.DirectionalLight(0xffffff, 1.1);
-    key.position.set(4, 6, 5);
-    scene.add(key);
+  scope(root): PanelScope<Viewport3dTarget> {
+    const state = shared.get(root)!;
+    const target = makeTarget(state, state.size);
+    target.controls.enabled = false;
 
-    const camera = new THREE.PerspectiveCamera(45, Math.max(size.width, 1) / Math.max(size.height, 1), 0.1, 200);
-    camera.position.set(0, 2, 7);
-    camera.lookAt(0, 0, 0);
-
-    const controls = new OrbitControls(camera, canvas);
-    controls.enableDamping = true;
-
-    let caption = '';
-    const target: Viewport3dTarget = {
-      scene,
-      camera,
-      controls,
-      caption(value) {
-        // Only when it changed: this runs inside a frame, and rewriting the same text
-        // sixty times a second drops the reader's selection every time.
-        if (value === caption) {
-          return;
-        }
-
-        caption = value;
-        slot.setCaption(value);
+    const empty = () => {
+      // Everything the chapter added; the lights stay, as the scene started with them.
+      for (const child of [...target.scene.children]) {
+        if (child === target.lights) continue;
+        target.scene.remove(child);
+        disposeTree(child);
       }
     };
-    bundles.set(target, { ...target, canvas, renderer });
-    return target;
+
+    return {
+      target,
+      focus() {
+        state.current = target;
+        target.controls.enabled = !(target.camera instanceof THREE.OrthographicCamera);
+        fitCamera(target.camera, state.size);
+      },
+      blur() {
+        target.controls.enabled = false;
+        if (state.current === target) state.current = state.root;
+      },
+      clear: empty,
+      release() {
+        empty();
+        disposeTree(target.lights);
+        target.controls.dispose();
+        if (state.current === target) state.current = state.root;
+        shared.delete(target);
+      }
+    };
   },
 
   end(target) {
-    const bundle = bundles.get(target);
-    if (!bundle) {
-      return;
-    }
-
+    const state = shared.get(target);
+    const current = state?.current;
+    if (!state || !current) return;
     // Damping only advances when it is asked to, so this is what makes a flick of the
     // mouse coast to a stop rather than stopping dead.
-    bundle.controls.update();
-    bundle.renderer.render(bundle.scene, bundle.camera);
+    if (current.controls.enabled) current.controls.update();
+    state.bundle.render(current.scene, current.camera);
   },
 
   resize(target, size) {
-    const bundle = bundles.get(target);
-    if (!bundle) {
-      return;
-    }
+    const state = shared.get(target);
+    if (!state) return;
+    state.size = size;
+    state.bundle.resize(size);
+    if (state.current) fitCamera(state.current.camera, size);
+  },
 
-    bundle.renderer.setPixelRatio(size.dpr);
-    bundle.renderer.setSize(size.width, size.height, false);
-    bundle.camera.aspect = Math.max(size.width, 1) / Math.max(size.height, 1);
-    bundle.camera.updateProjectionMatrix();
+  locate(target, clientX, clientY) {
+    const box = shared.get(target)?.bundle.canvas.getBoundingClientRect();
+    return box ? { x: clientX - box.left, y: clientY - box.top } : { x: 0, y: 0 };
   },
 
   destroy(target) {
-    const bundle = bundles.get(target);
-    if (!bundle) {
-      return;
-    }
-
-    bundle.controls.dispose();
-    bundle.renderer.dispose();
-    bundle.renderer.forceContextLoss();
-    bundles.delete(target);
+    const state = shared.get(target);
+    if (!state) return;
+    disposeTree(state.root.scene);
+    state.root.controls.dispose();
+    state.bundle.dispose();
+    shared.delete(target);
   }
 };

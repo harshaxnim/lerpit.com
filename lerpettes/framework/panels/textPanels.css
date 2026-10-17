@@ -1,0 +1,57 @@
+/*
+ * The two panels that are text: table and readout.
+ *
+ * Lives beside tablePanel.ts and readoutPanel.ts, which imports it, so the styles ship with the code that builds
+ * the markup and a page that never loads that code never loads them. Tokens (colours,
+ * fonts, --stage-h and friends) come from :root in website/src/styles/global.css.
+ */
+/* Table and readout both scroll inside their own box rather than growing the
+   column, which would push the prose beside them out of alignment. */
+.lerpette-table,
+.lerpette-readout {
+  height: 100%;
+  overflow: auto;
+  padding: 0.75rem 0.9rem;
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Program output, laid out with spaces, so it keeps the code face. */
+.lerpette-readout {
+  margin: 0;
+  font-family: var(--font-mono);
+  white-space: pre;
+  color: var(--muted);
+}
+
+.lerpette-table table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.lerpette-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  padding: 0.25rem 0.6rem 0.35rem 0;
+  position: sticky;
+  top: -0.75rem;
+  background: var(--paper);
+}
+
+.lerpette-table td {
+  padding: 0.18rem 0.6rem 0.18rem 0;
+  border-bottom: 1px solid rgba(81, 131, 173, 0.14);
+}
+
+/* Digits line up only if they are the same width, which is the whole reason a
+   table is easier to read than the same numbers in a sentence. */
+.lerpette-table td.is-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-right: 1.1rem;
+}

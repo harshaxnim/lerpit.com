@@ -1,6 +1,5 @@
-import { drawBlankViewport } from '../../shared/blankViewport';
-import type { LerpetteStepRuntime } from '@lerpit/framework/types';
-import factory from '../build/soa.js';
+import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
 class Vec3View {
   constructor(private arr: Float64Array, private offset: number) {}
@@ -32,32 +31,38 @@ class SphereView {
   set r(v: number) { this.radii[this.i] = v; }
 }
 
-let mod: Awaited<ReturnType<typeof factory>> | null = null;
-
-const stepRuntime: LerpetteStepRuntime = {
-  async mount(ctx) {
-    mod = await factory();
-  },
-
-  async enter(ctx) {
-    drawBlankViewport(ctx);
-    const spheres = mod!.getSpheres();
-    const count      = spheres.count();
-    const indices    = spheres.getIndices() as Int32Array;
-    const radii      = spheres.getRadii() as Float64Array;
-    const positions  = spheres.getPositions() as Float64Array;
-    const velocities = spheres.getVelocities() as Float64Array;
-
-    console.log(count, indices, radii, positions, velocities);
-    const lines: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const s = new SphereView(indices, radii, positions, velocities, i);
-      lines.push(
-        `[${s.index}] r=${s.r}  pos=(${s.pos.x}, ${s.pos.y}, ${s.pos.z})  vel=(${s.vel.x}, ${s.vel.y}, ${s.vel.z})`
-      );
-    }
-    ctx.setCaption(lines.join('\n'));
-  }
+type Spheres = {
+  count(): number;
+  getIndices(): Int32Array;
+  getRadii(): Float64Array;
+  getPositions(): Float64Array;
+  getVelocities(): Float64Array;
 };
 
-export default stepRuntime;
+/**
+ * A struct of arrays: one array per field, and a sphere is an index into all of them.
+ * The views above read straight from those arrays, so a row here is assembled, not stored.
+ */
+export default defineChapter({
+  panels: ['table'],
+  wasm: () => import('../build/soa.js'),
+  table: {
+    draw(out: TableTarget, _s: unknown, ctx: LerpetteCtx) {
+      const spheres = (ctx.wasm?.getSpheres as (() => Spheres) | undefined)?.();
+      if (!spheres) return;
+      const indices = spheres.getIndices();
+      const radii = spheres.getRadii();
+      const positions = spheres.getPositions();
+      const velocities = spheres.getVelocities();
+      for (let i = 0; i < spheres.count(); i++) {
+        const s = new SphereView(indices, radii, positions, velocities, i);
+        out.row({
+          index: s.index,
+          r: s.r,
+          pos: `(${s.pos.x}, ${s.pos.y}, ${s.pos.z})`,
+          vel: `(${s.vel.x}, ${s.vel.y}, ${s.vel.z})`
+        });
+      }
+    }
+  }
+});

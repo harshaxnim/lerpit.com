@@ -17,9 +17,9 @@ at the left of the header (`SiteHeader.astro`), on the sheet, never over colour.
 The spine is the site's mark. It is five bands of the **90min videocassette label**, the
 same palette the lerpette covers use (`website/src/lib/cardArt/palette.ts`). They are
 mirrored so the widest, lightest band is on the outside, and leaned at the wordmark's 14°.
-It is printed the way the covers are: the bands get the same half-pixel blur as the card
-art, and the cards' paper grain (`--paper-grain`, at 19% in overlay) lies over them. The
-blur softens only the slanted sides; where a panel cuts the spine, the edge stays sharp.
+It is printed the way the covers are: the cards' paper grain (`--paper-grain`, at 19% in
+overlay) lies over the bands. In the footer the bands also take the card art's half-pixel
+blur, which softens only the slanted sides; the header's spine is left sharp.
 
 | Band | Colour | Share of the width |
 | --- | --- | --- |
@@ -40,9 +40,12 @@ to a wide monitor:
 - **Panel:** the panel is the bordered sheet or card it belongs to. The page's sheet and
   the footer card are the same width at every size, so the header's spine and the
   footer's stand exactly over each other.
-- **Height:** it runs the full height of its band, and the band's edges cut it level, the
-  way a cover crops its art. In the header that is the sheet's top edge down to the rule.
-  In the footer it is the card's own top and bottom, so it is shorter there.
+- **Height:** on a wide screen it runs the full height of its band, and the band's edges
+  cut it level, the way a cover crops its art. In the header that is the sheet's top edge
+  down to the rule. In the footer it is the card's own top and bottom, so it is shorter
+  there. Below 1180px it keeps its wide-screen shape instead (`--spine-ratio: 0.733`,
+  height over width) and hangs from the top edge, so a phone shows a smaller spine rather
+  than a tall sliver.
 
 It appears in three places:
 
@@ -50,6 +53,11 @@ It appears in three places:
 2. **The footer**, on every page (`BaseLayout.astro`).
 3. **The favicon** (`website/public/favicon.svg`), as a fixed 136:140 crop of it. An icon
    has no panel to take a width from.
+4. **The home-screen icons and the share image** (`apple-touch-icon.png`,
+   `icons/icon-{192,512,maskable-512}.png`, `og-image.png` in `website/public/`, linked
+   from `BaseLayout.astro` and `site.webmanifest`). Rendered from the same five bands by
+   `node scripts/brand-icons.mjs`; re-run it whenever the bands change. The icons are flat
+   (no grain at icon size); the share image is the header at poster size, grain included.
 
 ### Using it
 
@@ -71,6 +79,7 @@ It places itself absolutely in its nearest positioned ancestor, using these toke
 | `--spine-at` | where it stands, as a fraction of the panel's width | `0.66` (`:root`) |
 | `--spine-share` | its width, as a fraction of the panel's width | `0.14` (`:root`) |
 | `--spine-top`, `--spine-bottom` | where it is cut | `0` |
+| `--spine-ratio` | its height over its width below 1180px | `0.733` (`:root`) |
 | `--spine-box` | the panel's width as the host sees it | `100%` |
 | `--spine-inset` | how far the host sits inside the panel | `0px` |
 
@@ -91,9 +100,11 @@ so it sets:
 - **Never recoloured, never reordered.** The 90min order, widest outside, is the identity.
   The covers can use any palette; the spine cannot.
 - **Always the 14° lean.** It is the wordmark's angle; a straight spine is a different mark.
-- **Printed, never flat.** The blur and grain are part of the mark. Don't draw the bands
-  without them, except in the favicon, which is too small to show them.
-- **Cut, never scaled to fit.** It keeps its width and is cropped by the panel's edges.
+- **Printed.** The grain is part of the mark on the page. The bands are drawn without it
+  only where it cannot show: the favicon and the home-screen icons. The header's bands are
+  sharp; the footer's carry the cards' half-pixel blur.
+- **Cut, never scaled to fit.** It keeps its width and is cropped by the panel's edges (on
+  a narrow screen, by the top edge and its own wide-screen shape).
 - **Content goes over it, never under.** Links and text that meet it sit above it on a
   solid paper face (see `.lerpette-player__action` on a phone). It is decoration, hidden
   from screen readers (`aria-hidden`), and must never carry meaning.

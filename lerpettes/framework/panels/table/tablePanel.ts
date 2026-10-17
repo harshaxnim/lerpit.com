@@ -1,5 +1,6 @@
 import type { LerpettePanel } from '../panel';
 import type { LerpettePanelSlot } from '../types';
+import '../textPanels.css';
 
 /**
  * Rows of numbers, for a chapter whose output is data rather than a picture.

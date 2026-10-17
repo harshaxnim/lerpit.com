@@ -21,8 +21,11 @@ import type {
   LerpetteProblem,
   LerpetteStep
 } from '@lerpit/framework/types';
+import { isPanelName, PANEL_NAMES } from '@lerpit/framework/panels/registry';
 import { parseHeading, resolvePanels } from './headingSpec';
-import { defaultControl, isLandingCandidate, isListed, isRoutable, parseControl } from './control';
+import { defaultControl, isLandingCandidate, isListed, isRoutable, parseControl, type LerpetteControl } from './control';
+import type { ProblemId } from './problems';
+import { site } from '../site.config';
 
 type MarkdownNode = {
   type: string;
@@ -54,15 +57,16 @@ type MixtapeMeta = {
  * lerpettes/content/ throws: a document that does not parse is still published, and
  * its problems are rendered on its own page. See ContentProblems.astro.
  */
-type Report = (message: string, fix?: string, where?: string) => void;
+type Report = (id: ProblemId, message: string, fix?: string, where?: string) => void;
 
 const LERPETTE_ROOT = path.join(process.cwd(), 'lerpettes/content');
 // Runtime import keys are paths relative to runtimeLoader.ts, so they line up with
 // the keys its import.meta.glob() produces.
 const RUNTIME_LOADER_DIR = path.join(process.cwd(), 'website/src/lib');
 const ASSET_ROUTE_PREFIX = '/assets/lerpettes';
-// The collection whose newest lerpette is served at '/'.
-const LANDING_COLLECTION_SLUG = 'physics-engine';
+// The collection whose newest lerpette is served at '/', unless a control.toml says
+// `landing = true`. Set in site.config.ts.
+const LANDING_COLLECTION_SLUG = site.landingCollection;
 
 /** Optional, one per lerpette folder, beside mixtape.md. See lib/control.ts. */
 const CONTROL_FILE = 'control.toml';
@@ -139,8 +143,8 @@ export async function getLerpetteAssetEntries(): Promise<LerpetteAssetEntry[]> {
 function createProblemLog(defaultWhere: string) {
   const problems: LerpetteProblem[] = [];
 
-  const report: Report = (message, fix, where = defaultWhere) => {
-    problems.push({ where: toContentPath(where), message, fix });
+  const report: Report = (id, message, fix, where = defaultWhere) => {
+    problems.push({ id, where: toContentPath(where), message, fix });
   };
 
   return { problems, report };
@@ -169,7 +173,7 @@ function createRenderProcessor(docDir: string, report: Report, codeDir: string |
             // Left pointing where the author wrote it, so the gap shows up in the
             // prose as well as in the problem list.
             report(
-              `The document links to \`${node.url}\`, which is not there.`,
+              'link-missing', `The document links to \`${node.url}\`, which is not there.`,
               `Add the file at ${toContentPath(assetPath)}, or correct the link.`
             );
             return;
@@ -227,7 +231,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
 
   if (!fs.existsSync(LERPETTE_ROOT)) {
     report(
-      'There is no content root, so the site has nothing to publish.',
+      'content-root-missing', 'There is no content root, so the site has nothing to publish.',
       `Create ${LERPETTE_ROOT} with one directory per collection.`
     );
 
@@ -251,7 +255,8 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   const styles = assignStyles(collections.map((collection) => collection.title));
   for (const collection of collections) {
     const style = styles.get(collection.title);
-    for (const mixtape of collection.mixtapes) mixtape.cardStyle = style;
+    // An author's card_style wins over the assignment; the rest of the collection keeps it.
+    for (const mixtape of collection.mixtapes) mixtape.cardStyle = mixtape.cardStyle ?? style;
   }
 
   const newestFirst = (left: LerpetteMixtape, right: LerpetteMixtape) =>
@@ -268,6 +273,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   // Narrowed in place, so every shelf and collection page that reads
   // collection.mixtapes hides the right things without knowing this exists.
   for (const collection of collections) {
+    collection.allMixtapes = collection.mixtapes;
     collection.mixtapes = collection.mixtapes.filter(
       (mixtape) => isRoutable(mixtape.status, isProduction) && isListed(mixtape.status, isProduction)
     );
@@ -286,10 +292,28 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   const fromLandingCollection = published.filter(
     (mixtape) => mixtape.collectionSlug === LANDING_COLLECTION_SLUG
   );
-  const newest = fromLandingCollection[0] ?? published[0];
-  if (!landingCollection || fromLandingCollection.length === 0) {
+  // `landing = true` in a control.toml picks '/' outright. Two of them is a mistake:
+  // the newest wins, and the author is told.
+  const chosen = published.filter((mixtape) => mixtape.landing);
+  if (chosen.length > 1) {
     report(
-      `The landing collection has no published lerpette, so '/' falls back to the newest published one in the library.`,
+      'landing-multiple',
+      `${chosen.length} lerpettes set landing = true; '/' shows the newest, ${chosen[0].collectionSlug}/${chosen[0].slug}.`,
+      `Keep landing = true in one ${CONTROL_FILE}.`
+    );
+  }
+  for (const mixtape of routable.filter((entry) => entry.landing && !isLandingCandidate(entry.status))) {
+    mixtape.problems.push({
+      id: 'landing-unpublished',
+      where: `${mixtape.collectionSlug}/${mixtape.slug}/${CONTROL_FILE}`,
+      message: `This lerpette sets landing = true but is ${mixtape.status}, so it cannot be '/'.`,
+      fix: 'Publish it, or remove landing = true.'
+    });
+  }
+  const newest = chosen[0] ?? fromLandingCollection[0] ?? published[0];
+  if (chosen.length === 0 && (!landingCollection || fromLandingCollection.length === 0)) {
+    report(
+      'landing-empty', `The landing collection has no published lerpette, so '/' falls back to the newest published one in the library.`,
       `Add a lerpette under lerpettes/content/${LANDING_COLLECTION_SLUG}/, or set status = "published" in its ${CONTROL_FILE}.`,
       path.join(LERPETTE_ROOT, LANDING_COLLECTION_SLUG)
     );
@@ -299,7 +323,12 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   const landing: LerpetteMixtape = newest
     ? { ...newest, href: '/', problems: [...problems, ...newest.problems] }
     : emptyMixtape(problems);
-  const assetEntries = await collectAssetEntries(LERPETTE_ROOT);
+  const unpublished = collections
+    .flatMap((collection) => collection.allMixtapes)
+    .filter((mixtape) => !isRoutable(mixtape.status, isProduction))
+    .map((mixtape) => path.join(LERPETTE_ROOT, mixtape.collectionSlug ?? '', mixtape.slug));
+  const assetEntries = await collectAssetEntries(LERPETTE_ROOT, unpublished);
+  for (const collection of collections) delete (collection as { allMixtapes?: unknown }).allMixtapes;
   const library = { landing, collections, mixtapes, routable, assetEntries, problems };
 
   logProblems(library);
@@ -307,7 +336,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   return library;
 }
 
-async function parseCollectionDirectory(collectionDir: string): Promise<LerpetteCollection> {
+async function parseCollectionDirectory(collectionDir: string): Promise<LerpetteCollection & { allMixtapes?: LerpetteMixtape[] }> {
   const collectionSlug = path.basename(collectionDir);
   const { problems, report } = createProblemLog(collectionDir);
   const collectionDoc = await parseCollectionDocument(collectionDir, `/${collectionSlug}/`, report);
@@ -327,8 +356,13 @@ async function parseCollectionDirectory(collectionDir: string): Promise<Lerpette
     )
   );
 
-  // Newest-first by publishedOn (YYYY-MM-DD sorts lexicographically).
-  mixtapes.sort((left, right) => right.publishedOn.localeCompare(left.publishedOn));
+  // An author's order first, lowest first; then newest first by publishedOn
+  // (YYYY-MM-DD sorts lexicographically).
+  mixtapes.sort((left, right) => {
+    const a = left.order ?? Infinity;
+    const b = right.order ?? Infinity;
+    return a !== b ? a - b : right.publishedOn.localeCompare(left.publishedOn);
+  });
 
   return {
     slug: collectionSlug,
@@ -349,11 +383,13 @@ async function parseCollectionDocument(collectionDir: string, href: string, repo
   }
 
   const source = await fsp.readFile(filePath, 'utf-8');
+  reportFrontMatter(source, report, filePath);
   const root = parseMarkdown(source);
+  reportRawHtml(root, report, filePath);
   const h1Index = root.children.findIndex((node) => node.type === 'heading' && node.depth === 1);
   if (h1Index < 0) {
     report(
-      'The collection has no title, so its slug is shown instead.',
+      'collection-title-missing', 'The collection has no title, so its slug is shown instead.',
       'Start the document with one `# Title` heading.',
       filePath
     );
@@ -383,16 +419,19 @@ async function parseMixtapeDirectory(
     collectionSlug,
     collectionTitle,
     status: control.status,
+    landing: control.landing,
+    order: control.order,
+    cardStyle: control.cardStyle ?? undefined,
     problems
   };
 
   try {
-    return { ...shell, ...(await parseMixtapeDocument(mixtapeDir, report)) };
+    return { ...shell, ...(await parseMixtapeDocument(mixtapeDir, report, control)) };
   } catch (error) {
     // The checks above cover everything an author is expected to get wrong. This is
     // the net under the rest — a markdown extension throwing, a file vanishing
     // mid-build — so that one bad lerpette can still never take the site down.
-    report(describeError(error), 'This one is a bug, not an authoring mistake.');
+    report('internal-error', describeError(error), 'This one is a bug, not an authoring mistake.');
     return { ...shell, ...emptyDocument(titleFromSlug(shell.slug)) };
   }
 }
@@ -411,7 +450,7 @@ async function readControl(mixtapeDir: string, report: Report) {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       report(
-        `${CONTROL_FILE} could not be read, so its settings were skipped. ${describeError(error)}`,
+        'control-unreadable', `${CONTROL_FILE} could not be read, so its settings were skipped. ${describeError(error)}`,
         `Check the file's permissions, or delete it to take the defaults.`,
         controlPath
       );
@@ -420,11 +459,11 @@ async function readControl(mixtapeDir: string, report: Report) {
   }
 
   const { control, problems } = parseControl(source);
-  for (const problem of problems) report(problem.what, problem.fix, controlPath);
+  for (const problem of problems) report(problem.id, problem.what, problem.fix, controlPath);
   return control;
 }
 
-async function parseMixtapeDocument(mixtapeDir: string, report: Report) {
+async function parseMixtapeDocument(mixtapeDir: string, report: Report, control: LerpetteControl = defaultControl()) {
   const slug = path.basename(mixtapeDir);
   const mixtapePath = resolveDocumentPath(mixtapeDir, 'mixtape', report);
   if (!mixtapePath) {
@@ -432,11 +471,13 @@ async function parseMixtapeDocument(mixtapeDir: string, report: Report) {
   }
 
   const source = await fsp.readFile(mixtapePath, 'utf-8');
+  reportFrontMatter(source, report, mixtapePath);
   const root = parseMarkdown(source);
+  reportRawHtml(root, report, mixtapePath);
   const h1Index = root.children.findIndex((node) => node.type === 'heading' && node.depth === 1);
   if (h1Index < 0) {
     report(
-      'This lerpette has no title, so its slug is shown instead.',
+      'title-missing', 'This lerpette has no title, so its slug is shown instead.',
       'Put one `# Title` heading under the metadata line.',
       mixtapePath
     );
@@ -453,7 +494,7 @@ async function parseMixtapeDocument(mixtapeDir: string, report: Report) {
   const firstStepIndex = contentNodes.findIndex((node) => node.type === 'heading' && node.depth === 2);
   if (firstStepIndex < 0) {
     report(
-      'This lerpette has no chapters, so there is nothing for the panel to play.',
+      'chapters-missing', 'This lerpette has no chapters, so there is nothing for the panel to play.',
       'Add a chapter heading in the form `## Title {#step-id}`.',
       mixtapePath
     );
@@ -466,15 +507,17 @@ async function parseMixtapeDocument(mixtapeDir: string, report: Report) {
   // chapter inherits, which is the only place an article-wide setting is written.
   const titleSpec =
     h1Index >= 0 ? parseHeading(toString(root.children[h1Index] as never)) : parseHeading(titleFromSlug(slug));
-  titleSpec.problems.forEach((problem) => report(problem.message, problem.fix, mixtapePath));
+  titleSpec.problems.forEach((problem) => report('heading-token', problem.message, problem.fix, mixtapePath));
+  reportUnknownPanels(titleSpec.ops, titleSpec.title, report, mixtapePath);
   const defaultPanels = resolvePanels([], titleSpec.ops);
 
   const steps =
     firstStepIndex < 0
       ? []
-      : extractMixtapeSteps(contentNodes.slice(firstStepIndex), mixtapeDir, report, mixtapePath, defaultPanels);
+      : extractMixtapeSteps(contentNodes.slice(firstStepIndex), mixtapeDir, report, mixtapePath, defaultPanels, control);
 
   reportCodeDirectory(mixtapeDir, steps, report);
+  reportControlChapters(control, steps, report, path.join(mixtapeDir, CONTROL_FILE));
 
   return {
     title: titleSpec.title,
@@ -494,7 +537,8 @@ function extractMixtapeSteps(
   mixtapeDir: string,
   report: Report,
   filePath: string,
-  defaultPanels: readonly string[]
+  defaultPanels: readonly string[],
+  control: LerpetteControl = defaultControl()
 ): LerpetteStep[] {
   const steps: Array<{ heading: MarkdownNode; body: MarkdownNode[] }> = [];
   let current: { heading: MarkdownNode; body: MarkdownNode[] } | null = null;
@@ -524,11 +568,13 @@ function extractMixtapeSteps(
 
     // A heading's settings are reported against the document, not swallowed: an author
     // who writes `+viewpoint2d` gets told, rather than getting a chapter with no panel.
-    parsed.problems.forEach((problem) => report(problem.message, problem.fix, filePath));
+    parsed.problems.forEach((problem) => report('heading-token', problem.message, problem.fix, filePath));
+    reportUnknownPanels(parsed.ops, parsed.title, report, filePath);
 
     if (!parsed.explicit) {
       report(
-        `Chapter “${parsed.title}” has no explicit id, so its runtime is looked up at \`code/${id}/\`.`,
+        'chapter-id-missing',
+        `Chapter “${parsed.title}” has no explicit id, so its code is looked up at \`code/${id}/\`.`,
         `Write the heading as \`## ${parsed.title} {#${id}}\`.`,
         filePath
       );
@@ -537,6 +583,7 @@ function extractMixtapeSteps(
     if (seenIds.has(id)) {
       const unique = `${id}-${index + 1}`;
       report(
+        'chapter-id-duplicate',
         `Two chapters share the id \`${id}\`, so the second one answers to \`${unique}\` instead.`,
         'Give each chapter its own id; links to the page use them as anchors.',
         filePath
@@ -546,47 +593,142 @@ function extractMixtapeSteps(
 
     seenIds.add(id);
 
-    return { id, title: parsed.title, body, panels: resolvePanels(defaultPanels, parsed.ops) };
+    const panels = resolvePanels(defaultPanels, parsed.ops).filter((name) => isPanelName(name));
+    return { id, title: parsed.title, body, panels, hasFence: hasCodeFence(body) };
   });
 
-  const runtimeAvailability = parsedSteps.map((step) => {
+  /*
+   * A chapter has a runtime of its own when it has anything to run: a module
+   * (code/<id>/js/index.ts), a code box in its prose, or panels in its heading (which
+   * the chapter runtime stands up even with nothing else). One with none of these
+   * keeps the nearest chapter's stage on screen rather than emptying it.
+   */
+  const ownership = parsedSteps.map((step) => {
     const runtimeFile = path.join(mixtapeDir, 'code', step.id, 'js', 'index.ts');
-    return { runtimeFile, exists: fs.existsSync(runtimeFile) };
+    const hasModule = fs.existsSync(runtimeFile);
+    return { runtimeFile, hasModule, exists: hasModule || step.hasFence || step.panels.length > 0 };
   });
 
-  const firstRuntimeIndex = runtimeAvailability.findIndex((entry) => entry.exists);
-  if (firstRuntimeIndex < 0) {
+  const firstRuntimeIndex = ownership.findIndex((entry) => entry.exists);
+  if (firstRuntimeIndex < 0 && parsedSteps.length > 0) {
     report(
-      'No chapter in this lerpette has a runtime, so the page renders without a panel.',
-      `Add \`code/${parsedSteps[0].id}/js/index.ts\` with a default-exported runtime.`
+      'runtime-missing',
+      'No chapter in this lerpette has anything to run, so the page renders without a stage.',
+      `Name a panel in a heading (\`## ${parsedSteps[0].title} {#${parsedSteps[0].id} +viewport2d}\`), or add \`code/${parsedSteps[0].id}/js/index.ts\`.`
     );
   }
 
   return parsedSteps.map((step, index) => {
-    // A chapter with no runtime of its own keeps the nearest one on screen rather
-    // than emptying the panel; with none anywhere, the panel is not rendered at all.
-    const fallbackIndex = firstRuntimeIndex < 0 ? -1 : findNearestRuntimeIndex(runtimeAvailability, index);
-    const runtimeStepId = fallbackIndex < 0 ? step.id : parsedSteps[fallbackIndex].id;
+    const ownerIndex = firstRuntimeIndex < 0 ? -1 : findNearestRuntimeIndex(ownership, index);
+    const owner = ownerIndex < 0 ? step : parsedSteps[ownerIndex];
+    const ownerEntry = ownerIndex < 0 ? null : ownership[ownerIndex];
 
     // One value, two uses: the asset URL is this path under the asset route, and the
-    // runtime is handed the path itself so it can read the chapter's own sources.
-    const codePath = toPosixPath(path.relative(LERPETTE_ROOT, path.join(mixtapeDir, 'code', runtimeStepId)));
+    // runtime is handed the path itself so it can read the chapter's own sources. A
+    // chapter with its own runtime always gets its own folder, even with no module in
+    // it, so its code boxes load and save its own files and never a neighbour's.
+    const codePath = toPosixPath(path.relative(LERPETTE_ROOT, path.join(mixtapeDir, 'code', owner.id)));
 
     return {
       id: step.id,
       title: step.title,
       bodyHtml: renderNodesToHtml(step.body, mixtapeDir, report, path.join(mixtapeDir, 'code', step.id)),
-      runtimeImportKey: fallbackIndex < 0 ? '' : toRuntimeImportKey(runtimeAvailability[fallbackIndex].runtimeFile),
+      runtimeImportKey: ownerEntry?.hasModule ? toRuntimeImportKey(ownerEntry.runtimeFile) : '',
+      runtimeStepId: owner.id,
       assetBasePath: `${ASSET_ROUTE_PREFIX}/${codePath}/`,
       codePath,
-      hasOwnRuntime: runtimeAvailability[index].exists,
-      panels: step.panels
+      hasOwnRuntime: ownership[index].exists,
+      panels: ownerIndex < 0 ? step.panels : owner.panels,
+      ...(control.caption[step.id] !== undefined ? { caption: control.caption[step.id] } : {}),
+      ...(control.idleStatus[step.id] !== undefined ? { idleStatus: control.idleStatus[step.id] } : {})
     };
   });
 }
 
+/** Whether a chapter's prose has a `lerpit` fence anywhere in it. */
+function hasCodeFence(nodes: MarkdownNode[]): boolean {
+  let found = false;
+  for (const node of nodes) {
+    visit(node as never, 'code', (code: FenceNode) => {
+      if (code.lang === FENCE_LANG) found = true;
+    });
+  }
+  return found;
+}
+
+/**
+ * A panel name the registry does not know. Caught here rather than at runtime, so the
+ * author reads it in the problem list with the names that do exist, instead of finding
+ * a caption in the stage saying the panel is missing. The name is dropped from the
+ * chapter's list, so the rest of its panels still show.
+ */
+function reportUnknownPanels(ops: ReadonlyArray<{ op: string; name: string }>, title: string, report: Report, filePath: string) {
+  for (const { op, name } of ops) {
+    if (op === '-' || name === 'none' || isPanelName(name)) continue;
+    report(
+      'panel-unknown',
+      `The heading “${title}” asks for a panel called \`${name}\`, which does not exist, so it is left out.`,
+      `Panels: ${PANEL_NAMES.map((known) => `\`${known}\``).join(', ')}.`,
+      filePath
+    );
+  }
+}
+
+/**
+ * Front matter (a `---` block at the top) is not how a lerpette says anything: the
+ * byline is the first line, and settings live in control.toml. Without this check the
+ * block renders as a rule and a stray heading.
+ */
+function reportFrontMatter(source: string, report: Report, filePath: string) {
+  if (!/^\uFEFF?---\r?\n/.test(source)) return;
+  report(
+    'front-matter',
+    'The document starts with a front-matter block, which this site does not read; it renders as a rule and a heading.',
+    'Delete the `---` block. The byline is the first line (`Author: … | Date: …`); settings go in control.toml.',
+    filePath
+  );
+}
+
+/**
+ * Raw HTML is switched off for every document, so a tag written in prose silently
+ * disappears. Comments are allowed (dropping them is what an author means), anything
+ * else is reported.
+ */
+function reportRawHtml(root: MarkdownRoot, report: Report, filePath: string) {
+  const seen = new Set<string>();
+  visit(root as never, 'html', (node: { value?: string }) => {
+    const value = (node.value ?? '').trim();
+    if (!value || value.startsWith('<!--')) return;
+    const tag = value.match(/^<\/?([A-Za-z][\w-]*)/)?.[1] ?? value.slice(0, 20);
+    if (seen.has(tag)) return;
+    seen.add(tag);
+    report(
+      'raw-html',
+      `The document has raw HTML (\`<${tag}>\`), which is not rendered, so that part is missing from the page.`,
+      'Write it in Markdown instead. Images, links, tables, maths and footnotes all have Markdown forms.',
+      filePath
+    );
+  });
+}
+
+/** control.toml's per-chapter tables name chapters; a name that matches none is a typo. */
+function reportControlChapters(control: LerpetteControl, steps: LerpetteStep[], report: Report, controlPath: string) {
+  const ids = new Set(steps.map((step) => step.id));
+  for (const [table, entries] of [['caption', control.caption], ['idle_status', control.idleStatus]] as const) {
+    for (const id of Object.keys(entries)) {
+      if (ids.has(id)) continue;
+      report(
+        'control-chapter-unknown',
+        `control.toml's [${table}] names a chapter \`${id}\`, which this lerpette does not have.`,
+        `Chapters here: ${[...ids].map((known) => `\`${known}\``).join(', ') || 'none'}.`,
+        controlPath
+      );
+    }
+  }
+}
+
 function findNearestRuntimeIndex(
-  availability: Array<{ runtimeFile: string; exists: boolean }>,
+  availability: Array<{ exists: boolean }>,
   fromIndex: number
 ): number {
   if (availability[fromIndex]?.exists) {
@@ -612,7 +754,7 @@ function reportCodeDirectory(mixtapeDir: string, steps: LerpetteStep[], report: 
   const codeDir = path.join(mixtapeDir, 'code');
   if (!fs.existsSync(codeDir)) {
     if (steps.length > 0) {
-      report('This lerpette has chapters but no code directory.', `Add ${toContentPath(codeDir)}/.`);
+      report('code-dir-missing', 'This lerpette has chapters but no code directory.', `Add ${toContentPath(codeDir)}/.`);
     }
 
     return;
@@ -627,7 +769,7 @@ function reportCodeDirectory(mixtapeDir: string, steps: LerpetteStep[], report: 
 
     if (!entry.isDirectory()) {
       report(
-        `\`code/${entry.name}\` is a file, but everything under code/ is a chapter directory.`,
+        'code-stray-file', `\`code/${entry.name}\` is a file, but everything under code/ is a chapter directory.`,
         'Move it into the chapter that uses it, or into `code/shared/`.'
       );
       continue;
@@ -639,17 +781,22 @@ function reportCodeDirectory(mixtapeDir: string, steps: LerpetteStep[], report: 
 
     if (!stepIds.has(entry.name)) {
       report(
-        `\`code/${entry.name}/\` matches no chapter id, so nothing loads it.`,
+        'code-dir-unmatched', `\`code/${entry.name}/\` matches no chapter id, so nothing loads it.`,
         `Either add a \`## Title {#${entry.name}}\` chapter, or delete the directory.`
       );
       continue;
     }
 
+    // A code folder with no module is fine when the chapter runs anyway: its boxes
+    // read their files from here, or its heading names panels. Only a folder nothing
+    // will ever read is worth mentioning.
+    const step = steps.find((candidate) => candidate.id === entry.name);
     const runtimeEntry = path.join(codeDir, entry.name, 'js', 'index.ts');
-    if (!fs.existsSync(runtimeEntry)) {
+    if (step && !step.hasOwnRuntime && !fs.existsSync(runtimeEntry)) {
       report(
-        `Chapter \`${entry.name}\` has a code directory but no runtime entry.`,
-        `Add ${toContentPath(runtimeEntry)}.`
+        'chapter-code-unused',
+        `Chapter \`${entry.name}\` has a code directory, but nothing in the chapter runs it.`,
+        `Add ${toContentPath(runtimeEntry)}, name a panel in its heading, or add a \`lerpit\` fence to its prose.`
       );
     }
   }
@@ -676,12 +823,12 @@ function transformCodeFence(node: FenceNode, codeDir: string | null, report: Rep
   const { entries, problems } = parseFence(node.meta ?? '');
 
   for (const problem of problems) {
-    report(problem.message, problem.fix);
+    report('fence-syntax', problem.message, problem.fix);
   }
 
   if (node.value?.trim()) {
     report(
-      'A `lerpit` fence has code written inside it, which is ignored.',
+      'fence-body-ignored', 'A `lerpit` fence has code written inside it, which is ignored.',
       'The files are named on the fence line; leave the block empty.'
     );
   }
@@ -691,7 +838,7 @@ function transformCodeFence(node: FenceNode, codeDir: string | null, report: Rep
   for (const entry of entries) {
     if (!codeDir) {
       report(
-        `A \`lerpit\` fence names \`${entry.path}\`, but only a chapter has a code directory to look in.`,
+        'fence-outside-chapter', `A \`lerpit\` fence names \`${entry.path}\`, but only a chapter has a code directory to look in.`,
         'Move the fence under a `## Heading {#step-id}`.'
       );
       continue;
@@ -700,7 +847,7 @@ function transformCodeFence(node: FenceNode, codeDir: string | null, report: Rep
     const filePath = path.join(codeDir, entry.path);
     if (!fs.existsSync(filePath)) {
       report(
-        `A \`lerpit\` fence names \`${entry.path}\`, which is not there.`,
+        'fence-file-missing', `A \`lerpit\` fence names \`${entry.path}\`, which is not there.`,
         `Add ${toContentPath(filePath)}, or correct the path.`
       );
       continue;
@@ -710,13 +857,13 @@ function transformCodeFence(node: FenceNode, codeDir: string | null, report: Rep
     const { regions, problems: markerProblems } = scanRegions(source);
 
     for (const problem of markerProblems) {
-      report(`${entry.path} line ${problem.line}: ${problem.message}`, problem.fix);
+      report('region-marker', `${entry.path} line ${problem.line}: ${problem.message}`, problem.fix);
     }
 
     if (entry.regionId && !regions.some((region) => region.id === entry.regionId)) {
       const known = regions.map((region) => `\`${region.id}\``).join(', ');
       report(
-        `\`${entry.path}\` does not mark a region called \`${entry.regionId}\`.`,
+        'fence-region-missing', `\`${entry.path}\` does not mark a region called \`${entry.regionId}\`.`,
         known
           ? `That file marks ${known}. Use one of those, or add the marker.`
           : `Add \`// lerpit:${entry.regionId}:edit:start\` and a matching \`:end\` to that file.`
@@ -781,7 +928,7 @@ function extractSummary(
   const paragraphIndex = nodes.findIndex((node) => node.type === 'paragraph');
   if (paragraphIndex < 0) {
     report(
-      `This ${kind} has no summary, so its cassette card in the library is blank.`,
+      'summary-missing', `This ${kind} has no summary, so its cassette card in the library is blank.`,
       'Write the summary as the first paragraph after the title.',
       filePath
     );
@@ -803,7 +950,7 @@ function extractTopMixtapeMeta(nodesBeforeTitle: MarkdownNode[], report: Report,
 
   if (!match || nodesBeforeTitle.length !== 1) {
     report(
-      // An undated lerpette sorts last, so a half-written one never takes over '/'.
+      'meta-line-missing', // An undated lerpette sorts last, so a half-written one never takes over '/'.
       'The metadata line is missing or malformed, so this lerpette is undated and sorts last.',
       'Make the very first line exactly `Author: <name> | Date: YYYY-MM-DD`.',
       filePath
@@ -824,17 +971,20 @@ function reportBodyMetaLine(nodes: MarkdownNode[], report: Report, filePath: str
 
   if (misplaced) {
     report(
-      'A metadata line appears in the body, where it is read as prose rather than as the byline.',
+      'meta-line-misplaced', 'A metadata line appears in the body, where it is read as prose rather than as the byline.',
       'Keep exactly one metadata line, as the first line of the document.',
       filePath
     );
   }
 }
 
-async function collectAssetEntries(rootDir: string): Promise<LerpetteAssetEntry[]> {
+async function collectAssetEntries(rootDir: string, unpublishedDirs: readonly string[]): Promise<LerpetteAssetEntry[]> {
   const files = await walkFiles(rootDir);
+  // A lerpette that gets no page gets no assets either: a draft's images and wasm are
+  // otherwise public at a guessable URL, which is the thing `draft` is for.
+  const hidden = (filePath: string) => unpublishedDirs.some((dir) => filePath.startsWith(dir + path.sep));
   return files
-    .filter((filePath) => isAssetFile(filePath))
+    .filter((filePath) => isAssetFile(filePath) && !hidden(filePath))
     .sort((left, right) => left.localeCompare(right))
     .map((filePath) => ({
       urlPath: `${ASSET_ROUTE_PREFIX}/${toPosixPath(path.relative(LERPETTE_ROOT, filePath))}`,
@@ -846,7 +996,10 @@ async function collectAssetEntries(rootDir: string): Promise<LerpetteAssetEntry[
 async function walkFiles(dir: string): Promise<string[]> {
   const entries = await fsp.readdir(dir, { withFileTypes: true });
   const results = await Promise.all(
-    entries.map(async (entry) => {
+    entries
+      // A dot-directory is tooling (.vscode, .cache), never content.
+      .filter((entry) => !(entry.isDirectory() && entry.name.startsWith('.')))
+      .map(async (entry) => {
       const entryPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         return walkFiles(entryPath);
@@ -859,8 +1012,19 @@ async function walkFiles(dir: string): Promise<string[]> {
   return results.flat();
 }
 
+/**
+ * Files that are never published, whatever folder they are in: the operating system's
+ * and the editor's leftovers, and tooling that only makes sense on the author's disk.
+ */
+const NEVER_PUBLISHED = new Set(['compile_flags.txt', 'compile_commands.json', 'Thumbs.db', 'desktop.ini']);
+
 function isAssetFile(filePath: string): boolean {
   const basename = path.basename(filePath);
+
+  // Dotfiles (.DS_Store, .gitkeep, an editor's swap file) and tooling files.
+  if (basename.startsWith('.') || NEVER_PUBLISHED.has(basename)) {
+    return false;
+  }
 
   // Build-time settings, not something to serve. Without this it ships to
   // /assets/ alongside the images, which publishes the fact that a lerpette is
@@ -968,7 +1132,7 @@ function resolveDocumentPath(dir: string, basename: 'collection' | 'mixtape', re
 
   if (matches.length === 0) {
     report(
-      `There is no ${basename} document here, so this page has no content of its own.`,
+      'document-missing', `There is no ${basename} document here, so this page has no content of its own.`,
       `Write ${toContentPath(dir)}${basename}.md.`
     );
 
@@ -977,7 +1141,7 @@ function resolveDocumentPath(dir: string, basename: 'collection' | 'mixtape', re
 
   if (matches.length > 1) {
     report(
-      `Both ${basename}.md and ${basename}.mdx are here; only ${basename}.md is read.`,
+      'document-duplicate', `Both ${basename}.md and ${basename}.mdx are here; only ${basename}.md is read.`,
       'Keep one document per slot.'
     );
   }

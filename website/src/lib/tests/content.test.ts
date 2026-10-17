@@ -116,7 +116,7 @@ describe('a chapter whose id is left implicit', () => {
   it('reports the missing runtime and renders the page without a panel', async () => {
     const [mixtape] = (await loadLibrary()).mixtapes;
 
-    expect(messages(mixtape.problems)).toContain('No chapter in this lerpette has a runtime');
+    expect(messages(mixtape.problems)).toContain('No chapter in this lerpette has anything to run');
     expect(mixtape.steps[0].runtimeImportKey).toBe('');
     expect(mixtape.steps[0].hasOwnRuntime).toBe(false);
   });

@@ -1,9 +1,9 @@
 ---
 import CollectionShowcase from '../components/CollectionShowcase.astro';
-import CollectionsShelf from '../components/CollectionsShelf.astro';
-import LerpettesShelf from '../components/LerpettesShelf.astro';
 import LerpetteLessonPage from '../components/LerpetteLessonPage.astro';
+import Shelf from '../components/Shelf.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import { site } from '../site.config';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollectionBySlug, getCollections, getMixtapeBySlugs, getRoutableMixtapes } from '../lib/content';
 
@@ -54,18 +54,20 @@ const otherCollectionMixtapes = collection
 
 {
   collection ? (
-    <BaseLayout title={`${collection.title} · Lerpit`} description={collection.summary}>
+    <BaseLayout title={`${collection.title} · ${site.titleSuffix}`} description={collection.summary}>
       <main class="site-shell">
-        <section class="lerpette-player lerpette-player--collection">
+        <section class="sheet sheet--collection">
           <SiteHeader />
           <CollectionShowcase collection={collection} />
         </section>
-        <LerpettesShelf
+        <Shelf
+          eyebrow="Other lerpettes"
           mixtapes={otherCollectionMixtapes}
           headingId="other-mixtapes-heading"
           heading="Mixtapes from other collections"
         />
-        <CollectionsShelf
+        <Shelf
+          eyebrow="Other collections"
           collections={otherCollections}
           headingId="other-collections-heading"
           heading="Explore more collections"

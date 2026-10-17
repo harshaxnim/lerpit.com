@@ -1,7 +1,8 @@
 ---
 import type { LerpetteMixtape } from '@lerpit/framework/types';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import LerpettesShelf from './LerpettesShelf.astro';
+import Shelf from './Shelf.astro';
+import { site } from '../site.config';
 import LerpettePlayer from './LerpettePlayer.astro';
 
 interface Props {
@@ -24,12 +25,12 @@ const otherLerpettes = allMixtapes.filter(
 );
 ---
 
-<BaseLayout title={`${mixtape.title} · Lerpit`} description={mixtape.summary}>
+<BaseLayout title={`${mixtape.title} · ${site.titleSuffix}`} description={mixtape.summary}>
   <main class="site-shell site-shell--lesson">
     <LerpettePlayer
       lerpette={mixtape}
       headerTitle={headerTitle}
     />
-    <LerpettesShelf mixtapes={otherLerpettes} />
+    <Shelf eyebrow="Other lerpettes" heading="More mixtapes in the library" headingId="other-lerpettes-heading" mixtapes={otherLerpettes} />
   </main>
 </BaseLayout>

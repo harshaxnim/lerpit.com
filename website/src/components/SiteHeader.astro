@@ -1,19 +1,28 @@
 ---
 import { getCollections } from '../lib/content';
+import { site } from '../site.config';
 import BrandSpine from './BrandSpine.astro';
 
 interface Props {
   title?: string;
 }
 
-const { title = 'LerpIt' } = Astro.props as Props;
+const wordmark = `${site.name}${site.nameEmphasis}`;
+const { title = wordmark } = Astro.props as Props;
 const collections = await getCollections();
-const isDefaultTitle = title === 'LerpIt';
-// The header carries one content link: the essay on why this site exists. Collections
-// are reached from the shelf at the foot of a lesson and from /library/.
-const why = collections
-  .find((collection) => collection.slug === 'meta')
-  ?.mixtapes.find((mixtape) => mixtape.slug === 'issue-zero');
+const isDefaultTitle = title === wordmark;
+const base = import.meta.env.BASE_URL;
+
+// The links are site.config.ts's. A lesson link only shows while that lesson is listed,
+// so hiding a lesson never leaves the header pointing at a 404.
+const listed = new Set(collections.flatMap((collection) => collection.mixtapes.map((m) => `${m.collectionSlug}/${m.slug}`)));
+const links = site.headerLinks.flatMap((link) =>
+  'lesson' in link
+    ? listed.has(link.lesson)
+      ? [{ label: link.label, href: `${base}${link.lesson}/` }]
+      : []
+    : [{ label: link.label, href: link.href }]
+);
 ---
 
 <div class="lerpette-player__bar">
@@ -21,10 +30,10 @@ const why = collections
   <BrandSpine />
   <div class="lerpette-player__heading">
     <h1>
-      <a href={`${import.meta.env.BASE_URL}`}>
+      <a href={base}>
         {isDefaultTitle ? (
           <>
-            Lerp<em>It</em>
+            {site.name}<em>{site.nameEmphasis}</em>
           </>
         ) : (
           title
@@ -33,12 +42,11 @@ const why = collections
     </h1>
     <div class="lerpette-player__meta">
       <div class="lerpette-player__actions">
-        {why && (
-          <a class="lerpette-player__action" href={`${import.meta.env.BASE_URL}${why.collectionSlug}/${why.slug}/`}>
-            why
+        {links.map((link) => (
+          <a class:list={['lerpette-player__action', { 'lerpette-player__me-link': !link.href.startsWith(base) }]} href={link.href}>
+            {link.label}
           </a>
-        )}
-        <a class="lerpette-player__me-link lerpette-player__action" href="https://life.inspirho.com/me">lè me</a>
+        ))}
       </div>
     </div>
   </div>

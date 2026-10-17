@@ -107,8 +107,10 @@ function lerpitWatcher() {
       const isMd = (f) => f.endsWith('.md');
       const isContent = (f) => f.split(path.sep).join('/').includes('/lerpettes/content/');
 
+      // Only a lesson's Markdown is read per request; a README or a doc under docs/
+      // changing must not reload every open page.
       const handler = (file) => {
-        if (isMd(file)) triggerReload();
+        if (isMd(file) && isContent(file)) triggerReload();
         else if (isCpp(file)) runWasmBuild();
       };
 

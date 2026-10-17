@@ -1,7 +1,9 @@
 import type { LerpettePanel } from './panel';
 import type { ViewSize } from './contract';
 import type { LerpettePanelSlot } from './types';
-import { loadPanel, PANEL_LABELS, PANEL_NAMES } from './registry';
+import { loadPanel, PANEL_LABELS } from './registry';
+import { measure as measureSize } from '../runtimes/frameLoop';
+import './panelStack.css';
 
 /**
  * Several panels in one column.
@@ -15,6 +17,9 @@ import { loadPanel, PANEL_LABELS, PANEL_NAMES } from './registry';
  * editor in the prose already uses, so a reader meets it twice rather than learning two
  * things. Which panel the reader chose is remembered by name, so scrolling into the
  * next chapter that also has a table keeps showing the table.
+ *
+ * The player owns the stack, not a chapter: chapters that name the same panels share
+ * one, so moving between them keeps the column, its GL contexts and the open tab.
  */
 
 export type MountedPanel<Target = unknown> = {
@@ -25,6 +30,8 @@ export type MountedPanel<Target = unknown> = {
 };
 
 export type PanelStack = {
+  /** The names this stack was built from, in tab order. Its identity. */
+  names: readonly string[];
   panels: MountedPanel[];
   /** The panel on screen, or null when the chapter declared none. */
   active(): MountedPanel | null;
@@ -35,21 +42,22 @@ export type PanelStack = {
   unknown: string[];
 };
 
-const MAX_PIXEL_RATIO = 2;
-
 function measure(box: HTMLElement): ViewSize {
-  return {
-    width: Math.max(0, box.clientWidth),
-    height: Math.max(0, box.clientHeight),
-    dpr: Math.min(Math.max(window.devicePixelRatio || 1, 1), MAX_PIXEL_RATIO)
-  };
+  return measureSize(box.clientWidth, box.clientHeight, window.devicePixelRatio);
 }
 
+/**
+ * `preferred` is the tab the reader last chose on a previous stack. It opens again if
+ * this stack has a panel by that name, which is what keeps a reader on the table as
+ * they scroll from one chapter with a table to the next.
+ */
 export async function createPanelStack(
   slot: LerpettePanelSlot,
   names: readonly string[],
-  onShow: (mounted: MountedPanel) => void
+  onShow: (mounted: MountedPanel) => void,
+  preferred: string | null = null
 ): Promise<PanelStack> {
+  const opening = preferred && names.includes(preferred) ? preferred : names[0];
   const mounted: MountedPanel[] = [];
   const unknown: string[] = [];
 
@@ -78,7 +86,7 @@ export async function createPanelStack(
     button.className = 'lerpette-stage__tab';
     button.dataset.panel = name;
     button.setAttribute('role', 'tab');
-    button.setAttribute('aria-selected', String(name === names[0]));
+    button.setAttribute('aria-selected', String(name === opening));
     button.textContent = PANEL_LABELS[name] ?? name;
     button.disabled = true;
     buttons.set(name, button);
@@ -115,7 +123,7 @@ export async function createPanelStack(
   // The strip is the player's and already sits above the host; only the stage is ours.
   slot.host.append(stage);
 
-  let activeName = mounted[0]?.panel.name ?? '';
+  let activeName = mounted.find((entry) => entry.panel.name === opening)?.panel.name ?? mounted[0]?.panel.name ?? '';
 
   const paint = () => {
     for (const entry of mounted) {
@@ -164,6 +172,7 @@ export async function createPanelStack(
   paint();
 
   return {
+    names: [...names],
     panels: mounted,
     unknown,
     active: () => mounted.find((entry) => entry.panel.name === activeName) ?? null,
@@ -183,6 +192,3 @@ export async function createPanelStack(
     }
   };
 }
-
-/** For an authoring message that can say what the alternatives were. */
-export const KNOWN_PANELS = PANEL_NAMES;

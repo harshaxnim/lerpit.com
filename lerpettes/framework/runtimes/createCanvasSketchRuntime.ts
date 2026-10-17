@@ -1,43 +1,31 @@
-import { canvasViewportPanel } from '../panels';
+import type { CanvasTarget } from '../panels/canvas/canvasPanel';
 import type { LerpetteStepRuntime } from '../types';
-import { canvas2dScene } from './canvas2dScene';
-import { createFrameLoop } from './frameLoop';
+import { createChapterRuntime } from './createChapterRuntime';
 
 type SketchConfig = {
+  /** The caption under the drawing. */
   status: string;
+  /** Paint one frame. `frame` counts up from 1; the canvas is cleared before every call. */
   draw: (ctx: CanvasRenderingContext2D, frame: number, width: number, height: number) => void;
 };
 
 /**
- * A scene that animates on its own, with nothing to simulate and nothing for a reader
- * to edit. The loop, the pixel ratio and the clear all belong to createFrameLoop now;
- * what is left is the frame counter this signature promises its two lessons.
+ * A drawing that animates on its own, with nothing to simulate and nothing for a
+ * reader to edit. A preset, not a runtime of its own: a chapter on the `canvas` panel
+ * whose state is a frame counter, so it gets the same clock, stage and lifecycle as
+ * everything else.
  */
-export function createCanvasSketchRuntime(config: SketchConfig): LerpetteStepRuntime {
-  let frame = 0;
-
-  const loop = createFrameLoop(canvas2dScene, (context, _dt, size) => {
-    frame += 1;
-    config.draw(context, frame, size.width, size.height);
-  });
-
-  return {
-    panel: canvasViewportPanel,
-    mount(ctx) {
-      loop.sync(ctx);
-    },
-    enter(ctx) {
-      ctx.setCaption(config.status);
-      loop.start(ctx);
-    },
-    exit() {
-      loop.stop();
-    },
-    resize(ctx) {
-      loop.sync(ctx);
-    },
-    dispose(ctx) {
-      loop.release(ctx);
+export function createCanvasSketchRuntime(config: SketchConfig): LerpetteStepRuntime<any> {
+  return createChapterRuntime<{ frame: number }>({
+    panels: ['canvas'],
+    caption: config.status,
+    restart: false,
+    state: () => ({ frame: 0 }),
+    canvas: {
+      draw(target: CanvasTarget, s: { frame: number }, ctx: { view: { width: number; height: number } }) {
+        s.frame += 1;
+        config.draw(target.context2d(), s.frame, ctx.view.width, ctx.view.height);
+      }
     }
-  };
+  });
 }

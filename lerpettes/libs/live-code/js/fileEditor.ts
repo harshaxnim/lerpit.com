@@ -24,6 +24,7 @@ import { tagHighlighter, tags as t } from '@lezer/highlight';
 import { regionMarking, setRegions, toLiveRegions } from './editorRegions';
 import { createEditorStore, type EditorStore } from './editorStore';
 import type { DerivedRegion } from './regions';
+import './liveCode.css';
 
 /**
  * A small multi-file editor that mounts into the article column rather than the

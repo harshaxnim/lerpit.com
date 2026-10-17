@@ -1,8 +1,8 @@
 Author: Harsha | Date: 2026-09-22
 
-# Particle Engine
+# Baby Steps - Particle Simulations
 
-A physics simulator solves the equations of motion using an integrator to iteratively advance the state through time. In simpler words, we use newton's laws of motion to update positions and velocities of bodies over small time steps.
+A physics simulator solves the equations of motion using an integrator to iteratively advance the state through time. In other words, we use newton's laws of motion to update positions and velocities of bodies over small time steps.
 
 In this article, we shall look at a simple physics simulation loop by building an n-body simulation. We shall start with a single particle under a spring force, and then build up to n-bodies that exert gravity on each other, which should not be that different qualitatively.
 
