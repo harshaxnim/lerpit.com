@@ -2,6 +2,7 @@
   color-scheme: light;
   --font-serif: "Cardo", "Iowan Old Style", "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --paper: #fdfbf4;
   --paper-deep: #f7f3e7;
   --panel: rgba(253, 251, 244, 0.95);
@@ -68,13 +69,17 @@ a:hover {
   text-decoration-color: rgba(46, 109, 164, 0.9);
 }
 
+/* Mono is for code and what code prints. Every other small label is sans. */
 code,
-pre,
+pre {
+  font-family: var(--font-mono);
+}
+
 .eyebrow,
 .site-badge,
 .lerpette-head__index,
 .cassette-card__meta {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 h1,
@@ -168,8 +173,8 @@ nav {
   background: rgba(255, 255, 255, 0.56);
 }
 
-.button--mono {
-  font-family: var(--font-mono);
+.button--sans {
+  font-family: var(--font-sans);
 }
 
 .eyebrow,
@@ -239,7 +244,7 @@ nav {
   height: 1.1rem;
   border: 1px solid var(--warn-line);
   border-radius: 50%;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--warn);
@@ -293,7 +298,7 @@ nav {
 /* The same caret the footnotes collapse uses. */
 .content-problems__title::before {
   content: "\25B8";
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.72em;
   line-height: 1;
 }
@@ -310,7 +315,7 @@ nav {
   height: 1.1rem;
   border: 1px solid var(--warn-line);
   border-radius: 50%;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--warn);
@@ -318,7 +323,7 @@ nav {
 
 .content-problems__count {
   margin: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -876,7 +881,7 @@ nav {
 
 .prose-block .footnotes__title-toggle::before {
   content: "▸";
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.72em;
   line-height: 1;
 }
@@ -979,7 +984,7 @@ nav {
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.68rem;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -1032,7 +1037,7 @@ nav {
   margin: 0;
   padding: 0.45rem 0.6rem;
   border-bottom: 1px solid var(--line);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.7rem;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -1057,7 +1062,7 @@ nav {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.74rem;
   cursor: pointer;
   /* The open tab is marked by a rule inside its own box, so the strip never
@@ -1174,7 +1179,7 @@ nav {
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.6rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.7rem;
 }
 
@@ -1207,7 +1212,7 @@ nav {
   background: transparent;
   background-image: none;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.68rem;
   cursor: pointer;
 }
@@ -1425,7 +1430,7 @@ nav {
   border: 1px solid var(--line-strong);
   background: rgba(255, 255, 255, 0.72);
   color: var(--ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1453,7 +1458,7 @@ nav {
 
 .prose-block .live-code .live-code__status {
   margin: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   color: var(--muted);
@@ -1520,7 +1525,7 @@ nav {
   transform: translateX(-50%);
   margin: 0;
   padding: 0.3rem 0.55rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.78rem;
   color: var(--ink);
   text-align: center;
@@ -1549,7 +1554,7 @@ nav {
 }
 
 .lerpette-stage__toggle-text {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1662,7 +1667,7 @@ nav {
   z-index: 2;
   --tp-base-background-color: rgba(255, 253, 246, 0.92);
   --tp-base-border-radius: 0px;
-  --tp-base-font-family: var(--font-mono);
+  --tp-base-font-family: var(--font-sans);
   --tp-base-shadow-color: rgba(32, 49, 63, 0.08);
   --tp-blade-border-radius: 0px;
   --tp-button-background-color: rgba(46, 109, 164, 0.12);
@@ -1691,7 +1696,7 @@ nav {
 .lerpette-stage__controls .tp-lblv_l,
 .lerpette-stage__controls .tp-txtv_i,
 .lerpette-stage__controls .tp-sldtxtv_t {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
 }
@@ -1902,7 +1907,7 @@ nav {
   height: 1.15rem;
   padding: 0 0.32rem;
   border: 1px solid var(--line-strong);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1922,7 +1927,7 @@ nav {
   width: 1.15rem;
   height: 1.15rem;
   border: 1px solid var(--warn-line);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.76rem;
   font-weight: 700;
   color: var(--warn);
@@ -2065,7 +2070,7 @@ nav {
     min-height: 1.75rem;
     padding: 0.25rem 0.55rem;
     border-color: var(--line);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: 0.7rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -2102,7 +2107,7 @@ nav {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.74rem;
   cursor: pointer;
   /* The open tab is marked inside its own box, so the strip never changes height. */
@@ -2169,14 +2174,17 @@ nav {
   height: 100%;
   overflow: auto;
   padding: 0.75rem 0.9rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.74rem;
   line-height: 1.7;
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
+/* Program output, laid out with spaces, so it keeps the code face. */
 .lerpette-readout {
   margin: 0;
+  font-family: var(--font-mono);
   white-space: pre;
   color: var(--muted);
 }

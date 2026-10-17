@@ -128,7 +128,7 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
       throw new Error('This browser would not give the panel a 2D context to rasterise text with.');
     }
 
-    const font = `${size * scale}px "IBM Plex Mono", monospace`;
+    const font = `${size * scale}px "IBM Plex Sans", system-ui, sans-serif`;
     context.font = font;
     const measured = context.measureText(value);
     canvas.width = Math.max(1, Math.ceil(measured.width));
