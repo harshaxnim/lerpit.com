@@ -30,7 +30,11 @@ const art = cardArt(
   },
   // content.ts hands the style out across the whole library so two collections
   // cannot land on the same one; without it the card draws its own.
-  mixtape.cardStyle ? { style: mixtape.cardStyle } : {}
+  {
+    ...(mixtape.cardStyle ? { style: mixtape.cardStyle } : {}),
+    // The collection's card_palette, when it set one; otherwise its name draws one.
+    ...(mixtape.cardPalette ? { palette: mixtape.cardPalette } : {})
+  }
 );
 
 const stamp = mixtape.publishedOn.slice(0, 10).replace(/-/g, '.');

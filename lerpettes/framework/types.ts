@@ -138,6 +138,8 @@ export type LerpetteMixtape = {
   /** Which generated card style this lerpette draws: its collection's `card_style`, or
    *  assigned across the whole library so two collections do not share one. */
   cardStyle?: string;
+  /** Its collection's `card_palette`, or absent for the palette the name draws. */
+  cardPalette?: string;
 };
 
 export type LerpetteCollection = {
@@ -148,6 +150,8 @@ export type LerpetteCollection = {
   bodyHtml: string;
   /** The collection control.toml's `card_style`, which every card in it draws. */
   cardStyle?: string;
+  /** The collection control.toml's `card_palette`. */
+  cardPalette?: string;
   mixtapes: LerpetteMixtape[];
   problems: LerpetteProblem[];
 };

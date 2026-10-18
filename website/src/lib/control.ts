@@ -22,6 +22,7 @@
 
 import { parse as parseToml } from 'smol-toml';
 import { STYLE_IDS } from './cardArt/styles';
+import { PRESETS } from './cardArt/palette';
 
 /** Listed and routed. */
 export const PUBLISHED = 'published';
@@ -194,15 +195,21 @@ export function parseControl(source: string): ControlResult {
 /**
  * A collection's control.toml, beside its collection.md. Optional, like a lerpette's:
  *
- *   card_style = "orb"   # every card in the collection draws this style
+ *   card_style = "orb"                  # every card in the collection draws this style
+ *   card_palette = "Color surf 1979"    # and these colours
  *
- * Without it the style is assigned across the library, so no two collections share
- * one. Ids are in cardArt/styles.ts. A bad value is reported and the assignment stands.
+ * Without them the style is assigned across the library, so no two collections share
+ * one, and the palette is drawn from the collection's name. Style ids are in
+ * cardArt/styles.ts, palette names in cardArt/palette.ts (PRESETS). A bad value is
+ * reported and the default stands.
  */
-export type CollectionControl = { cardStyle: string | null };
+export type CollectionControl = { cardStyle: string | null; cardPalette: string | null };
+
+/** The palette names, as authors write them. Matched without regard to case. */
+export const PALETTE_IDS: readonly string[] = PRESETS.map((preset) => preset.id);
 
 export function parseCollectionControl(source: string): { control: CollectionControl; problems: ControlIssue[] } {
-  const control: CollectionControl = { cardStyle: null };
+  const control: CollectionControl = { cardStyle: null, cardPalette: null };
   const problems: ControlIssue[] = [];
   let table: Record<string, unknown>;
   try {
@@ -212,22 +219,35 @@ export function parseCollectionControl(source: string): { control: CollectionCon
     problems.push({
       id: 'control-syntax',
       what: `control.toml is not valid TOML, so all of it was ignored. ${detail}`,
-      fix: 'Write card_style = "orb", with the value quoted.'
+      fix: 'Write card_style = "orb" or card_palette = "Color surf 1979", with the value quoted.'
     });
     return { control, problems };
   }
   for (const key of Object.keys(table)) {
-    if (key === 'card_style') continue;
+    if (key === 'card_style' || key === 'card_palette') continue;
     problems.push({
       id: 'control-unknown-key',
       what: `A collection's control.toml sets ${key}, which is not a control collections have.`,
-      fix: 'Known controls: card_style. Lerpette settings go in the lerpette folder\'s own control.toml.'
+      fix: 'Known controls: card_style, card_palette. Lerpette settings go in the lerpette folder\'s own control.toml.'
     });
   }
   if ('card_style' in table) {
     const result = styleId(table.card_style, 'card_style');
     if ('issue' in result) problems.push(result.issue);
     else control.cardStyle = result.value;
+  }
+  if ('card_palette' in table) {
+    const raw = table.card_palette;
+    const match = typeof raw === 'string' ? PALETTE_IDS.find((id) => id.toLowerCase() === raw.trim().toLowerCase()) : undefined;
+    if (match) {
+      control.cardPalette = match;
+    } else {
+      problems.push({
+        id: 'control-bad-value',
+        what: `control.toml sets card_palette = ${JSON.stringify(raw)}, which is not a palette this site has.`,
+        fix: `Use one of: ${PALETTE_IDS.map((id) => `"${id}"`).join(', ')}.`
+      });
+    }
   }
   return { control, problems };
 }

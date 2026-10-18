@@ -256,7 +256,10 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   for (const collection of collections) {
     const style = styles.get(collection.title);
     // The collection's own card_style wins over the assignment.
-    for (const mixtape of collection.mixtapes) mixtape.cardStyle = collection.cardStyle ?? style;
+    for (const mixtape of collection.mixtapes) {
+      mixtape.cardStyle = collection.cardStyle ?? style;
+      if (collection.cardPalette) mixtape.cardPalette = collection.cardPalette;
+    }
   }
 
   const newestFirst = (left: LerpetteMixtape, right: LerpetteMixtape) =>
@@ -372,6 +375,7 @@ async function parseCollectionDirectory(collectionDir: string): Promise<Lerpette
     summary: collectionDoc.summary,
     bodyHtml: collectionDoc.bodyHtml,
     ...(collectionControl.cardStyle ? { cardStyle: collectionControl.cardStyle } : {}),
+    ...(collectionControl.cardPalette ? { cardPalette: collectionControl.cardPalette } : {}),
     mixtapes,
     problems
   };
@@ -384,7 +388,7 @@ async function readCollectionControl(collectionDir: string, report: Report) {
   try {
     source = await fsp.readFile(controlPath, 'utf8');
   } catch {
-    return { cardStyle: null };
+    return { cardStyle: null, cardPalette: null };
   }
   const { control, problems } = parseCollectionControl(source);
   for (const problem of problems) report(problem.id, problem.what, problem.fix, controlPath);

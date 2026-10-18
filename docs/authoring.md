@@ -231,12 +231,16 @@ never unpublish anything; it is reported instead.
 A collection can have its own `control.toml` too, beside `collection.md`:
 
 ```toml
-card_style = "orb"        # every card in the collection draws this style
+card_style = "orb"                 # every card in the collection draws this style
+card_palette = "Color surf 1979"   # and these colours
 ```
 
 The styles are `spill`, `label`, `spec`, `sleeve`, `bars`, `angle`, `nest`, `surf`, `arc`,
 `chevron`, `stripe`, `wheel`, `fan`, `grid` and `orb` (`website/src/lib/cardArt/styles.ts`).
-Without it, each collection is assigned a style no other collection has.
+The palettes are `Love drop 1974`, `Tape label 1981`, `Furnishing 1974`, `Perspective 1970`,
+`90min 1982`, `Color surf 1979` and `Spectrum drop 1975` (`website/src/lib/cardArt/palette.ts`).
+Without them, each collection is assigned a style no other collection has, and a palette
+drawn from its name.
 
 ## Site settings
 

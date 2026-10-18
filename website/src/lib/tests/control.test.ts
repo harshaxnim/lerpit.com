@@ -98,7 +98,14 @@ describe('the newer fields', () => {
 
 describe('a collection control.toml', () => {
   it('reads card_style', () => {
-    expect(parseCollectionControl('card_style = "orb"')).toEqual({ control: { cardStyle: 'orb' }, problems: [] });
+    expect(parseCollectionControl('card_style = "orb"')).toEqual({ control: { cardStyle: 'orb', cardPalette: null }, problems: [] });
+  });
+
+  it('reads card_palette by name, without regard to case', () => {
+    expect(parseCollectionControl('card_palette = "color surf 1979"').control.cardPalette).toBe('Color surf 1979');
+    const bad = parseCollectionControl('card_palette = "neon"');
+    expect(bad.control.cardPalette).toBeNull();
+    expect(bad.problems[0].fix).toContain('"90min 1982"');
   });
 
   it('reports a style that does not exist, and one set in a lerpette', () => {
