@@ -1,2 +1,4 @@
-# The style every card in this collection draws. Ids are in website/src/lib/cardArt/styles.ts.
-card_style = "grid"
+# The style and palette every card in this collection draws.
+# Style ids are in website/src/lib/cardArt/styles.ts, palettes in website/src/lib/cardArt/palette.ts.
+card_style = "nest"
+card_palette = "Furnishing 1974"
