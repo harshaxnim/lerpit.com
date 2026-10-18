@@ -4,7 +4,30 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { devViewToggle } from './scripts/dev-view-toggle.mjs';
+
+/*
+ * The dev server's own plugins under scripts/. Astro restarts the server when this file
+ * changes and re-imports it with a fresh ?t=, but Node caches what it imports by URL, so
+ * a restart would keep running the old copy of these. Loading them with a fresh ?t= of
+ * their own makes every restart pick up their current code, and listing them in
+ * DEV_WATCH (added with addWatchFile below) makes editing one restart the server. Each
+ * is a single module with no local imports of its own, so nothing behind them goes stale.
+ */
+const DEV_PLUGINS = ['./scripts/dev-view-toggle.mjs', './scripts/lerpit-editor.mjs'];
+const fresh = (file) => import(`${new URL(file, import.meta.url).href}?t=${Date.now()}`);
+const [{ devViewToggle }, { editButtonMarkup, isEditorWrite, lerpitEditor }] = await Promise.all(DEV_PLUGINS.map(fresh));
+
+function restartOnDevPluginChange() {
+  return {
+    name: 'lerpit-dev-plugins',
+    hooks: {
+      'astro:config:setup': ({ command, addWatchFile }) => {
+        if (command !== 'dev') return;
+        for (const file of DEV_PLUGINS) addWatchFile(new URL(file, import.meta.url));
+      }
+    }
+  };
+}
 
 /**
  * The in-browser C++ toolchain runs its tools in workers backed by
@@ -108,16 +131,23 @@ function lerpitWatcher() {
       const isContent = (f) => f.split(path.sep).join('/').includes('/lerpettes/content/');
 
       // Only a lesson's Markdown is read per request; a README or a doc under docs/
-      // changing must not reload every open page.
+      // changing must not reload every open page. A save from the local editor reloads
+      // the pages it touched itself (scripts/lerpit-editor.mjs), so the editing tab keeps
+      // its place; reloading every tab here would throw that away.
       const handler = (file) => {
-        if (isMd(file) && isContent(file)) triggerReload();
-        else if (isCpp(file)) runWasmBuild();
+        if (isMd(file) && isContent(file)) {
+          if (!isEditorWrite(file)) triggerReload();
+        } else if (isCpp(file)) runWasmBuild();
       };
 
       // A file appearing or vanishing is the tree changing shape, which is the only
       // thing that can stale the glob. Editing one cannot, so 'change' is not here.
+      // An image or a document the editor adds is not code, so it cannot either; a code
+      // folder it renames can.
       const structureChanged = (file) => {
-        if (isContent(file)) invalidateRuntimeGlob();
+        if (!isContent(file)) return;
+        if (isEditorWrite(file) && !file.split(path.sep).includes('code')) return;
+        invalidateRuntimeGlob();
       };
 
       server.watcher.on('change', handler);
@@ -145,7 +175,8 @@ export default defineConfig({
   srcDir: './website/src',
   publicDir: './website/public',
   base: customDomain ? '/' : process.env.GITHUB_ACTIONS === 'true' ? `/${repo}/` : '/',
-  integrations: [mdx()],
+  // lerpitEditor adds the local editor's file API under `astro dev` only; see the file.
+  integrations: [mdx(), lerpitEditor(), restartOnDevPluginChange()],
   // Dev server only: lets a localtunnel (`lt --port 4321`) reach it from another device.
   server: { allowedHosts: ['.loca.lt'] },
   vite: {
@@ -160,6 +191,6 @@ export default defineConfig({
       // fails; left unbundled, Vite's own ?raw handling resolves it.
       exclude: ['@gameguild/emception-browser', '@gameguild/emception-xterm', 'emception']
     },
-    plugins: [crossOriginIsolation(), lerpitWatcher(), devViewToggle()]
+    plugins: [crossOriginIsolation(), lerpitWatcher(), devViewToggle({ extraMarkup: editButtonMarkup })]
   }
 });

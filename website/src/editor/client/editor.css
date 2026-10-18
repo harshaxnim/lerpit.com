@@ -1,0 +1,914 @@
+/*
+ * The local editor's chrome. Dev only: boot.ts imports this, and nothing in a build
+ * imports boot.ts. Everything is prefixed .ed- so none of it can reach the site's own
+ * rules, and it is drawn from global.css's tokens so it reads as part of the page.
+ * Breakpoints are the ones listed in global.css :root (styles.test.ts checks).
+ */
+
+:root {
+  --ed-bar-h: 3.25rem;
+  --ed-sheet-w: min(25rem, 100vw);
+}
+
+/* Room at the foot of the page for the bar, so the last lines are never under it. */
+body.ed-on {
+  padding-bottom: calc(var(--ed-bar-h) + 3rem);
+}
+
+/* ---------------------------------------------------------------- the bar */
+
+.ed-bar {
+  position: fixed;
+  left: 50%;
+  /* Above Astro's dev toolbar, which sits at the bottom centre of every dev page. */
+  bottom: 3rem;
+  z-index: 2147482000;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: calc(100vw - 2rem);
+  min-height: 2.75rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 10px 30px rgba(32, 49, 63, 0.28);
+  font: 600 0.8rem/1.2 var(--font-sans);
+}
+
+.ed-bar__mode {
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-warm);
+}
+
+.ed-bar__title {
+  min-width: 0;
+  max-width: 22rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.8;
+}
+
+.ed-bar__dirty {
+  white-space: nowrap;
+}
+
+.ed-bar__dirty::before {
+  content: '';
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--accent-warm);
+  vertical-align: 0.05rem;
+}
+
+.ed-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.ed-bar__question {
+  min-width: 0;
+  max-width: 30rem;
+  margin-right: 0.3rem;
+}
+
+.ed-bar.is-asking .ed-bar__title,
+.ed-bar.is-asking .ed-bar__dirty {
+  display: none;
+}
+
+.ed-bar__problems {
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--warn-line);
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: #ffd27a;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ed-bar .ed-btn {
+  border-color: rgba(253, 251, 244, 0.5);
+  background: transparent;
+  color: var(--paper);
+  border-radius: 999px;
+}
+
+.ed-bar .ed-btn--primary {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+
+.ed-bar .ed-btn--primary[data-dirty] {
+  background: var(--accent-warm);
+  border-color: var(--accent-warm);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------- buttons, inputs */
+
+.ed-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--ink);
+  font: 700 0.72rem/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ed-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.ed-btn--primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.ed-btn:focus-visible,
+.ed-icon:focus-visible,
+.ed-chip:focus-visible,
+.ed-add:focus-visible,
+.ed-open-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ed-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 0.9rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.ed-icon:hover {
+  border-color: var(--accent);
+}
+
+.ed-input {
+  min-width: 0;
+  min-height: 2.1rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line-strong);
+  background: #fffdf6;
+  color: var(--ink);
+  font: 1rem/1.3 var(--font-serif);
+}
+
+.ed-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.ed-input--title {
+  flex: 1 1 12rem;
+  font-size: clamp(1.25rem, 2.3vw, 1.8rem);
+  font-weight: 500;
+}
+
+.ed-input--collection {
+  display: block;
+  width: min(40rem, 80vw);
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+  margin: 0.2rem 0 0.4rem;
+}
+
+.ed-input--id {
+  width: 9rem;
+  font: 0.85rem/1.2 var(--font-mono);
+}
+
+/* ---------------------------------------------------------------- chapter boxes */
+
+/* Hovering a box in edit mode says it can be opened. */
+.ed-on .ed-editable:not(.ed-open):not(.ed-deleted) {
+  cursor: text;
+}
+
+.ed-on .ed-editable:not(.ed-open):not(.ed-deleted):hover {
+  border-color: var(--accent);
+}
+
+.ed-open-btn {
+  order: 2;
+  align-self: center;
+  min-height: 1.8rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--accent);
+  font: 700 0.68rem/1 var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ed-open .ed-open-btn,
+.ed-deleted .ed-open-btn {
+  display: none;
+}
+
+/* An unsaved box: a warm dot by its number. */
+.ed-dirty > .lerpette-head .lerpette-head__index-row::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent-warm);
+}
+
+.ed-open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* The heading's fields take the title's place in the pinned header. */
+.ed-open > .lerpette-head {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ed-open > .lerpette-head > h2 {
+  display: none;
+}
+
+/* Beside the chapter number, which stays at the right edge as it is when closed. */
+.ed-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 0;
+  min-width: 0;
+  order: 0;
+}
+
+.ed-head__id {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--muted);
+  font: 0.85rem var(--font-mono);
+}
+
+.ed-head__tools {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.ed-chapter {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.ed-chapter__note {
+  margin: 0;
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+.ed-chapter__problems {
+  margin: 0;
+  padding: 0.5rem 0.8rem 0.5rem 1.6rem;
+  border: 1px solid var(--warn-line);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+/* p.-qualified to outrank the site's `.archive-collection p` and friends. */
+p.ed-chapter__preview-label {
+  margin: 0.4rem 0 -0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--line-strong);
+  font: 700 0.68rem/1 var(--font-sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ed-chapter--collection {
+  margin: 0.6rem 0 0;
+}
+
+.ed-panels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.ed-panels__label {
+  margin-right: 0.3rem;
+  font: 700 0.68rem/1 var(--font-sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ed-panels__hint {
+  color: var(--muted);
+  font: 0.75rem var(--font-sans);
+}
+
+.ed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.9rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 0.75rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.ed-chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.ed-swatch {
+  width: 2.2rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.ed-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* Deleted, until saved: the box folds to a strip with an undo. */
+.ed-deleted > :not(.ed-deleted__strip) {
+  display: none;
+}
+
+.ed-deleted {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.ed-deleted__strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.ed-new > .lerpette-head .lerpette-head__index {
+  color: var(--accent-warm);
+}
+
+/* Between boxes: where a new chapter can go. Quiet until hovered. */
+.ed-add {
+  justify-self: center;
+  min-height: 1.9rem;
+  margin: -0.5rem 0;
+  padding: 0 0.9rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font: 600 0.72rem/1 var(--font-sans);
+  letter-spacing: 0.04em;
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.ed-add:hover,
+.ed-add:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.ed-raw-mode .ed-editable {
+  cursor: default;
+}
+
+/* A code box re-rendered by the preview is empty until the page rebuilds it on save. */
+.ed-on .ed-open .lerpette-code:empty::before {
+  content: 'code box · builds after save';
+  display: block;
+  padding: 0.8rem;
+  border: 1px dashed var(--line-strong);
+  color: var(--muted);
+  font: 0.8rem var(--font-mono);
+}
+
+/* ---------------------------------------------------------------- the Markdown box */
+
+.ed-md {
+  border: 1px solid var(--line-strong);
+  background: #fffdf6;
+}
+
+.ed-md__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.25rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-deep);
+}
+
+.ed-md__tool {
+  min-height: 1.8rem;
+  padding: 0 0.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 600 0.75rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.ed-md__tool:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* In the prose face, where bold and italic look like what they make. */
+.ed-md__tool--b,
+.ed-md__tool--i {
+  font: 700 1rem/1 var(--font-serif);
+}
+
+.ed-md__tool--i {
+  font-weight: 400;
+  font-style: italic;
+}
+
+.ed-md__sep {
+  width: 1px;
+  height: 1.2rem;
+  margin: 0 0.2rem;
+  background: var(--line);
+}
+
+.ed-md__cm .cm-editor {
+  max-height: 60vh;
+  font: 0.86rem/1.65 var(--font-mono);
+}
+
+.ed-md__cm .cm-editor.cm-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.ed-md__cm .cm-scroller {
+  font-family: var(--font-mono);
+}
+
+.ed-md__cm .cm-content {
+  padding: 0.6rem 0;
+}
+
+.ed-md__cm .cm-line {
+  padding: 0 0.75rem;
+}
+
+.ed-md__cm .cm-activeLine {
+  background: rgba(46, 109, 164, 0.05);
+}
+
+.ed-md__cm .cm-cursor {
+  border-left: 2px solid var(--accent-warm);
+}
+
+/* ---------------------------------------------------------------- the sheet */
+
+.ed-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147481000;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: var(--ed-sheet-w);
+  border-left: 2px solid var(--ink);
+  background: var(--paper);
+  box-shadow: -12px 0 32px rgba(32, 49, 63, 0.16);
+  transform: translateX(100%);
+  transition: transform 160ms ease;
+}
+
+.ed-sheet.is-open {
+  transform: none;
+}
+
+.ed-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.ed-sheet__title {
+  margin: 0;
+}
+
+.ed-sheet__close {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.ed-sheet__body {
+  overflow: auto;
+  padding: 0.4rem 1rem calc(var(--ed-bar-h) + 2rem);
+  overscroll-behavior: contain;
+}
+
+.ed-group {
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ed-group__title {
+  margin: 0 0 0.4rem;
+  font: 700 0.72rem/1.2 var(--font-sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: default;
+}
+
+summary.ed-group__title {
+  cursor: pointer;
+}
+
+.ed-field {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0 0 0.8rem;
+}
+
+.ed-field__label {
+  font: 700 0.66rem/1 var(--font-sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ed-field__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+/* A hint that leads a group, or follows a control, needs the gap below it: the same
+   0.8rem a field leaves. */
+.ed-group > .ed-field__hint:not(:last-child),
+.ed-status-hint {
+  margin-bottom: 0.8rem;
+}
+
+.ed-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.ed-row > .ed-field {
+  flex: 1 1 9rem;
+}
+
+.ed-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+}
+
+.ed-grid__key {
+  font-size: 0.8rem;
+}
+
+.ed-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.ed-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--ink);
+  width: fit-content;
+}
+
+.ed-seg__opt {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 700 0.7rem/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ed-seg__opt[aria-checked='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.ed-raw {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line-strong);
+  background: #fffdf6;
+  color: var(--ink);
+  font: 0.8rem/1.55 var(--font-mono);
+  resize: vertical;
+}
+
+.ed-raw--tall {
+  min-height: 14rem;
+}
+
+.ed-problems {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ed-problems li {
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--warn-line);
+  background: var(--warn-soft);
+  font-size: 0.9rem;
+}
+
+.ed-problems p {
+  margin: 0;
+}
+
+.ed-problems .ed-problems__none {
+  border-left-color: var(--ok);
+  background: transparent;
+  color: var(--ok);
+}
+
+.ed-problems__fix {
+  color: var(--muted);
+}
+
+.ed-problems__where {
+  font: 0.7rem var(--font-mono);
+  color: var(--muted);
+}
+
+.ed-form {
+  display: grid;
+  gap: 0.2rem;
+  padding-top: 0.6rem;
+}
+
+.ed-preview {
+  display: flex;
+  gap: 0.8rem;
+  align-items: end;
+  margin: 0.4rem 0 1rem;
+}
+
+.ed-preview .cassette-card {
+  width: 9rem;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- collections and the library */
+
+/* The size and shape of the cassette cards beside it (global.css .cassette-card). */
+.ed-new-card {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  max-width: 264px;
+  aspect-ratio: 300 / 420;
+  border: 1.5px dashed var(--line-strong);
+  background: rgba(253, 251, 244, 0.7);
+  color: var(--accent);
+  font: 700 0.85rem/1.2 var(--font-sans);
+  cursor: pointer;
+}
+
+.ed-new-card small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ed-new-card__plus {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.ed-new-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ed-link {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font: 600 0.8rem/1.4 var(--font-sans);
+}
+
+.ed-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+/* A lerpette's row in a collection's settings: its title, then status and order. */
+.ed-lerpette {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.6rem 0;
+  border-top: 1px dashed var(--line);
+}
+
+.ed-lerpette__title {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.ed-lerpette__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ed-input--order {
+  width: 4.5rem;
+}
+
+/* Clear of whatever follows the header, like the library's problems box: the site's
+   1rem between blocks. */
+.ed-new-collection {
+  margin: 0.6rem 0 1rem;
+}
+
+/* ---------------------------------------------------------------- toast */
+
+.ed-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--ed-bar-h) + 3.6rem);
+  z-index: 2147482000;
+  max-width: min(36rem, calc(100vw - 2rem));
+  padding: 0.6rem 0.9rem;
+  transform: translateX(-50%);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(32, 49, 63, 0.18);
+  font: 0.95rem/1.35 var(--font-serif);
+}
+
+.ed-toast[data-kind='ok'] {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.ed-toast[data-kind='bad'] {
+  border-color: var(--warn-line);
+  background: #fff6df;
+  color: var(--warn);
+}
+
+/* ---------------------------------------------------------------- narrow screens */
+
+/* Below 1180px the stage is a drawer, and the sheet covers the page instead. */
+@media (max-width: 1180px) {
+  .ed-bar__title {
+    max-width: 12rem;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --ed-bar-h: 3.4rem;
+  }
+
+  /* Fingers, not pointers: every control at least 40px tall. */
+  .ed-btn,
+  .ed-chip,
+  .ed-md__tool,
+  .ed-add,
+  .ed-open-btn,
+  .ed-seg__opt,
+  .ed-bar__problems,
+  .ed-input {
+    min-height: 2.5rem;
+  }
+
+  .ed-icon,
+  .ed-sheet__close {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .ed-bar {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 2.6rem;
+    max-width: none;
+    transform: none;
+    gap: 0.35rem;
+    padding-left: 0.6rem;
+  }
+
+  .ed-bar__title,
+  .ed-bar__mode {
+    display: none;
+  }
+
+  .ed-bar .ed-btn {
+    padding: 0 0.55rem;
+  }
+
+  .ed-toast {
+    bottom: calc(var(--ed-bar-h) + 1rem);
+  }
+
+  .ed-input--id {
+    width: 7rem;
+  }
+
+  /* The fields fill a phone's row; the number would sit alone on one of its own. */
+  .ed-open > .lerpette-head .lerpette-head__index-row {
+    display: none;
+  }
+
+  /* Title and close on the first line (the title takes all but the close button's
+     width, which forces the rest down), the id and its tools under them. */
+  .ed-head .ed-input--title {
+    flex: 1 1 calc(100% - 3rem);
+  }
+
+  .ed-head__id,
+  .ed-head__tools {
+    order: 1;
+  }
+}
+
+@media print {
+  .ed-bar,
+  .ed-sheet,
+  .ed-toast,
+  .ed-add,
+  .ed-open-btn {
+    display: none;
+  }
+}

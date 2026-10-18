@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Editing in the browser · Lerpit</title>
+<style>
+  :root { --paper: #fdfbf4; --paper-deep: #f7f3e7; --ink: #20313f; --muted: #506270; --line: rgba(81,131,173,.42); --accent: #2e6da4; --warm: #d17041; --warn: #8a5a00; --warn-soft: rgba(255,200,80,.18); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 1.05rem/1.6 "Cardo", "Iowan Old Style", Georgia, serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  h1 { font-size: 2.2rem; line-height: 1.1; margin: 0 0 .4rem; } h1 em { color: var(--warm); }
+  h2 { margin: 2.2rem 0 .4rem; font-size: 1.45rem; border-bottom: 1px solid var(--line); padding-bottom: .2rem; }
+  h3 { margin: 1.4rem 0 .2rem; font-size: 1.1rem; }
+  .lede { color: var(--muted); }
+  code, kbd { font: .85em "IBM Plex Mono", ui-monospace, monospace; background: var(--paper-deep); padding: .05em .3em; border: 1px solid var(--line); border-radius: 3px; }
+  .pill { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; font: 700 .75rem system-ui, sans-serif; vertical-align: -.3em; }
+  .pill--pen { background: var(--paper); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .pill--l { background: var(--accent); color: var(--paper); }
+  .bar { display: inline-flex; gap: .5rem; align-items: center; padding: .3rem .4rem .3rem .8rem; border-radius: 999px; background: var(--ink); color: var(--paper); font: 600 .75rem system-ui, sans-serif; }
+  .bar b { color: var(--warm); letter-spacing: .12em; } .bar span.b { border: 1px solid rgba(253,251,244,.5); border-radius: 999px; padding: .2rem .6rem; }
+  .note { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: .6rem .9rem; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; } td, th { border: 1px solid var(--line); padding: .4rem .6rem; text-align: left; vertical-align: top; }
+  th { font: 700 .75rem system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  ol li, ul li { margin: .25rem 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Editing in the <em>browser</em></h1>
+  <p class="lede">Write and arrange your lerpettes and collections on the page itself, with the real page as your preview. It works only on your machine, under <code>npm run dev</code>; readers never see any of it.</p>
+
+  <h2>Start</h2>
+  <ol>
+    <li>Run <code>npm run dev</code> and open any page.</li>
+    <li>Press the pencil <span class="pill pill--pen">✎</span> beside the <span class="pill pill--l">L</span> button, bottom right. It shows only in local view; public view (<b>P</b>) is the page as a reader gets it.</li>
+    <li>The page goes into edit mode, and a bar appears at the foot of the window: <span class="bar"><b>EDITING</b> Springs <span>● 2 unsaved</span><span class="b">⚙ Settings</span><span class="b">Save</span><span class="b">Done</span></span></li>
+  </ol>
+  <p>What you can edit depends on the page: a <b>lesson</b> edits that lerpette, a <b>collection page</b> edits that collection, and the <b>library</b> is where you make new ones.</p>
+
+  <h2>Writing a chapter</h2>
+  <p>Click any chapter, or its <b>✎ Edit</b> button. It opens in place:</p>
+  <ul>
+    <li><b>Title</b> and <b>id</b> (<code>{#the-loop}</code>). The id is the chapter's anchor and the name of its code folder.</li>
+    <li><b>Panels</b>: click a chip to add or drop <code>viewport2d</code>, <code>table</code> and the rest. A chip marked <code>·</code> comes from the title, which every chapter inherits.</li>
+    <li>The <b>text</b>, in Markdown. The buttons add bold, italics, links, maths (<code>$x$</code>, <code>$$…$$</code>), a list, an image, or a code box.</li>
+    <li>Under it, the <b>preview</b> redraws as you type, exactly as the page will render it, maths and figures included.</li>
+  </ul>
+  <p>The stage keeps running beside you. <kbd>Esc</kbd> closes a chapter; your changes stay until you save or leave.</p>
+
+  <h3>Adding, moving, deleting</h3>
+  <ul>
+    <li><b>+ Add a chapter here</b> sits between the boxes. A new chapter's id follows its title until you type one.</li>
+    <li><b>↑ ↓</b> in an open chapter move it. The trash button deletes it; you can <b>Undo</b> until you save. Its code folder is never deleted.</li>
+    <li>Renaming an id also renames its <code>code/&lt;id&gt;/</code> folder and its caption when you save. The editor tells you before it does.</li>
+  </ul>
+
+  <h3>Images</h3>
+  <p>Drop or paste an image into the text, or use <b>image</b>. It is saved beside <code>mixtape.md</code> (never over an existing file) and linked where your cursor was. Give it alt text: a lone image with alt text becomes a figure with a caption.</p>
+
+  <h2>Settings</h2>
+  <p><b>⚙ Settings</b> slides in over the stage:</p>
+  <table>
+    <tr><th>Setting</th><th>What it does</th></tr>
+    <tr><td>Status</td><td><b>Published</b>: listed everywhere. <b>Unlisted</b>: the link works, but it is on no shelf. <b>Draft</b>: only on your machine.</td></tr>
+    <tr><td>Serve at /</td><td>Makes this the landing page (published lerpettes only).</td></tr>
+    <tr><td>Order</td><td>Its place in the collection; the rest follow newest first.</td></tr>
+    <tr><td>Byline</td><td>Author and date, the first line of the document.</td></tr>
+    <tr><td>Captions</td><td>The line under the panel, per chapter.</td></tr>
+    <tr><td>Code box idle text</td><td>What a code box says before its first build.</td></tr>
+  </table>
+  <p>The same sheet lists every <b>problem</b> the site finds, and lets you edit <code>control.toml</code> or <code>mixtape.md</code> as plain text. Comments you have written in <code>control.toml</code> are kept.</p>
+
+  <h2>Collections</h2>
+  <p>Get to a collection's editor from the library (<b>Edit collection</b>, beside <b>Open collection</b>), or press the pencil on the collection's own page. Edit its title and introduction in place. <b>⚙ Cards &amp; settings</b> holds:</p>
+  <ul>
+    <li><b>Card style</b> and <b>palette</b>. Every card on the page redraws as you click, so you can choose by looking. <b>auto</b> lets the site pick.</li>
+    <li><b>Lerpettes</b>: each one's status and its order in the collection, without opening it.</li>
+  </ul>
+  <p>A lesson's <b>⚙ Settings</b> has a <b>Collection</b> group too, with the same card style and palette, and a link to the collection's own editor.</p>
+
+  <h2>Making something new</h2>
+  <ul>
+    <li><b>A lerpette:</b> in edit mode on a collection page or the library, click the dashed <b>New lerpette</b> card. Give it a title; the folder name (its URL) is filled in for you. It starts as a <b>draft</b> with one chapter and a ball on a spring on its stage, and opens in edit mode.</li>
+    <li><b>A collection:</b> on the library, <b>+ New collection</b>. Pick its card style and palette while watching a preview card.</li>
+  </ul>
+
+  <h2>Saving</h2>
+  <p><b>Save</b> or <kbd>⌘S</kbd> writes to disk. Nothing is written until you do. Lines you didn't touch are written back exactly as they were, so your git diff shows only your changes.</p>
+  <ul>
+    <li>Text-only changes save in place. Changes to panels, ids, order or settings reload the page, which comes back in edit mode where you were.</li>
+    <li>Unsaved work is also kept in this browser. If the tab closes, you'll be offered it back next time.</li>
+    <li>If the file changed on disk while you were editing (say you saved it in VS Code), the editor keeps your version on screen and asks on save: keep editing, overwrite with yours, or drop yours and reload.</li>
+  </ul>
+  <p><b>Done</b> leaves edit mode. If you have unsaved changes, it asks first.</p>
+
+  <div class="note">Renaming or deleting a whole lerpette or collection folder is not in the editor. Do that in Finder or git.</div>
+</main>
+</body>
+</html>

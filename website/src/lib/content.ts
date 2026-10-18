@@ -83,6 +83,16 @@ const CONTROL_FILE = 'control.toml';
 function hidesLikeProduction(): boolean {
   return process.env.NODE_ENV === 'production' || process.env.LERPIT_VIEW === 'public';
 }
+
+/**
+ * Whether a page spells out its authoring problems: the problems box's list (message,
+ * fix, path), and the `!` marks on a card and a chapter. Those are for the author, so
+ * only in local view. Public view and a production build still say a page is unfinished,
+ * but not why (ContentProblems.astro). The build lists them all in its log.
+ */
+export function showsAuthoringProblems(): boolean {
+  return !hidesLikeProduction();
+}
 const DOC_BASENAMES = new Set(['collection', 'mixtape']);
 const CODE_EXTENSIONS = new Set(['.js', '.ts', '.jsx', '.tsx', '.mts', '.cts']);
 const DOCUMENT_EXTENSIONS = new Set(['.md', '.mdx']);
@@ -138,6 +148,20 @@ export async function getMixtapeBySlugs(collectionSlug: string, mixtapeSlug: str
 
 export async function getLerpetteAssetEntries(): Promise<LerpetteAssetEntry[]> {
   return (await getLerpetteLibrary()).assetEntries;
+}
+
+/**
+ * A piece of a document rendered the way its page renders it: the same Markdown,
+ * maths, figures, asset links and code boxes. For the local editor's prose preview
+ * (website/src/editor), so what it shows cannot drift from the site.
+ *
+ * `docDir` is the lerpette's (or collection's) folder, which relative links resolve
+ * against; `codeDir`, a chapter's code folder, is what its code boxes are checked against.
+ */
+export function renderMarkdownPreview(markdown: string, docDir: string, codeDir: string | null = null) {
+  const { problems, report } = createProblemLog(docDir);
+  const html = renderNodesToHtml(parseMarkdown(markdown).children, docDir, report, codeDir);
+  return { html, problems };
 }
 
 function createProblemLog(defaultWhere: string) {

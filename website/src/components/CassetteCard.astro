@@ -2,13 +2,15 @@
 import type { LerpetteMixtape } from '@lerpit/framework/types';
 import { cardArt } from '../lib/cardArt';
 import { statusTag } from '../lib/control';
+import { showsAuthoringProblems } from '../lib/content';
 
 interface Props {
   mixtape: LerpetteMixtape;
 }
 
 const { mixtape } = Astro.props as Props;
-const problemCount = mixtape.problems.length;
+// The `!` is for the author: local view only (see showsAuthoringProblems).
+const problemCount = showsAuthoringProblems() ? mixtape.problems.length : 0;
 const collection = mixtape.collectionTitle ?? 'Lerpette';
 const chapters = mixtape.steps.length;
 // Only ever set on a local build, where unlisted and draft lerpettes are listed.

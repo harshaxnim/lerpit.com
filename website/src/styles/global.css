@@ -139,7 +139,7 @@ h6 {
 
 code {
   padding: 0.12rem 0.35rem;
-  font-size: 0.92em;
+  font-size: 0.8em;
   background: rgba(46, 109, 164, 0.08);
   border: 1px solid rgba(46, 109, 164, 0.18);
 }
@@ -423,6 +423,11 @@ nav {
   content: "\25BE";
 }
 
+/* Public view's notice has nothing to open, so no caret. */
+.content-problems--brief .content-problems__title::before {
+  content: none;
+}
+
 .content-problems__mark {
   display: inline-flex;
   align-items: center;
@@ -435,16 +440,6 @@ nav {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--warn);
-}
-
-.content-problems__count {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  white-space: nowrap;
 }
 
 .content-problems__list {
@@ -757,6 +752,12 @@ nav {
 .lerpette-brow {
   margin: 0;
   line-height: var(--brow-line);
+  /* An eyebrow in size and colour, but set as written: titles and names read in their
+     own case. Caps tracking would look loose on lower case, so it is tightened too. */
+  text-transform: none;
+  letter-spacing: 0.02em;
+  /* A touch larger than the eyebrows it shares a style with: it is read, not glanced at. */
+  font-size: 0.9rem;
 }
 
 /* The byline is the player's top bar: full width, above both columns, and a direct

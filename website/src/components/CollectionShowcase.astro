@@ -11,7 +11,7 @@ interface Props {
 const { collection, showLink = false } = Astro.props as Props;
 ---
 
-<section class="archive-collection" aria-labelledby={`collection-${collection.slug}`}>
+<section class="archive-collection" aria-labelledby={`collection-${collection.slug}`} data-collection={collection.slug}>
   <div class="section-heading">
     <div>
       <p class="eyebrow">Collection</p>

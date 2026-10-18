@@ -12,7 +12,8 @@ const SHEETS = [
   'lerpettes/libs/live-code/js/liveCode.css',
   'lerpettes/framework/stage/chrome.css',
   'lerpettes/framework/panels/textPanels.css',
-  'lerpettes/framework/panels/panelStack.css'
+  'lerpettes/framework/panels/panelStack.css',
+  'website/src/editor/client/editor.css'
 ];
 const BREAKPOINTS = new Set(['1180px', '1181px', '900px', '640px', '600px']);
 
@@ -20,7 +21,7 @@ const read = (file: string) => fs.readFileSync(path.resolve(file), 'utf8');
 
 describe('stylesheets', () => {
   it('use only the breakpoints listed in :root', () => {
-    for (const file of [...SHEETS, 'scripts/dev-view-toggle.mjs']) {
+    for (const file of [...SHEETS, 'scripts/dev-view-toggle.mjs', 'scripts/lerpit-editor.mjs']) {
       for (const match of read(file).matchAll(/@media[^{]*?\((?:max|min)-width:\s*([\d.]+px)\)/g)) {
         expect(BREAKPOINTS.has(match[1]), `${file}: ${match[0]}`).toBe(true);
       }
@@ -32,7 +33,8 @@ describe('stylesheets', () => {
       'lerpettes/libs/live-code/js/liveCode.css': ['lerpettes/libs/live-code/js/fileEditor.ts'],
       'lerpettes/framework/stage/chrome.css': ['lerpettes/framework/stage/chrome.ts'],
       'lerpettes/framework/panels/textPanels.css': ['lerpettes/framework/panels/table/tablePanel.ts', 'lerpettes/framework/panels/readout/readoutPanel.ts'],
-      'lerpettes/framework/panels/panelStack.css': ['lerpettes/framework/panels/panelStack.ts']
+      'lerpettes/framework/panels/panelStack.css': ['lerpettes/framework/panels/panelStack.ts'],
+      'website/src/editor/client/editor.css': ['website/src/editor/client/boot.ts']
     };
     for (const [sheet, owners] of Object.entries(imports)) {
       for (const owner of owners) expect(read(owner), owner).toContain(`/${path.basename(sheet)}'`);

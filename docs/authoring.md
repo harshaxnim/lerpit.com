@@ -28,6 +28,12 @@ The URL is `/<collection>/<lerpette>/`. `npm run dev` serves everything, drafts 
 with a round **L** button bottom right; press it for **P**, the public view, which hides
 exactly what a deployed build hides.
 
+Beside it, the pencil turns the page into its own editor: chapters, panels, settings,
+captions, card style and palette, new collections and lerpettes, with the page as the
+preview. Everything below can be written there or by hand; the editor writes the same
+files and leaves the lines you did not touch alone. See
+[features/local-editor/user-guide.html](features/local-editor/user-guide.html).
+
 ## mixtape.md
 
 ```md

@@ -1,4 +1,6 @@
 ---
+import { showsAuthoringProblems } from '../lib/content';
+
 interface Props {
   /** The section's id: `intro` for the opening, the chapter id otherwise. */
   id: string;
@@ -12,6 +14,8 @@ interface Props {
 }
 
 const { id, index, title, html, intro = false, hasOwnRuntime = true } = Astro.props as Props;
+// The missing-code mark is an authoring problem: local view only (see showsAuthoringProblems).
+const markMissing = !hasOwnRuntime && showsAuthoringProblems();
 ---
 
 {/* One chapter: a frozen header with its number and title, then its prose. A `lerpit`
@@ -32,7 +36,7 @@ const { id, index, title, html, intro = false, hasOwnRuntime = true } = Astro.pr
     <div class="lerpette-head">
       <span class="lerpette-head__index-row">
         <span class="lerpette-head__index">{index}</span>
-        {!hasOwnRuntime && (
+        {markMissing && (
           <span class="lerpette-step__missing-runtime" role="img" aria-label="Missing code folder" data-tooltip="missing code folder">!</span>
         )}
       </span>

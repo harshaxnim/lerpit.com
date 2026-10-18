@@ -35,7 +35,9 @@ const playerConfig = JSON.stringify({ lessonTitle: lerpette.title, steps: client
 const hasRuntime = lerpette.steps.some((step) => step.hasOwnRuntime);
 ---
 
-<section class="lerpette-player" data-lerpette-player>
+{/* data-collection and data-lerpette tell the local editor (website/src/editor) which
+    files this page is; '/' serves a lerpette whose URL does not say. */}
+<section class="lerpette-player" data-lerpette-player data-collection={lerpette.collectionSlug} data-lerpette={lerpette.slug}>
   <script type="application/json" data-player-config set:html={playerConfig}></script>
   <SiteHeader title={headerTitle} />
   <LerpetteByline lerpette={lerpette} />

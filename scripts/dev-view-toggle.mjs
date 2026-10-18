@@ -16,6 +16,10 @@
  * it is on every page including Astro's own 404 (where switching to public view
  * on a draft lands), and cannot reach a production build at all: there is no
  * dev server there.
+ *
+ * Other dev-only chrome rides along through `extraMarkup` (the editor's pencil, from
+ * lerpit-editor.mjs), in local view only. Handed in by astro.config.mjs rather than imported here, so this
+ * file imports nothing local and the config can load it fresh on every restart.
  */
 
 const COOKIE = 'lerpit-view';
@@ -83,9 +87,11 @@ function toggleMarkup(view) {
 `;
 }
 
-/** Splices the switch in before </body>, or at the end when there is none. */
-function inject(html, view) {
-  const markup = toggleMarkup(view);
+/** Splices the switch (and the editor's pencil beside it) in before </body>, or at the end when there is none. */
+function inject(html, view, extraMarkup) {
+  // The extra chrome is for authoring, so it shows in local view only; public view is
+  // the page as a reader gets it.
+  const markup = toggleMarkup(view) + (view === LOCAL ? extraMarkup() : '');
   const at = html.lastIndexOf('</body>');
   return at === -1 ? html + markup : html.slice(0, at) + markup + html.slice(at);
 }
@@ -95,7 +101,7 @@ function isHtml(headers) {
   return typeof type === 'string' && type.includes('text/html');
 }
 
-export function devViewToggle() {
+export function devViewToggle({ extraMarkup = () => '' } = {}) {
   return {
     name: 'lerpit-dev-view-toggle',
     apply: 'serve',
@@ -152,7 +158,7 @@ export function devViewToggle() {
           decide();
           if (!held) return end(chunk, ...rest);
           if (chunk != null && typeof chunk !== 'function') held.push(Buffer.from(chunk));
-          const body = inject(Buffer.concat(held).toString('utf8'), view);
+          const body = inject(Buffer.concat(held).toString('utf8'), view, extraMarkup);
           res.removeHeader('content-length');
           res.setHeader('content-length', Buffer.byteLength(body));
           writeHead(res.statusCode);
