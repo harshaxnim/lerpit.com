@@ -49,7 +49,7 @@
   --spine-at: 0.66;
   --spine-share: 0.14;
   /* Its height over its width in the header at full width (140px by 191px), which is
-     the shape it keeps on a narrow screen. */
+     the shape it keeps on a phone. */
   --spine-ratio: 0.733;
   /* The tooth of the stock: greyscale fractal noise, tiled. The cards and the spine lay
      it over their colour in overlay, so both are printed on the same paper. */
@@ -259,11 +259,12 @@ nav {
   filter: none;
 }
 
-/* Below the drawer breakpoint the spine stays 14% of its panel wide, so on a phone it
-   is a quarter of its desktop width; left full height it became a tall sliver. Here it
-   keeps the shape it has on a wide screen (--spine-ratio, height over width) and hangs
-   from the panel's top edge, never taller than the panel it is cut by. */
-@media (max-width: 1180px) {
+/* On a phone the spine stays 14% of its panel wide, a quarter of its desktop width, and
+   left full height it became a tall sliver. Here it keeps the shape it has on a wide
+   screen (--spine-ratio, height over width) and hangs from the panel's top edge, never
+   taller than the panel it is cut by. Above phone width the header is short enough for
+   the full-height spine to keep a sensible shape, so it runs to the rule as on desktop. */
+@media (max-width: 640px) {
   .brand-spine {
     bottom: auto;
     aspect-ratio: 1 / var(--spine-ratio);
