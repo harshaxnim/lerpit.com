@@ -93,6 +93,51 @@ export const PRESETS: Preset[] = [
     id: 'Spectrum drop 1975',
     sat: 72,
     hues: ['#F2C600', '#F27921', '#E71621', '#D10B84', '#842184', '#4B2C86', '#2C2C79', '#0079A5', '#0F9BB5', '#F2E7DC', '#211616']
+  },
+  // The rest were drawn rather than sampled, after the four above: an ordered ramp
+  // each, ending on a dark, and none of the green, olive or kraft the sheet's
+  // tape label, Perspective and COLOR SURF panels lean on.
+  {
+    // 90min carried on past the red, into dusk purple and night navy
+    id: 'Sunset strip 1977',
+    sat: 74,
+    hues: ['#F6C344', '#F39A3D', '#EC6B3B', '#DE4049', '#B8325F', '#86306B', '#4E2B66', '#1E1B3A']
+  },
+  {
+    // Love drop's lightness, deeper: peach to rose, mauve, violet and indigo
+    id: 'Dusk ramp 1976',
+    sat: 55,
+    hues: ['#F7B6A3', '#EF8A8E', '#DB6187', '#B04882', '#7E3F80', '#4F3A7A', '#2A2F62', '#15193A']
+  },
+  {
+    // Furnishing's two families meeting on a cream hinge: navy and teal, peach to coral
+    id: 'Coral & teal 1976',
+    sat: 70,
+    hues: ['#0B2D45', '#174F66', '#21788A', '#5FA9AE', '#F1DFC0', '#F4B486', '#EC8160', '#D9533F']
+  },
+  {
+    // all warm, heavier on yellow than 90min, falling to oxblood and a warm black
+    id: 'Marigold 1972',
+    sat: 80,
+    hues: ['#FBD45A', '#F6B33A', '#EF8C2C', '#E26426', '#C93E28', '#93202F', '#4E1527', '#1C1114']
+  },
+  {
+    // one cool family, cream through ice and cobalt to midnight
+    id: 'Blue hour 1973',
+    sat: 58,
+    hues: ['#F3E4C8', '#A9D3DA', '#6BB0C9', '#3B88B6', '#2862A1', '#21437E', '#182A55', '#0E1530']
+  },
+  {
+    // the 40 poster's full wheel, stepping over green from purple to blue
+    id: 'Rainbow sticker 1979',
+    sat: 72,
+    hues: ['#F8C846', '#F59A3A', '#EC5E3C', '#D8346A', '#9A3A92', '#4C5BB0', '#2F8FC6', '#1B1B2E']
+  },
+  {
+    // the gentlest warm ramp: cream, apricot, salmon, rose, plum, aubergine
+    id: 'Peach & plum 1975',
+    sat: 55,
+    hues: ['#FBE3C4', '#F7C08F', '#F09A72', '#DD7272', '#B9567A', '#8A4479', '#57356C', '#2D2347']
   }
 ];
 

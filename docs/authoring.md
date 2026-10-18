@@ -238,7 +238,9 @@ card_palette = "Color surf 1979"   # and these colours
 The styles are `spill`, `label`, `spec`, `sleeve`, `bars`, `angle`, `nest`, `surf`, `arc`,
 `chevron`, `stripe`, `wheel`, `fan`, `grid` and `orb` (`website/src/lib/cardArt/styles.ts`).
 The palettes are `Love drop 1974`, `Tape label 1981`, `Furnishing 1974`, `Perspective 1970`,
-`90min 1982`, `Color surf 1979` and `Spectrum drop 1975` (`website/src/lib/cardArt/palette.ts`).
+`90min 1982`, `Color surf 1979`, `Spectrum drop 1975`, `Sunset strip 1977`, `Dusk ramp 1976`,
+`Coral & teal 1976`, `Marigold 1972`, `Blue hour 1973`, `Rainbow sticker 1979` and
+`Peach & plum 1975` (`website/src/lib/cardArt/palette.ts`).
 Without them, each collection is assigned a style no other collection has, and a palette
 drawn from its name.
 

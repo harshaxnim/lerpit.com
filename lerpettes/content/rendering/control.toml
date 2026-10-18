@@ -1,0 +1,3 @@
+# The palette every card in this collection draws, pinned to the one its name drew
+# before more palettes were added. Ids are in website/src/lib/cardArt/palette.ts.
+card_palette = "Spectrum drop 1975"
