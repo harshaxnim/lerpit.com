@@ -43,9 +43,9 @@ to a wide monitor:
 - **Height:** on a wide screen it runs the full height of its band, and the band's edges
   cut it level, the way a cover crops its art. In the header that is the sheet's top edge
   down to the rule. In the footer it is the card's own top and bottom, so it is shorter
-  there. On a phone (640px and below) it keeps its wide-screen shape instead (`--spine-ratio: 0.733`,
-  height over width) and hangs from the top edge, so a phone shows a smaller spine rather
-  than a tall sliver.
+  there. On a phone (640px and below) it is 20% of the panel wide instead of 14%, and the
+  header is compact (smaller wordmark, links side by side), so it keeps a shape close to
+  the desktop one rather than becoming a tall sliver.
 
 It appears in three places:
 
@@ -79,7 +79,6 @@ It places itself absolutely in its nearest positioned ancestor, using these toke
 | `--spine-at` | where it stands, as a fraction of the panel's width | `0.66` (`:root`) |
 | `--spine-share` | its width, as a fraction of the panel's width | `0.14` (`:root`) |
 | `--spine-top`, `--spine-bottom` | where it is cut | `0` |
-| `--spine-ratio` | its height over its width on a phone (640px and below) | `0.733` (`:root`) |
 | `--spine-box` | the panel's width as the host sees it | `100%` |
 | `--spine-inset` | how far the host sits inside the panel | `0px` |
 
@@ -103,8 +102,7 @@ so it sets:
 - **Printed.** The grain is part of the mark on the page. The bands are drawn without it
   only where it cannot show: the favicon and the home-screen icons. The header's bands are
   sharp; the footer's carry the cards' half-pixel blur.
-- **Cut, never scaled to fit.** It keeps its width and is cropped by the panel's edges (on
-  a narrow screen, by the top edge and its own wide-screen shape).
+- **Cut, never scaled to fit.** It keeps its width and is cropped by the panel's edges.
 - **Content goes over it, never under.** Links and text that meet it sit above it on a
   solid paper face (see `.lerpette-player__action` on a phone). It is decoration, hidden
   from screen readers (`aria-hidden`), and must never carry meaning.

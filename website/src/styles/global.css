@@ -48,9 +48,6 @@
   --spine-lean: scaleX(-1) skewX(14deg);
   --spine-at: 0.66;
   --spine-share: 0.14;
-  /* Its height over its width in the header at full width (140px by 191px), which is
-     the shape it keeps on a phone. */
-  --spine-ratio: 0.733;
   /* The tooth of the stock: greyscale fractal noise, tiled. The cards and the spine lay
      it over their colour in overlay, so both are printed on the same paper. */
   --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -259,16 +256,13 @@ nav {
   filter: none;
 }
 
-/* On a phone the spine stays 14% of its panel wide, a quarter of its desktop width, and
-   left full height it became a tall sliver. Here it keeps the shape it has on a wide
-   screen (--spine-ratio, height over width) and hangs from the panel's top edge, never
-   taller than the panel it is cut by. Above phone width the header is short enough for
-   the full-height spine to keep a sensible shape, so it runs to the rule as on desktop. */
+/* On a phone the header is compact (see the 640px block below) and the spine is a fifth
+   of the panel wide rather than a seventh, still running from the top edge to the rule:
+   at 14% of a phone it was a tall sliver. The footer's matches, so the two still stand
+   over each other. */
 @media (max-width: 640px) {
   .brand-spine {
-    bottom: auto;
-    aspect-ratio: 1 / var(--spine-ratio);
-    max-height: calc(100% - var(--spine-top, 0px) - var(--spine-bottom, 0px));
+    --spine-share: 0.2;
   }
 }
 
@@ -1648,19 +1642,26 @@ nav {
 }
 
 @media (max-width: 640px) {
-  /* Stacked beside the wordmark rather than beside each other, so the pair keeps
-     the same narrow column whatever the label says and can never be the thing that
-     pushes the header onto a second line. Chip sized, in the mono the site's other
-     small controls already use: a pair of 46px serif buttons is the heaviest thing
-     on a phone screen, and these two links are not what the reader came for. */
+  /* Chip sized, in the mono the site's other small controls already use: a pair of
+     46px serif buttons is the heaviest thing on a phone screen, and these two links are
+     not what the reader came for. */
+  /* A compact header: a smaller wordmark, the links side by side, and the rule a
+     wordmark's breath below it rather than two. The spine (above) is cut to match. */
+  .lerpette-player__bar {
+    padding-bottom: 1.1rem;
+  }
+
+  .lerpette-player__bar h1 {
+    font-size: 2.1rem;
+  }
+
   .lerpette-player__actions {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
     gap: 0.3rem;
   }
 
-  /* On a phone the spine keeps its proportions and so reaches under the links, which
-     take a solid face to read over its bands. */
+  /* The links stand over the spine's bands, so they take a solid face to read on. */
   .lerpette-player__action {
     background: var(--paper);
     /* 28px, over the 24px floor for a tap target, with the two of them still
