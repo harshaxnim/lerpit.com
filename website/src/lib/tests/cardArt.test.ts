@@ -178,8 +178,8 @@ describe('cardArt', () => {
   });
 
   it('lets variation be switched off so the whole set obeys the options', () => {
-    const a = cardArt(doc({ title: 'One' }), { style: 'angle', variation: 0, palette: 'Tape label 1981' });
-    const b = cardArt(doc({ title: 'Two' }), { style: 'angle', variation: 0, palette: 'Tape label 1981' });
+    const a = cardArt(doc({ title: 'One' }), { style: 'angle', variation: 0, palette: 'Sherbet 1981' });
+    const b = cardArt(doc({ title: 'Two' }), { style: 'angle', variation: 0, palette: 'Sherbet 1981' });
     expect(colours(a.body).sort()).toEqual(colours(b.body).sort());
   });
 });

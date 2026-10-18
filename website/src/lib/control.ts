@@ -196,7 +196,7 @@ export function parseControl(source: string): ControlResult {
  * A collection's control.toml, beside its collection.md. Optional, like a lerpette's:
  *
  *   card_style = "orb"                  # every card in the collection draws this style
- *   card_palette = "Color surf 1979"    # and these colours
+ *   card_palette = "Blue hour 1973"    # and these colours
  *
  * Without them the style is assigned across the library, so no two collections share
  * one, and the palette is drawn from the collection's name. Style ids are in
@@ -219,7 +219,7 @@ export function parseCollectionControl(source: string): { control: CollectionCon
     problems.push({
       id: 'control-syntax',
       what: `control.toml is not valid TOML, so all of it was ignored. ${detail}`,
-      fix: 'Write card_style = "orb" or card_palette = "Color surf 1979", with the value quoted.'
+      fix: 'Write card_style = "orb" or card_palette = "Blue hour 1973", with the value quoted.'
     });
     return { control, problems };
   }

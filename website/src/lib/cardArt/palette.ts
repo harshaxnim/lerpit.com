@@ -59,22 +59,10 @@ export const PRESETS: Preset[] = [
     hues: ['#F2BB58', '#EE8B5E', '#E76363', '#D26193', '#C658A5', '#846EB0', '#6E85C0', '#588FC6', '#5FB0C6', '#424242']
   },
   {
-    // the D-C60 label strip, in the order the label printed it, dark band included
-    id: 'Tape label 1981',
-    sat: 58,
-    hues: ['#8FC64D', '#E7D121', '#3A3730', '#DC2158', '#21C6D1', '#DCDCD1']
-  },
-  {
     // the nested-corner panel: cool and dark through to warm and light
     id: 'Furnishing 1974',
     sat: 85,
     hues: ['#00164D', '#2C4258', '#00638F', '#3E8C93', '#6EA59A', '#F2DCB0', '#F2A563', '#E76E2C', '#E23A1E']
-  },
-  {
-    // Perspective for the 70s, where every line is knocked well off full chroma
-    id: 'Perspective 1970',
-    sat: 52,
-    hues: ['#C65879', '#D19A42', '#215879', '#A52C4D', '#3779A5', '#796E2C', '#6E2C16', '#4D8F6E', '#D1D1C6']
   },
   {
     // the 90min videocassette label: a warm ramp only, and the sheet's narrowest
@@ -83,43 +71,21 @@ export const PRESETS: Preset[] = [
     hues: ['#F2B021', '#E7752C', '#E7212C', '#A51E4D', '#63164D', '#161616']
   },
   {
-    // COLOR SURF, printed on kraft, so nothing in it is allowed to be bright
-    id: 'Color surf 1979',
-    sat: 54,
-    hues: ['#219A84', '#D10B42', '#D19A42', '#4D8F37', '#4D6379', '#B5573A', '#211600']
-  },
-  {
     // the 40 poster: a full spectrum, but the lightness falls away as it goes cool
     id: 'Spectrum drop 1975',
     sat: 72,
     hues: ['#F2C600', '#F27921', '#E71621', '#D10B84', '#842184', '#4B2C86', '#2C2C79', '#0079A5', '#0F9BB5', '#F2E7DC', '#211616']
   },
   // The rest were drawn rather than sampled, after the four above: an ordered ramp
-  // each, ending on a dark, and none of the green, olive or kraft the sheet's
-  // tape label, Perspective and COLOR SURF panels lean on.
-  {
-    // 90min carried on past the red, into dusk purple and night navy
-    id: 'Sunset strip 1977',
-    sat: 74,
-    hues: ['#F6C344', '#F39A3D', '#EC6B3B', '#DE4049', '#B8325F', '#86306B', '#4E2B66', '#1E1B3A']
-  },
+  // each, ending on a dark, and none of the green, olive or kraft that the sheet's
+  // tape label, Perspective and COLOR SURF panels lean on (those three were taken
+  // out). Each sits at least a mean Lab distance of 13 from every other set, so no
+  // two read as the same palette on a shelf.
   {
     // Love drop's lightness, deeper: peach to rose, mauve, violet and indigo
     id: 'Dusk ramp 1976',
     sat: 55,
     hues: ['#F7B6A3', '#EF8A8E', '#DB6187', '#B04882', '#7E3F80', '#4F3A7A', '#2A2F62', '#15193A']
-  },
-  {
-    // Furnishing's two families meeting on a cream hinge: navy and teal, peach to coral
-    id: 'Coral & teal 1976',
-    sat: 70,
-    hues: ['#0B2D45', '#174F66', '#21788A', '#5FA9AE', '#F1DFC0', '#F4B486', '#EC8160', '#D9533F']
-  },
-  {
-    // all warm, heavier on yellow than 90min, falling to oxblood and a warm black
-    id: 'Marigold 1972',
-    sat: 80,
-    hues: ['#FBD45A', '#F6B33A', '#EF8C2C', '#E26426', '#C93E28', '#93202F', '#4E1527', '#1C1114']
   },
   {
     // one cool family, cream through ice and cobalt to midnight
@@ -128,16 +94,40 @@ export const PRESETS: Preset[] = [
     hues: ['#F3E4C8', '#A9D3DA', '#6BB0C9', '#3B88B6', '#2862A1', '#21437E', '#182A55', '#0E1530']
   },
   {
-    // the 40 poster's full wheel, stepping over green from purple to blue
-    id: 'Rainbow sticker 1979',
-    sat: 72,
-    hues: ['#F8C846', '#F59A3A', '#EC5E3C', '#D8346A', '#9A3A92', '#4C5BB0', '#2F8FC6', '#1B1B2E']
+    // desert at sunset: sand, apricot, terracotta and clay rose into plum and night
+    id: 'Canyon 1974',
+    sat: 62,
+    hues: ['#F6D8A8', '#F0B47A', '#E58D58', '#D06A45', '#A84E4A', '#7A3C52', '#4A2C4E', '#24182E']
   },
   {
-    // the gentlest warm ramp: cream, apricot, salmon, rose, plum, aubergine
-    id: 'Peach & plum 1975',
+    // cool rising into warm: navy, cobalt, periwinkle, a pale lilac, then rose
+    id: 'Twilight bay 1977',
     sat: 55,
-    hues: ['#FBE3C4', '#F7C08F', '#F09A72', '#DD7272', '#B9567A', '#8A4479', '#57356C', '#2D2347']
+    hues: ['#121B3D', '#24407A', '#3A6FB0', '#6FA3D6', '#B7C6E6', '#E7B7C8', '#E6879F', '#C9587A']
+  },
+  {
+    // the softest set: cream, blush, lilac and periwinkle, ending on indigo
+    id: 'Lilac haze 1979',
+    sat: 45,
+    hues: ['#F6E3C8', '#F2C1B0', '#E3A3BC', '#BF95C9', '#9488C8', '#6E7DBF', '#4A62A6', '#22305E']
+  },
+  {
+    // lemon, apricot, coral, pink, lavender and sky, closing on a dusky navy
+    id: 'Sherbet 1981',
+    sat: 62,
+    hues: ['#FFE3A3', '#FFC48A', '#FF9F8A', '#F2879E', '#C98BC0', '#8F9AD0', '#6CB4D9', '#2B3A63']
+  },
+  {
+    // two halves with no middle: saffron to burnt orange, then violet and indigo
+    id: 'Saffron & indigo 1973',
+    sat: 70,
+    hues: ['#F9D77E', '#F4BE4F', '#E99A2F', '#C8622A', '#5A3D8A', '#3E2F78', '#2A2560', '#151338']
+  },
+  {
+    // a beach towel: gold, orange, coral and flamingo, then pool blues to navy
+    id: 'Tropicana 1980',
+    sat: 78,
+    hues: ['#FFCF5C', '#FF9E4A', '#FF6B57', '#E84A6F', '#3BA7D9', '#2577B8', '#1B4C8A', '#10234A']
   }
 ];
 
