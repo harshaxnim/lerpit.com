@@ -180,11 +180,22 @@ describe('control.toml fields', () => {
     expect(ids(library.problems)).toContain('landing-multiple');
   });
 
-  it('card_style overrides the assigned style', async () => {
+  it('a collection card_style styles every card in it', async () => {
+    await lesson('a', '# A\n\nS.\n\n## One {#one +canvas}\n\nT.\n', {
+      'lerpettes/content/physics-engine/control.toml': 'card_style = "sleeve"\n',
+      'lerpettes/content/physics-engine/b/mixtape.md': 'Author: H | Date: 2026-01-01\n\n# B\n\nS.\n\n## One {#one +canvas}\n\nT.\n'
+    });
+    const library = await loadLibrary();
+    expect(library.mixtapes.map((m) => m.cardStyle)).toEqual(['sleeve', 'sleeve']);
+    expect(library.collections[0].problems).toEqual([]);
+  });
+
+  it('card_style in a lerpette is reported and ignored', async () => {
     await lesson('a', '# A\n\nS.\n\n## One {#one +canvas}\n\nT.\n', {
       'lerpettes/content/physics-engine/a/control.toml': 'card_style = "sleeve"\n'
     });
-    expect((await loadLibrary()).mixtapes[0].cardStyle).toBe('sleeve');
+    const [mixtape] = (await loadLibrary()).mixtapes;
+    expect(mixtape.problems.map((p) => p.id)).toContain('control-unknown-key');
   });
 });
 

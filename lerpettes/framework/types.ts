@@ -135,7 +135,7 @@ export type LerpetteMixtape = {
   landing?: boolean;
   /** control.toml's `order`: its place in the collection, before the newest-first rest. */
   order?: number | null;
-  /** Which generated card style this lerpette draws: control.toml's `card_style`, or
+  /** Which generated card style this lerpette draws: its collection's `card_style`, or
    *  assigned across the whole library so two collections do not share one. */
   cardStyle?: string;
 };
@@ -146,6 +146,8 @@ export type LerpetteCollection = {
   title: string;
   summary: string;
   bodyHtml: string;
+  /** The collection control.toml's `card_style`, which every card in it draws. */
+  cardStyle?: string;
   mixtapes: LerpetteMixtape[];
   problems: LerpetteProblem[];
 };

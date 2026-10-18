@@ -38,7 +38,7 @@ const FIX = {
   'region-marker': 'Markers are `// lerpit:<id>:<kind>:start|hint|solution|end`, unnested.',
   'control-unreadable': "Check the file's permissions, or delete it.",
   'control-syntax': 'One setting per line, values quoted: `status = "draft"`.',
-  'control-unknown-key': 'Known keys: status, landing, order, card_style, [caption], [idle_status].',
+  'control-unknown-key': 'A lerpette knows status, landing, order, [caption], [idle_status]; a collection knows card_style.',
   'control-bad-value': 'See the message for the values that key takes.',
   'control-chapter-unknown': 'Use the chapter ids from the headings.'
 };

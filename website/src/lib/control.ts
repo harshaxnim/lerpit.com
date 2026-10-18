@@ -8,7 +8,6 @@
  *   status = "draft"          # published | unlisted | draft
  *   landing = true            # serve this one at '/'
  *   order = 2                 # place in its collection, before the undated newest-first rest
- *   card_style = "sleeve"     # pick the generated card's style instead of having one assigned
  *
  *   [caption]                 # the band under the panel, per chapter id
  *   dynamics = "The sphere moves at constant speed."
@@ -40,8 +39,6 @@ export type LerpetteControl = {
   landing: boolean;
   /** Its place in its collection; ordered ones come first, lowest first. */
   order: number | null;
-  /** The generated card's style, by id (see cardArt/styles.ts), or null to be assigned one. */
-  cardStyle: string | null;
   /** Per chapter id: the caption under the panel, overriding the chapter's code. */
   caption: Record<string, string>;
   /** Per chapter id: the code box's status line before its first build. */
@@ -119,7 +116,6 @@ const FIELDS: { [K in keyof LerpetteControl]: FieldSpec<LerpetteControl[K]> & { 
   status: { key: 'status', fallback: PUBLISHED, read: oneOf(STATUSES) },
   landing: { key: 'landing', fallback: false, read: bool },
   order: { key: 'order', fallback: null, read: position },
-  cardStyle: { key: 'card_style', fallback: null, read: styleId },
   caption: { key: 'caption', fallback: {}, read: textTable },
   idleStatus: { key: 'idle_status', fallback: {}, read: textTable }
 };
@@ -164,6 +160,15 @@ export function parseControl(source: string): ControlResult {
 
   for (const key of Object.keys(table)) {
     if (!FILE_KEYS.includes(key)) {
+      if (key === 'card_style') {
+        // It used to live here; it is the collection's now.
+        problems.push({
+          id: 'control-unknown-key',
+          what: 'card_style is set in a lerpette\'s control.toml, but the card style belongs to the whole collection, so it is ignored here.',
+          fix: 'Move the line to the collection\'s control.toml, beside collection.md.'
+        });
+        continue;
+      }
       problems.push({
         id: 'control-unknown-key',
         what: `control.toml sets ${key}, which is not a control this site has.`,
@@ -183,6 +188,47 @@ export function parseControl(source: string): ControlResult {
     }
   }
 
+  return { control, problems };
+}
+
+/**
+ * A collection's control.toml, beside its collection.md. Optional, like a lerpette's:
+ *
+ *   card_style = "orb"   # every card in the collection draws this style
+ *
+ * Without it the style is assigned across the library, so no two collections share
+ * one. Ids are in cardArt/styles.ts. A bad value is reported and the assignment stands.
+ */
+export type CollectionControl = { cardStyle: string | null };
+
+export function parseCollectionControl(source: string): { control: CollectionControl; problems: ControlIssue[] } {
+  const control: CollectionControl = { cardStyle: null };
+  const problems: ControlIssue[] = [];
+  let table: Record<string, unknown>;
+  try {
+    table = parseToml(source) as Record<string, unknown>;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    problems.push({
+      id: 'control-syntax',
+      what: `control.toml is not valid TOML, so all of it was ignored. ${detail}`,
+      fix: 'Write card_style = "orb", with the value quoted.'
+    });
+    return { control, problems };
+  }
+  for (const key of Object.keys(table)) {
+    if (key === 'card_style') continue;
+    problems.push({
+      id: 'control-unknown-key',
+      what: `A collection's control.toml sets ${key}, which is not a control collections have.`,
+      fix: 'Known controls: card_style. Lerpette settings go in the lerpette folder\'s own control.toml.'
+    });
+  }
+  if ('card_style' in table) {
+    const result = styleId(table.card_style, 'card_style');
+    if ('issue' in result) problems.push(result.issue);
+    else control.cardStyle = result.value;
+  }
   return { control, problems };
 }
 

@@ -1,0 +1,2 @@
+# The style every card in this collection draws. Ids are in website/src/lib/cardArt/styles.ts.
+card_style = "grid"

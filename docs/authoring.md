@@ -217,7 +217,6 @@ one chapter.
 status = "published"      # published (default) | unlisted (routed, not listed) | draft (local only)
 landing = true            # serve this lerpette at '/'
 order = 1                 # place in its collection; ordered ones first, then newest first
-card_style = "sleeve"     # the library card's style (see website/src/lib/cardArt/styles.ts)
 
 [caption]                 # per chapter id: the line under the panel, overriding the code
 loop = "A spring, integrated by hand."
@@ -228,6 +227,16 @@ cpp = "Press run to fetch the toolchain and build."
 
 Every key is optional and a bad value falls back to the default, so a broken file can
 never unpublish anything; it is reported instead.
+
+A collection can have its own `control.toml` too, beside `collection.md`:
+
+```toml
+card_style = "orb"        # every card in the collection draws this style
+```
+
+The styles are `spill`, `label`, `spec`, `sleeve`, `bars`, `angle`, `nest`, `surf`, `arc`,
+`chevron`, `stripe`, `wheel`, `fan`, `grid` and `orb` (`website/src/lib/cardArt/styles.ts`).
+Without it, each collection is assigned a style no other collection has.
 
 ## Site settings
 

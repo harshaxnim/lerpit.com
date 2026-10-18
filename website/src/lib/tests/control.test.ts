@@ -7,6 +7,7 @@ import {
   isLandingCandidate,
   isListed,
   isRoutable,
+  parseCollectionControl,
   parseControl,
   statusTag
 } from '../control';
@@ -14,7 +15,7 @@ import {
 describe('parseControl', () => {
   it('takes every default from an empty file', () => {
     const { control, problems } = parseControl('');
-    expect(control).toEqual({ status: PUBLISHED, landing: false, order: null, cardStyle: null, caption: {}, idleStatus: {} });
+    expect(control).toEqual({ status: PUBLISHED, landing: false, order: null, caption: {}, idleStatus: {} });
     expect(problems).toEqual([]);
   });
 
@@ -67,16 +68,16 @@ describe('parseControl', () => {
 });
 
 describe('the newer fields', () => {
-  it('reads landing, order, card_style and the per-chapter tables', () => {
+  it('reads landing, order and the per-chapter tables', () => {
     const { control, problems } = parseControl(
-      'landing = true\norder = 3\ncard_style = "sleeve"\n[caption]\nloop = "A loop."\n[idle_status]\nloop = "Wait."\n'
+      'landing = true\norder = 3\n[caption]\nloop = "A loop."\n[idle_status]\nloop = "Wait."\n'
     );
     expect(problems).toEqual([]);
-    expect(control).toMatchObject({ landing: true, order: 3, cardStyle: 'sleeve', caption: { loop: 'A loop.' }, idleStatus: { loop: 'Wait.' } });
+    expect(control).toMatchObject({ landing: true, order: 3, caption: { loop: 'A loop.' }, idleStatus: { loop: 'Wait.' } });
   });
 
   it('gives every issue an id', () => {
-    for (const source of ['landing = "yes"', 'order = 1.5', 'card_style = "plaid"', 'caption = "x"', '[caption]\na = 1', 'colour = 1', '[[[']) {
+    for (const source of ['landing = "yes"', 'order = 1.5', 'card_style = "sleeve"', 'caption = "x"', '[caption]\na = 1', 'colour = 1', '[[[']) {
       const { problems } = parseControl(source);
       expect(problems.length, source).toBe(1);
       expect(problems[0].id, source).toMatch(/^control-/);
@@ -85,7 +86,6 @@ describe('the newer fields', () => {
 
   it('keeps the default when a value is wrong', () => {
     expect(parseControl('order = "first"').control.order).toBeNull();
-    expect(parseControl('card_style = "plaid"').control.cardStyle).toBeNull();
     expect(parseControl('landing = 1').control.landing).toBe(false);
   });
 
@@ -93,6 +93,23 @@ describe('the newer fields', () => {
     const a = defaultControl();
     a.caption.x = 'mutated';
     expect(defaultControl().caption).toEqual({});
+  });
+});
+
+describe('a collection control.toml', () => {
+  it('reads card_style', () => {
+    expect(parseCollectionControl('card_style = "orb"')).toEqual({ control: { cardStyle: 'orb' }, problems: [] });
+  });
+
+  it('reports a style that does not exist, and one set in a lerpette', () => {
+    const bad = parseCollectionControl('card_style = "plaid"');
+    expect(bad.control.cardStyle).toBeNull();
+    expect(bad.problems[0].id).toBe('control-bad-value');
+    expect(parseControl('card_style = "orb"').problems[0].fix).toContain("collection's control.toml");
+  });
+
+  it('reports keys collections do not have', () => {
+    expect(parseCollectionControl('status = "draft"').problems[0].id).toBe('control-unknown-key');
   });
 });
 

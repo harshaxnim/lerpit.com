@@ -23,7 +23,7 @@ import type {
 } from '@lerpit/framework/types';
 import { isPanelName, PANEL_NAMES } from '@lerpit/framework/panels/registry';
 import { parseHeading, resolvePanels } from './headingSpec';
-import { defaultControl, isLandingCandidate, isListed, isRoutable, parseControl, type LerpetteControl } from './control';
+import { defaultControl, isLandingCandidate, isListed, isRoutable, parseCollectionControl, parseControl, type LerpetteControl } from './control';
 import type { ProblemId } from './problems';
 import { site } from '../site.config';
 
@@ -255,8 +255,8 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   const styles = assignStyles(collections.map((collection) => collection.title));
   for (const collection of collections) {
     const style = styles.get(collection.title);
-    // An author's card_style wins over the assignment; the rest of the collection keeps it.
-    for (const mixtape of collection.mixtapes) mixtape.cardStyle = mixtape.cardStyle ?? style;
+    // The collection's own card_style wins over the assignment.
+    for (const mixtape of collection.mixtapes) mixtape.cardStyle = collection.cardStyle ?? style;
   }
 
   const newestFirst = (left: LerpetteMixtape, right: LerpetteMixtape) =>
@@ -340,6 +340,7 @@ async function parseCollectionDirectory(collectionDir: string): Promise<Lerpette
   const collectionSlug = path.basename(collectionDir);
   const { problems, report } = createProblemLog(collectionDir);
   const collectionDoc = await parseCollectionDocument(collectionDir, `/${collectionSlug}/`, report);
+  const collectionControl = await readCollectionControl(collectionDir, report);
 
   const mixtapeDirs = (await fsp.readdir(collectionDir, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
@@ -370,9 +371,24 @@ async function parseCollectionDirectory(collectionDir: string): Promise<Lerpette
     title: collectionDoc.title,
     summary: collectionDoc.summary,
     bodyHtml: collectionDoc.bodyHtml,
+    ...(collectionControl.cardStyle ? { cardStyle: collectionControl.cardStyle } : {}),
     mixtapes,
     problems
   };
+}
+
+/** A collection's own control.toml, beside collection.md. Optional; see parseCollectionControl. */
+async function readCollectionControl(collectionDir: string, report: Report) {
+  const controlPath = path.join(collectionDir, CONTROL_FILE);
+  let source: string;
+  try {
+    source = await fsp.readFile(controlPath, 'utf8');
+  } catch {
+    return { cardStyle: null };
+  }
+  const { control, problems } = parseCollectionControl(source);
+  for (const problem of problems) report(problem.id, problem.what, problem.fix, controlPath);
+  return control;
 }
 
 async function parseCollectionDocument(collectionDir: string, href: string, report: Report) {
@@ -421,7 +437,6 @@ async function parseMixtapeDirectory(
     status: control.status,
     landing: control.landing,
     order: control.order,
-    cardStyle: control.cardStyle ?? undefined,
     problems
   };
 
