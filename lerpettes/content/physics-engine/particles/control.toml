@@ -1,2 +1,2 @@
 # Local only until it is ready. Switch to "published" to ship it.
-status = "draft"
+status = "published"
