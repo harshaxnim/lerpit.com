@@ -1331,6 +1331,15 @@ html .katex {
   gap: 1rem;
 }
 
+@media (max-width: 640px) {
+  /* At phone widths 210px only ever fits one card, which reads like an empty shelf
+     half the time. A lower floor here still goes through the same auto-fill track,
+     it just lets two sit side by side instead of stacking one per row. */
+  .cassette-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
 .collections-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1411,6 +1420,22 @@ html .katex {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Below ~200px the caption can no longer fit a two-line title at the clamp
+   floor beneath this bar without the two overlapping — the fonts have nowhere
+   left to shrink, so the only give left is the rhythm around them. This only
+   bites the phone 2-up grid; every wider card keeps the fuller spacing above. */
+@container (max-width: 200px) {
+  .cassette-card__caption {
+    gap: 0.08rem;
+    padding: 0 0.8rem 0.22rem;
+  }
+
+  .cassette-card__series {
+    margin: 0 -0.8rem 0.06rem;
+    padding: 0.12rem 0.8rem 0.14rem;
+  }
 }
 
 .cassette-card__meta {
