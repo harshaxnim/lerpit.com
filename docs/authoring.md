@@ -77,8 +77,8 @@ What the `#` title names, every chapter inherits. So `# Title {#intro +viewport2
 | panel | what a view draws with | redraws |
 | --- | --- | --- |
 | `canvas` | `{ canvas, context2d() }`: a bare canvas; the 2D context is cleared and in layout pixels each frame | every frame |
-| `viewport2d` | a sketch: `g.line`, `g.path`, `g.circle`, `g.rect`, `g.text`, `g.caption`, in layout pixels, y down | every frame |
-| `viewport3d` | `{ scene, camera, controls, lights, flatLight(), orthographic(w, h), caption() }`, a scene of the chapter's own | every frame |
+| `viewport2d` | a `sketch`: `line`, `arrow`, `path`, `trail`, `circle`, `rect`, `text`, `axes(ticks)`, `caption`. Positions are units (origin in the middle, x −1..1 across, y up to `ctx.view.halfHeight`); sizes (radius, width, text) are pixels. `sketch.pixels.*` is the same calls in pixels, y down; `sketch.px(x)`, `sketch.py(y)` convert | every frame |
+| `viewport3d` | `{ scene, camera, controls, lights, flatLight(), orthographic(w, h), axes(size), caption() }`, a scene of the chapter's own | every frame |
 | `table` | `out.row({ column: value })`, once per row | when the state changes |
 | `readout` | `out.line('text')`, once per line | when the state changes |
 
@@ -108,7 +108,7 @@ a view shows it and should not change it. Each run starts from a fresh copy of `
 
 | | |
 | --- | --- |
-| `ctx.view` | `{ width, height, dpr }` of the panel being drawn (the one on screen during `step`) |
+| `ctx.view` | `{ width, height, dpr, halfWidth, halfHeight }` of the panel being drawn (the one on screen during `step`); the halves are how far it reaches in units (`g.px`/`g.py`'s): x −1..1 always, y ± height over width |
 | `ctx.input` | `{ x, y, down, inside }`, the pointer over that panel |
 | `ctx.time` | seconds this run has been running; stops while the chapter is off screen |
 | `ctx.wasm` | the chapter's C++ module, or null |
@@ -125,9 +125,9 @@ hide it); it starts a fresh run and keeps the reader's slider values and folds.
 `code/<id>/js/index.ts`:
 
 ```ts
-import { defineChapter } from '@lerpit/framework/chapter';
+import { createStage } from '@lerpit/framework/chapter';
 
-export default defineChapter({
+export default createStage({
   caption: 'A spring.',
   state: { x: 1, v: 0 },
   setup(s, ctx) {
@@ -139,15 +139,35 @@ export default defineChapter({
     s.x += s.v * dt;
   },
   viewport2d: {
-    draw(g, s, ctx) {
-      g.circle(ctx.view.width / 2, ctx.view.height / 2 - s.x * 80, 10, 0xd17041);
+    draw(sketch, s) {
+      sketch.circle(0, s.x * 0.3, 10, 0xd17041);
     }
   }
 });
 ```
 
+Helpers beside it: `@lerpit/framework/math` (`clamp`, `lerp`, `wrap`),
+`@lerpit/framework/trail` (`Trail.create(max)` in the state, `Trail.push(t, x, y)`, `Trail.clear(t)`, drawn with `sketch.trail(points, { color, width, fade })`, fading unless `fade: false`), and
+`@lerpit/framework/linalg` (ml-matrix: `Matrix`, `solve`, `inverse`, `determinant`, and the
+LU, QR, Cholesky, eigenvalue and SVD decompositions; its own import because it is ~150 KB).
+
 Configuration a module can carry beside the code: `caption`, `panels` (used only when the
 heading names none), `restart`, and `wasm` for prebuilt C++ (below).
+
+Captions mix plain text, inline code in single backticks, and LaTeX math in `$…$`
+(inline) or `$$…$$` (display), keeping line breaks:
+
+```ts
+caption: 'A particle moving along the function:\n`(x,y) = (sin(4t), sin(3t))`',
+// Double LaTeX backslashes in JavaScript strings:
+caption: 'Position `x` follows $x = \\sin(4t)$.',
+```
+
+This also works in `ctx.caption(text)` and `control.toml` caption overrides. Each code
+span and inline formula stay on one source line; display math can span lines. Math
+inside code stays literal. Unmatched delimiters and invalid LaTeX also stay literal,
+as do HTML and other Markdown formatting. A dollar sign preceded by a backslash is
+literal. In TOML, use single-quoted strings to keep LaTeX backslashes as written.
 
 ### In a code box
 
@@ -189,7 +209,7 @@ server when it changes) into `code/<id>/build/<name>.js` and `.wasm`, with Embin
 to the chapter:
 
 ```ts
-export default defineChapter({
+export default createStage({
   wasm: () => import('../build/struct.js'),
   table: { draw(out, s, ctx) { out.row(ctx.wasm.getDefaultSphere()) } }
 });
@@ -237,9 +257,14 @@ never unpublish anything; it is reported instead.
 A collection can have its own `control.toml` too, beside `collection.md`:
 
 ```toml
-card_style = "orb"                 # every card in the collection draws this style
-card_palette = "Blue hour 1973"    # and these colours
+palette = "Blue hour 1973"   # the collection's colours
+card_style = "orb"           # the picture every card in the collection draws
 ```
+
+The palette is the collection's, not just its cards': the cards paint from it, and a
+lesson's panels draw in it with `randomColor(i, { from: 'collection' })` from
+`@lerpit/framework/theme`. Without one, the collection's name picks a palette. The key
+used to be called `card_palette`, which is still read.
 
 The styles are `spill`, `label`, `spec`, `sleeve`, `bars`, `angle`, `nest`, `surf`, `arc`,
 `chevron`, `stripe`, `wheel`, `fan`, `grid` and `orb` (`website/src/lib/cardArt/styles.ts`).

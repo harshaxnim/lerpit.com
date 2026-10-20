@@ -14,7 +14,7 @@
 import { PANEL_LABELS, PANEL_NAMES } from '@lerpit/framework/panels/registry';
 import type { LerpetteProblem } from '@lerpit/framework/types';
 import { DRAFT, parseCollectionControl, parseControl, PUBLISHED, UNLISTED, type LerpetteStatus } from '../../lib/control';
-import { autoStyleFor, cardPickers } from './cards';
+import { autoStyleFor, cardPickers, setCollectionKey } from './cards';
 import { resolvePanels } from '../../lib/headingSpec';
 import {
   freshId, joinDocument, panelOps, readByline, readHeading, splitDocument, tidyBody, writeByline, writeHeading,
@@ -628,11 +628,11 @@ export async function startLesson(player: HTMLElement, c: string, l: string) {
     const parsed = parseCollectionControl(collectionControl.text).control;
     const titles = tree.collections.map((entry) => entry.title);
     const { styles, palettes } = cardPickers(
-      { style: parsed.cardStyle, palette: parsed.cardPalette },
+      { style: parsed.cardStyle, palette: parsed.palette },
       autoStyleFor(collectionData.title, titles),
       (key, value) => {
         try {
-          collectionControl.text = setKey(collectionControl.text, key, value);
+          collectionControl.text = setCollectionKey(collectionControl.text, key, value);
           changed();
         } catch (error) {
           toast(error instanceof TomlEditError ? error.message : String(error), 'bad', 6000);
@@ -641,9 +641,9 @@ export async function startLesson(player: HTMLElement, c: string, l: string) {
     const href = `/${c}/`;
     return h('section.ed-group', {},
       h('h3.ed-group__title', { text: `Collection · ${collectionData.title}` }),
-      h('p.ed-field__hint', { text: 'How every card in the collection looks. Saved to the collection\'s control.toml with this page.' }),
-      field('Card style', styles),
+      h('p.ed-field__hint', { text: 'The collection\'s colours (its cards, and every lesson\'s panels) and the picture its cards draw. Saved to the collection\'s control.toml with this page.' }),
       field('Palette', palettes),
+      field('Card style', styles),
       h('a.ed-link', {
         href,
         onclick: (event: Event) => {

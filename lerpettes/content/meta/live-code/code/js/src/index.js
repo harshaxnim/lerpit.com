@@ -1,7 +1,8 @@
 import { force } from './forces.js';
 
-// Where the bob starts: one unit above the rest line, not moving.
-export const state = { x: 1, v: 0 };
+// Where the bob starts: one unit above the rest line, not moving. `past` is the
+// drawing's history of x, empty again on every run.
+export const state = { x: 1, v: 0, past: [] };
 
 // Advance the state one step. Called about 60 times a second.
 // s = { x, v }   dt = seconds since the last step

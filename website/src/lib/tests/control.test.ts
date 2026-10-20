@@ -98,14 +98,22 @@ describe('the newer fields', () => {
 
 describe('a collection control.toml', () => {
   it('reads card_style', () => {
-    expect(parseCollectionControl('card_style = "orb"')).toEqual({ control: { cardStyle: 'orb', cardPalette: null }, problems: [] });
+    expect(parseCollectionControl('card_style = "orb"')).toEqual({ control: { cardStyle: 'orb', palette: null }, problems: [] });
   });
 
-  it('reads card_palette by name, without regard to case', () => {
-    expect(parseCollectionControl('card_palette = "blue HOUR 1973"').control.cardPalette).toBe('Blue hour 1973');
-    const bad = parseCollectionControl('card_palette = "neon"');
-    expect(bad.control.cardPalette).toBeNull();
+  it('reads palette by name, without regard to case', () => {
+    expect(parseCollectionControl('palette = "blue HOUR 1973"').control.palette).toBe('Blue hour 1973');
+    const bad = parseCollectionControl('palette = "neon"');
+    expect(bad.control.palette).toBeNull();
+    expect(bad.problems[0].what).toContain('palette = "neon"');
     expect(bad.problems[0].fix).toContain('"90min 1982"');
+  });
+
+  it('still reads card_palette, the old name, and prefers palette when both are there', () => {
+    const old = parseCollectionControl('card_palette = "Blue hour 1973"');
+    expect(old.control.palette).toBe('Blue hour 1973');
+    expect(old.problems).toEqual([]);
+    expect(parseCollectionControl('palette = "Canyon 1974"\ncard_palette = "Blue hour 1973"').control.palette).toBe('Canyon 1974');
   });
 
   it('reports a style that does not exist, and one set in a lerpette', () => {

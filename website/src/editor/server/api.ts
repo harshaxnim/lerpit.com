@@ -171,7 +171,7 @@ async function lerpette(query: URLSearchParams): Promise<Reply> {
             introPanels: mixtape.introPanels,
             steps: mixtape.steps.map((step) => ({ id: step.id, title: step.title, panels: step.panels, hasOwnRuntime: step.hasOwnRuntime })),
             cardStyle: mixtape.cardStyle,
-            cardPalette: mixtape.cardPalette ?? null,
+            palette: mixtape.palette ?? null,
             publishedOn: mixtape.publishedOn,
             problems: mixtape.problems
           }
@@ -285,7 +285,7 @@ function oneLine(value: unknown, what: string, max = 200): string {
   return text;
 }
 
-async function createCollection(body: { slug: string; title: string; summary?: string; cardStyle?: string; cardPalette?: string }): Promise<Reply> {
+async function createCollection(body: { slug: string; title: string; summary?: string; cardStyle?: string; palette?: string }): Promise<Reply> {
   const c = slug(body.slug, 'The collection folder');
   const title = oneLine(body.title, 'The title');
   const summary = typeof body.summary === 'string' && body.summary.trim() ? body.summary.trim() : 'What this collection is about, in a sentence or two.';
@@ -299,8 +299,8 @@ async function createCollection(body: { slug: string; title: string; summary?: s
   noteWrite(doc);
   await fsp.writeFile(doc, `# ${title}\n\n${summary}\n`, 'utf8');
   const control = [
-    ...(body.cardStyle ? [`card_style = ${JSON.stringify(body.cardStyle)}`] : []),
-    ...(body.cardPalette ? [`card_palette = ${JSON.stringify(body.cardPalette)}`] : [])
+    ...(body.palette ? [`palette = ${JSON.stringify(body.palette)}`] : []),
+    ...(body.cardStyle ? [`card_style = ${JSON.stringify(body.cardStyle)}`] : [])
   ];
   if (control.length) {
     const file = path.join(dir, 'control.toml');
@@ -311,10 +311,10 @@ async function createCollection(body: { slug: string; title: string; summary?: s
 }
 
 /** The first chapter's code in a new lerpette: docs/authoring.md's spring, to be replaced. */
-const STARTER_CHAPTER = `import { defineChapter } from '@lerpit/framework/chapter';
+const STARTER_CHAPTER = `import { createStage } from '@lerpit/framework/chapter';
 
 // A starting point: a ball on a spring. Replace it with this chapter's own code.
-export default defineChapter({
+export default createStage({
   caption: 'A ball on a spring.',
   state: { x: 1, v: 0 },
   step(s, dt) {
@@ -322,8 +322,8 @@ export default defineChapter({
     s.x += s.v * dt;
   },
   viewport2d: {
-    draw(g, s, ctx) {
-      g.circle(ctx.view.width / 2 + s.x * 80, ctx.view.height / 2, 12, 0xd17041);
+    draw(sketch, s) {
+      sketch.circle(s.x * 0.3, 0, 12, 0xd17041);
     }
   }
 });

@@ -54,6 +54,23 @@ function crossOriginIsolation() {
 function lerpitWatcher() {
   return {
     name: 'lerpit-watcher',
+
+    /*
+     * A lesson's code reaches its page through runtimeLoader.ts's import.meta.glob,
+     * which accepts no hot update, so Vite's own answer to a save is to reload every
+     * open page: a save in one lesson restarted every other lesson's simulation too.
+     * Only the pages playing that lesson need it, and only the page knows which lesson
+     * it plays (the home page plays the newest one), so the server says what changed
+     * and playerClient.ts decides.
+     */
+    handleHotUpdate({ file, server }) {
+      const parts = path.relative(path.join(path.dirname(fileURLToPath(import.meta.url)), 'lerpettes/content'), file).split(path.sep);
+      const [collection, lerpette, folder] = parts;
+      if (parts[0] === '..' || folder !== 'code' || !/\.(ts|js|mjs)$/.test(file)) return;
+      server.ws.send({ type: 'custom', event: 'lerpit:lesson-code', data: { collection, lerpette } });
+      return [];
+    },
+
     configureServer(server) {
       const root = path.dirname(fileURLToPath(import.meta.url));
       const lerpettesDir = path.join(root, 'lerpettes/content');
@@ -189,7 +206,11 @@ export default defineConfig({
       // The toolchain packages ship a `./subprocess_shim.py?raw` import. Vite's
       // dependency pre-bundler runs esbuild, which has no loader for .py and
       // fails; left unbundled, Vite's own ?raw handling resolves it.
-      exclude: ['@gameguild/emception-browser', '@gameguild/emception-xterm', 'emception']
+      exclude: ['@gameguild/emception-browser', '@gameguild/emception-xterm', 'emception'],
+      // CommonJS, reached only through a chapter's lazily globbed code. Left to be
+      // discovered, the first save that imports @lerpit/framework/linalg makes Vite
+      // re-optimize and reload every open page; bundled up front, it is just there.
+      include: ['ml-matrix']
     },
     plugins: [crossOriginIsolation(), lerpitWatcher(), devViewToggle({ extraMarkup: editButtonMarkup })]
   }

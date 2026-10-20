@@ -1,3 +1,4 @@
-# The palette every card in this collection draws, pinned to the one its name drew
-# before the palette list changed. Ids are in website/src/lib/cardArt/palette.ts.
-card_palette = "Spectrum drop 1975"
+# The collection's colours: its cards, and the panels of every lesson in it. Pinned to
+# the one its name drew before the palette list changed. Ids are in
+# website/src/lib/cardArt/palette.ts.
+palette = "Spectrum drop 1975"

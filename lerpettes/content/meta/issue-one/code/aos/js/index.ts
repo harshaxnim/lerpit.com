@@ -1,4 +1,4 @@
-import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import { createStage, type LerpetteCtx } from '@lerpit/framework/chapter';
 import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
 type Vec3 = { x: number; y: number; z: number };
@@ -8,7 +8,7 @@ type SphereVector = { size(): number; get(i: number): Sphere; delete(): void };
 const vec = (v: Vec3) => `(${v.x}, ${v.y}, ${v.z})`;
 
 /** An array of structs: each row is one whole sphere, laid out together in memory. */
-export default defineChapter({
+export default createStage({
   panels: ['table'],
   wasm: () => import('../build/aos.js'),
   table: {

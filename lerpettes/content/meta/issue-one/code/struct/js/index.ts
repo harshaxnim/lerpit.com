@@ -1,11 +1,11 @@
-import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import { createStage, type LerpetteCtx } from '@lerpit/framework/chapter';
 import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
 type Vec3 = { x: number; y: number; z: number };
 type Sphere = { index: number; radius: number; pos: Vec3; vel: Vec3 };
 
 /** A struct comes across as a plain object, copied field by field by Embind. */
-export default defineChapter({
+export default createStage({
   panels: ['table'],
   wasm: () => import('../build/struct.js'),
   table: {

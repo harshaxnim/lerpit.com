@@ -8,7 +8,7 @@
 
 import type { LerpetteProblem } from '@lerpit/framework/types';
 import { DRAFT, parseCollectionControl, parseControl, PUBLISHED, UNLISTED, type LerpetteStatus } from '../../lib/control';
-import { autoStyleFor, blankCard, cardPickers, redrawCard } from './cards';
+import { autoStyleFor, blankCard, cardPickers, redrawCard, setCollectionKey } from './cards';
 import { joinDocument, splitDocument, tidyBody, writeHeading, readHeading } from '../lib/mixtapeDoc';
 import { setKey, TomlEditError } from '../lib/tomlEdit';
 import { api, ApiFailure, createBar, createSheet, debounce, field, h, problemHtml, segmented, toast, type Sheet } from './dom';
@@ -84,7 +84,7 @@ function newCollectionForm(sheet: Sheet, tree: Tree) {
   const pickers = h('div');
   const drawPickers = () => {
     const { styles, palettes } = cardPickers(choice, auto(), () => redraw());
-    pickers.replaceChildren(field('Card style', styles), field('Palette', palettes));
+    pickers.replaceChildren(field('Palette', palettes), field('Card style', styles));
   };
   let slugTouched = false;
   title.addEventListener('input', () => {
@@ -110,7 +110,7 @@ function newCollectionForm(sheet: Sheet, tree: Tree) {
     try {
       await createAndGo(() => api<{ href: string }>('POST', 'collection', {
         slug: slug.value, title: title.value, summary: summary.value,
-        ...(choice.style ? { cardStyle: choice.style } : {}), ...(choice.palette ? { cardPalette: choice.palette } : {})
+        ...(choice.style ? { cardStyle: choice.style } : {}), ...(choice.palette ? { palette: choice.palette } : {})
       }));
     } catch (error) {
       toast((error as Error).message, 'bad', 6000);
@@ -238,7 +238,7 @@ export async function startCollection(showcase: HTMLElement, c: string) {
       if (!lerpette) continue;
       redrawCard(card, { title: lerpette.title, collection: titleText.trim() || c, summary: lerpette.summary, date: lerpette.publishedOn, chapters: lerpette.chapters }, {
         style: parsed.cardStyle ?? autoStyle(),
-        ...(parsed.cardPalette ? { palette: parsed.cardPalette } : {})
+        ...(parsed.palette ? { palette: parsed.palette } : {})
       });
     }
   };
@@ -291,10 +291,10 @@ export async function startCollection(showcase: HTMLElement, c: string) {
   function renderSettings() {
     sheet.el.querySelector('.ed-sheet__title')!.textContent = 'Collection settings';
     const { control: parsed, problems: tomlProblems } = parseCollectionControl(controlText);
-    const choice = { style: parsed.cardStyle, palette: parsed.cardPalette };
+    const choice = { style: parsed.cardStyle, palette: parsed.palette };
     const { styles, palettes } = cardPickers(choice, autoStyle(), (key, value) => {
       try {
-        controlText = setKey(controlText, key, value);
+        controlText = setCollectionKey(controlText, key, value);
       } catch (error) {
         toast(error instanceof TomlEditError ? error.message : String(error), 'bad', 6000);
       }
@@ -337,9 +337,9 @@ export async function startCollection(showcase: HTMLElement, c: string) {
 
     sheet.body.replaceChildren(
       h('section.ed-group', {},
-        h('p.ed-field__hint', { text: 'Every card in this collection draws these. The cards on the page redraw as you pick.' }),
-        field('Card style', styles),
-        field('Palette', palettes)),
+        h('p.ed-field__hint', { text: 'The palette is the collection\'s colours: its cards, and the panels of every lesson in it (randomColor(i, { from: \'collection\' })). The card style is the picture its cards draw. The cards on the page redraw as you pick.' }),
+        field('Palette', palettes),
+        field('Card style', styles)),
       h('section.ed-group', {},
         h('h3.ed-group__title', { text: `Lerpettes (${data.lerpettes.length})` }),
         h('p.ed-field__hint', { text: 'Status, and order in the collection (lowest first; the rest follow newest first). Saved to each one\'s control.toml.' }),

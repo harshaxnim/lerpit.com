@@ -43,6 +43,7 @@
     "katex": "^0.16.22",
     "lucide-static": "^1.59.0",
     "mdast-util-to-string": "^4.0.0",
+    "ml-matrix": "^6.15.1",
     "monaco-editor": "^0.56.0",
     "prism-code-editor": "^5.4.0",
     "react": "^19.3.0",

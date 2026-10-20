@@ -8,7 +8,7 @@ What changed, where it lives, and how to extend it. The author-facing guide is
 
 ```
 mixtape.md heading {#id +panels}       code/<id>/js/index.ts        ```lerpit fence
-            │                               │ defineChapter({...})       │ files
+            │                               │ createStage({...})       │ files
             ▼                               ▼                            ▼
 website/src/lib/content.ts  ──►  LerpetteStep { panels, runtimeImportKey, runtimeStepId,
                                                 codePath, caption?, idleStatus? }
@@ -25,7 +25,7 @@ lerpettes/framework
   panels/panelStack.ts      tabs + one box per panel, remembers the open tab
   runtimes/createChapterRuntime.ts   the clock, model + views, module and editor sources
   stage/chrome.ts           controls card + restart, readings card, caption, per chapter
-  chapter.ts                defineChapter
+  chapter.ts                createStage
   wasm/loadModule.ts        prebuilt C++
   three/bundle.ts           renderer, cameras, disposal, lights
   theme.ts                  palette for code (kept equal to global.css by a test)

@@ -195,21 +195,26 @@ export function parseControl(source: string): ControlResult {
 /**
  * A collection's control.toml, beside its collection.md. Optional, like a lerpette's:
  *
- *   card_style = "orb"                  # every card in the collection draws this style
- *   card_palette = "Blue hour 1973"    # and these colours
+ *   palette = "Blue hour 1973"   # the collection's colours: its cards, and its panels'
+ *                                # randomColor(i, { from: 'collection' })
+ *   card_style = "orb"           # the picture every card in the collection draws
  *
- * Without them the style is assigned across the library, so no two collections share
- * one, and the palette is drawn from the collection's name. Style ids are in
- * cardArt/styles.ts, palette names in cardArt/palette.ts (PRESETS). A bad value is
- * reported and the default stands.
+ * Without them the palette is drawn from the collection's name, and the style is
+ * assigned across the library so no two collections share one. Palette names are in
+ * cardArt/palette.ts (PRESETS), style ids in cardArt/styles.ts. A bad value is
+ * reported and the default stands. `card_palette`, the key's name from when the
+ * palette only coloured the cards, is still read.
  */
-export type CollectionControl = { cardStyle: string | null; cardPalette: string | null };
+export type CollectionControl = { cardStyle: string | null; palette: string | null };
+
+/** The keys a collection's control.toml may set. `card_palette` is `palette`'s old name. */
+const COLLECTION_KEYS = new Set(['palette', 'card_palette', 'card_style']);
 
 /** The palette names, as authors write them. Matched without regard to case. */
 export const PALETTE_IDS: readonly string[] = PRESETS.map((preset) => preset.id);
 
 export function parseCollectionControl(source: string): { control: CollectionControl; problems: ControlIssue[] } {
-  const control: CollectionControl = { cardStyle: null, cardPalette: null };
+  const control: CollectionControl = { cardStyle: null, palette: null };
   const problems: ControlIssue[] = [];
   let table: Record<string, unknown>;
   try {
@@ -219,16 +224,16 @@ export function parseCollectionControl(source: string): { control: CollectionCon
     problems.push({
       id: 'control-syntax',
       what: `control.toml is not valid TOML, so all of it was ignored. ${detail}`,
-      fix: 'Write card_style = "orb" or card_palette = "Blue hour 1973", with the value quoted.'
+      fix: 'Write palette = "Blue hour 1973" or card_style = "orb", with the value quoted.'
     });
     return { control, problems };
   }
   for (const key of Object.keys(table)) {
-    if (key === 'card_style' || key === 'card_palette') continue;
+    if (COLLECTION_KEYS.has(key)) continue;
     problems.push({
       id: 'control-unknown-key',
       what: `A collection's control.toml sets ${key}, which is not a control collections have.`,
-      fix: 'Known controls: card_style, card_palette. Lerpette settings go in the lerpette folder\'s own control.toml.'
+      fix: 'Known controls: palette, card_style. Lerpette settings go in the lerpette folder\'s own control.toml.'
     });
   }
   if ('card_style' in table) {
@@ -236,15 +241,17 @@ export function parseCollectionControl(source: string): { control: CollectionCon
     if ('issue' in result) problems.push(result.issue);
     else control.cardStyle = result.value;
   }
-  if ('card_palette' in table) {
-    const raw = table.card_palette;
+  // `palette` wins when a file has both, half-way through being renamed.
+  const paletteKey = 'palette' in table ? 'palette' : 'card_palette' in table ? 'card_palette' : null;
+  if (paletteKey) {
+    const raw = table[paletteKey];
     const match = typeof raw === 'string' ? PALETTE_IDS.find((id) => id.toLowerCase() === raw.trim().toLowerCase()) : undefined;
     if (match) {
-      control.cardPalette = match;
+      control.palette = match;
     } else {
       problems.push({
         id: 'control-bad-value',
-        what: `control.toml sets card_palette = ${JSON.stringify(raw)}, which is not a palette this site has.`,
+        what: `control.toml sets ${paletteKey} = ${JSON.stringify(raw)}, which is not a palette this site has.`,
         fix: `Use one of: ${PALETTE_IDS.map((id) => `"${id}"`).join(', ')}.`
       });
     }

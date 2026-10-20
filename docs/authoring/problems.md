@@ -69,6 +69,6 @@ Generated from `website/src/lib/problems.ts`; a test fails when the two disagree
 | `landing-unpublished` | A draft or unlisted lerpette sets landing = true | It is not used for '/'. | Publish it (`status = "published"`), or remove `landing = true`. |
 | `control-unreadable` | control.toml could not be read | All of it is ignored; the lerpette takes the defaults. | Check the file's permissions, or delete it. |
 | `control-syntax` | control.toml is not valid TOML | All of it is ignored; the lerpette takes the defaults. | One setting per line, values quoted: `status = "draft"`. |
-| `control-unknown-key` | control.toml sets a key the site does not have | That line is ignored. | A lerpette knows status, landing, order, [caption], [idle_status]; a collection knows card_style and card_palette. |
+| `control-unknown-key` | control.toml sets a key the site does not have | That line is ignored. | A lerpette knows status, landing, order, [caption], [idle_status]; a collection knows palette and card_style. |
 | `control-bad-value` | control.toml gives a key a value it cannot take | That key keeps its default. | See the message for the values that key takes. |
 | `control-chapter-unknown` | control.toml's [caption] or [idle_status] names a missing chapter | That line is ignored. | Use the chapter ids from the headings. |

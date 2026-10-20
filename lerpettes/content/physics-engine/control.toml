@@ -1,4 +1,5 @@
-# The style and palette every card in this collection draws.
-# Style ids are in website/src/lib/cardArt/styles.ts, palettes in website/src/lib/cardArt/palette.ts.
+# The collection's colours (its cards, and every lesson's panels), and the picture its
+# cards draw. Palettes are in website/src/lib/cardArt/palette.ts, styles in
+# website/src/lib/cardArt/styles.ts.
+palette = "Furnishing 1974"
 card_style = "nest"
-card_palette = "Furnishing 1974"

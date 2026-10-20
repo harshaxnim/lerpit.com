@@ -27,7 +27,7 @@ website/
 lerpettes/
   content/              the lessons, one directory per collection
   framework/
-    chapter.ts          defineChapter: the one chapter contract
+    chapter.ts          createStage: the one chapter contract
     panels/             the panel registry: canvas, viewport2d, viewport3d, table, readout
     runtimes/           the chapter runtime and presets (sketch, 3D)
     stage/              the stage chrome: controls, readings, caption, restart
@@ -41,7 +41,7 @@ lerpettes/
 Lesson code reaches into `lerpettes/` through one alias, `@lerpit/*`, which mirrors the tree:
 
 ```ts
-import { defineChapter } from '@lerpit/framework/chapter';
+import { createStage } from '@lerpit/framework/chapter';
 import { create3DRuntime } from '@lerpit/framework/runtimes/create3DRuntime';
 import { addSphere, create3DPhysicsRuntime } from '@lerpit/libs/physics/js';
 ```
@@ -67,7 +67,7 @@ Prose, maths, figures.
 
 - Each `##` is a chapter; `{#id}` is its anchor and its folder, `code/<id>/`.
 - `+name` in a heading adds a panel; the `#` title's panels are inherited by every chapter.
-- A chapter's code is `state`, `setup`, `step`, and one view per panel (`viewport2d: { draw(g, s, ctx) }`), written as a module (`code/<id>/js/index.ts` with `defineChapter`) or in the files a `lerpit` fence shows.
+- A chapter's code is `state`, `setup`, `step`, and one view per panel (`viewport2d: { draw(g, s, ctx) }`), written as a module (`code/<id>/js/index.ts` with `createStage`) or in the files a `lerpit` fence shows.
 - `ctx.controls()`, `ctx.monitors()` and `ctx.caption()` reach the stage from any chapter.
 - Mistakes never break the build: they are listed at the top of the page with a fix.
 

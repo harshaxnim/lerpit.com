@@ -1124,10 +1124,32 @@ nav {
 
 }
 
+/* KaTeX's own 1.21em towers over the prose. katex.min.css loads after this file,
+   hence the html prefix. */
+html .katex {
+  font-size: 1.1em;
+}
+
 .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0.2rem 0;
+}
+
+/* The prose is a grid, so KaTeX's own 1em margins add to its 1rem gap rather than
+   collapsing into it. Pulling each side in by half the gap leaves text half a gap from
+   an equation, and two equations in a row with no gap at all: they read as one block.
+   Never above the first thing in a chapter or past the last. */
+.prose-block .katex-display {
+  margin: -0.5rem 0;
+}
+
+.prose-block .katex-display:first-child {
+  margin-top: 0;
+}
+
+.prose-block .katex-display:last-child {
+  margin-bottom: 0;
 }
 
 .lerpette-stage {

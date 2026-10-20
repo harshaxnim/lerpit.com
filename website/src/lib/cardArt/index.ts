@@ -56,6 +56,62 @@ export type CardArt = {
   height: number;
 };
 
+/** `hsl(h s% l%)`, as the ramp writes it, to '#rrggbb'. */
+function hslToHex(value: string): string {
+  const [h, s, l] = (value.match(/[\d.]+/g) ?? ['0', '0', '0']).map(Number);
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+  const channel = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const c = l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255).toString(16).padStart(2, '0');
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+
+export type CollectionPalette = {
+  /** The PRESETS id, or null for a palette generated from the collection's name. */
+  id: string | null;
+  /**
+   * Its colours as '#rrggbb', to draw with anywhere in the collection: the cards
+   * paint from this palette, and a lesson's panels pick from it through
+   * randomColor(i, { from: 'collection' }). The ramp's greys, near-whites and
+   * near-blacks are left out: they are a poster's stock and ink rather than its
+   * colours, and on a panel's paper they vanish or read as heavy black marks.
+   */
+  colors: string[];
+};
+
+/**
+ * A collection's palette: the one control.toml's `palette` names, or the one the
+ * collection's name draws. It belongs to the collection, not to any one card, so it
+ * is the same for every lesson in it; cardArt then varies each card within it.
+ */
+export function collectionPalette(collection: string, chosen?: string | null): CollectionPalette {
+  const collHash = strHash(collection.trim() || 'Lerpette');
+  const preset = PRESETS.find((p) => p.id === chosen);
+  const generated = !preset && mix(collHash, 2) % 6 === 0;
+  const id = preset?.id ?? (generated ? null : PRESETS[mix(collHash, 3) % PRESETS.length]!.id);
+
+  // The palette at rest: the collection's own hue, none of a card's per-document swings.
+  const ramp = buildRamp({
+    source: id,
+    baseHue: collHash % 360,
+    span: CARD_DEFAULTS.span,
+    sat: CARD_DEFAULTS.sat,
+    light: CARD_DEFAULTS.light,
+    alternate: CARD_DEFAULTS.alternate
+  });
+  // A sampled palette is as many colours as its poster had; a generated ramp is
+  // continuous, so it is cut into eight.
+  const n = PRESETS.find((p) => p.id === id)?.hues.length ?? 8;
+  const all = Array.from({ length: n }, (_, i) => ramp(i, n));
+  const usable = all.filter((value) => {
+    const [, s, l] = (value.match(/[\d.]+/g) ?? []).map(Number);
+    return s > 18 && l > 18 && l < 82;
+  });
+  return { id, colors: (usable.length >= 2 ? usable : all).map(hslToHex) };
+}
+
 /**
  * The salt the style decision is drawn with. Surveyed across twenty collection
  * names, 37 spreads over sixteen distinct styles where the original 1 managed
@@ -209,9 +265,8 @@ export function cardArt(input: CardInput, options: Partial<CardOptions> = {}): C
   const style = STYLES[o.style ?? ''] ? o.style! : rankStyles(collHash)[0]!;
   const spec = STYLES[style]!;
 
-  const generated = mix(collHash, 2) % 6 === 0;
-  const palette = PRESETS.find((p) => p.id === o.palette)?.id
-    ?? (generated ? null : PRESETS[mix(collHash, 3) % PRESETS.length]!.id);
+  // The collection's palette, the same one its lessons' panels draw from.
+  const palette = collectionPalette(collection, o.palette).id;
 
   const darkOnly = WANTS_DARK.has(style);
   const darkPool = GROUNDS.filter((g) => g.dark);

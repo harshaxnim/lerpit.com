@@ -10,7 +10,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
-import { assignStyles } from './cardArt';
+import { assignStyles, collectionPalette } from './cardArt';
 import { parseFence, FENCE_LANG } from '@lerpit/libs/live-code/js/fence';
 import { scanRegions } from '@lerpit/libs/live-code/js/regions';
 import type {
@@ -22,7 +22,7 @@ import type {
   LerpetteStep
 } from '@lerpit/framework/types';
 import { isPanelName, PANEL_NAMES } from '@lerpit/framework/panels/registry';
-import { parseHeading, resolvePanels } from './headingSpec';
+import { HEADING_SPEC_TAIL, parseHeading, resolvePanels } from './headingSpec';
 import { defaultControl, isLandingCandidate, isListed, isRoutable, parseCollectionControl, parseControl, type LerpetteControl } from './control';
 import type { ProblemId } from './problems';
 import { site } from '../site.config';
@@ -282,7 +282,8 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
     // The collection's own card_style wins over the assignment.
     for (const mixtape of collection.mixtapes) {
       mixtape.cardStyle = collection.cardStyle ?? style;
-      if (collection.cardPalette) mixtape.cardPalette = collection.cardPalette;
+      if (collection.palette) mixtape.palette = collection.palette;
+      mixtape.collectionColors = collection.colors;
     }
   }
 
@@ -399,7 +400,9 @@ async function parseCollectionDirectory(collectionDir: string): Promise<Lerpette
     summary: collectionDoc.summary,
     bodyHtml: collectionDoc.bodyHtml,
     ...(collectionControl.cardStyle ? { cardStyle: collectionControl.cardStyle } : {}),
-    ...(collectionControl.cardPalette ? { cardPalette: collectionControl.cardPalette } : {}),
+    ...(collectionControl.palette ? { palette: collectionControl.palette } : {}),
+    // Resolved once here, for the cards and for every lesson's panels alike.
+    colors: collectionPalette(collectionDoc.title, collectionControl.palette).colors,
     mixtapes,
     problems
   };
@@ -412,7 +415,7 @@ async function readCollectionControl(collectionDir: string, report: Report) {
   try {
     source = await fsp.readFile(controlPath, 'utf8');
   } catch {
-    return { cardStyle: null, cardPalette: null };
+    return { cardStyle: null, palette: null };
   }
   const { control, problems } = parseCollectionControl(source);
   for (const problem of problems) report(problem.id, problem.what, problem.fix, controlPath);
@@ -564,6 +567,7 @@ async function parseMixtapeDocument(mixtapeDir: string, report: Report, control:
 
   return {
     title: titleSpec.title,
+    titleHtml: headingTitleHtml(h1Index >= 0 ? root.children[h1Index] : undefined, titleSpec.title, mixtapeDir, report),
     // Links already point at #intro, so only an author who writes an explicit id moves it.
     introId: titleSpec.explicit ? titleSpec.id : 'intro',
     introPanels: defaultPanels,
@@ -637,7 +641,8 @@ function extractMixtapeSteps(
     seenIds.add(id);
 
     const panels = resolvePanels(defaultPanels, parsed.ops).filter((name) => isPanelName(name));
-    return { id, title: parsed.title, body, panels, hasFence: hasCodeFence(body) };
+    const titleHtml = headingTitleHtml(heading as MarkdownNode, parsed.title, mixtapeDir, report);
+    return { id, title: parsed.title, titleHtml, body, panels, hasFence: hasCodeFence(body) };
   });
 
   /*
@@ -675,6 +680,7 @@ function extractMixtapeSteps(
     return {
       id: step.id,
       title: step.title,
+      titleHtml: step.titleHtml,
       bodyHtml: renderNodesToHtml(step.body, mixtapeDir, report, path.join(mixtapeDir, 'code', step.id)),
       runtimeImportKey: ownerEntry?.hasModule ? toRuntimeImportKey(ownerEntry.runtimeFile) : '',
       runtimeStepId: owner.id,
@@ -938,6 +944,26 @@ function transformCodeFence(node: FenceNode, codeDir: string | null, report: Rep
   };
 }
 
+/**
+ * A heading's words as inline HTML: bold, italics, code and math as written, with the
+ * `{#id +panel}` settings taken off the end. `toString` gives the plain title the byline,
+ * tabs and page title use; this is what the chapter header shows.
+ */
+function headingTitleHtml(heading: MarkdownNode | undefined, fallback: string, docDir: string, report: Report): string {
+  const children = structuredClone(((heading as { children?: MarkdownNode[] } | undefined)?.children ?? []) as MarkdownNode[]);
+  const last = children[children.length - 1] as { type: string; value?: string } | undefined;
+  if (last?.type === 'text' && typeof last.value === 'string') {
+    last.value = last.value.replace(HEADING_SPEC_TAIL, '');
+    if (!last.value) children.pop();
+  }
+  if (children.length === 0) {
+    return fallback.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  const html = renderNodesToHtml([{ type: 'paragraph', children } as never], docDir, report);
+  return html.replace(/^\s*<p>/, '').replace(/<\/p>\s*$/, '');
+}
+
 function renderNodesToHtml(
   nodes: MarkdownNode[],
   docDir: string,
@@ -1092,6 +1118,7 @@ function getContentType(filePath: string): string {
 function emptyDocument(title: string) {
   return {
     title,
+    titleHtml: title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
     summary: '',
     publishedOn: '',
     author: 'unknown',

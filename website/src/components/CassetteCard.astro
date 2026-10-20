@@ -34,8 +34,8 @@ const art = cardArt(
   // cannot land on the same one; without it the card draws its own.
   {
     ...(mixtape.cardStyle ? { style: mixtape.cardStyle } : {}),
-    // The collection's card_palette, when it set one; otherwise its name draws one.
-    ...(mixtape.cardPalette ? { palette: mixtape.cardPalette } : {})
+    // The collection's palette, when it set one; otherwise its name draws one.
+    ...(mixtape.palette ? { palette: mixtape.palette } : {})
   }
 );
 

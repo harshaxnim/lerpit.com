@@ -1,6 +1,11 @@
 import type { Pane } from 'tweakpane';
 import type { Readings } from '../monitors/readings';
 import type { ControlsOptions } from '../stage/chrome';
+import type { CanvasTarget } from './canvas/canvasPanel';
+import type { Viewport2dTarget } from './viewport2d/viewport2dPanel';
+import type { Viewport3dTarget } from './viewport3d/viewport3dPanel';
+import type { TableTarget } from './table/tablePanel';
+import type { ReadoutTarget } from './readout/readoutPanel';
 
 /**
  * What a chapter implements, and what it is handed when it runs.
@@ -14,11 +19,11 @@ import type { ControlsOptions } from '../stage/chrome';
  *   export const state = { value: 1 };                       // the model
  *   export function setup(s, ctx) { }                        // the model, once per run
  *   export function step(s, dt, ctx) { }                     // the model, every frame
- *   export const viewport2d = { draw(g, s, ctx) { } };       // a view
+ *   export const viewport2d = { draw(sketch, s, ctx) { } };  // a view
  *   export const table = { draw(out, s, ctx) { } };          // another view
  *
  * The same names work wherever the chapter's code comes from: a module in the chapter's
- * code folder (`defineChapter({...})` in `code/<id>/js/index.ts`), or the files a
+ * code folder (`createStage({...})` in `code/<id>/js/index.ts`), or the files a
  * `lerpit` fence puts in an editor. When both exist, what the reader builds replaces
  * what the module said, name by name.
  *
@@ -60,7 +65,15 @@ export type LerpetteCtx = {
    * The size of the panel being drawn. During `setup` and `step`, which belong to no
    * panel, it is the size of the panel on screen.
    */
-  view: ViewSize;
+  view: ViewSize & {
+    /**
+     * How far the view reaches in units, the sketch's `g.px`/`g.py` units: x runs
+     * `-halfWidth..halfWidth`, which is always -1..1, and y `-halfHeight..halfHeight`,
+     * height over width. Square (1) before the panel has a size.
+     */
+    halfWidth: number;
+    halfHeight: number;
+  };
   /** Pointer state for the panel being drawn, all zero on a panel nobody is over. */
   input: PointerState;
   /** Seconds this run has been running. Stops while the chapter is off screen. */
@@ -117,6 +130,13 @@ export type ChapterDefinition<S extends SceneState = SceneState> = {
   dispose?: (state: S, ctx: LerpetteCtx) => void;
   /** Whether the stage offers restart. Defaults to whether the chapter has a `step`. */
   restart?: boolean;
+  // The panels the registry knows, typed, so a view's arguments are typed with no
+  // annotation. Type-only imports: naming a panel here loads none of its code.
+  canvas?: ViewExports<CanvasTarget, S>;
+  viewport2d?: ViewExports<Viewport2dTarget, S>;
+  viewport3d?: ViewExports<Viewport3dTarget, S>;
+  table?: ViewExports<TableTarget, S>;
+  readout?: ViewExports<ReadoutTarget, S>;
 } & { [panel: string]: unknown };
 
 /** The model names, which can never be a panel's name. */

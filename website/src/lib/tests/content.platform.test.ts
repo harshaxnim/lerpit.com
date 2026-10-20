@@ -10,7 +10,7 @@ import type { LerpetteLibrary } from '@lerpit/framework/types';
  * produces. Each case is a tiny site in a temp directory, as in content.test.ts.
  */
 
-const MODULE = "import { defineChapter } from '@lerpit/framework/chapter';\nexport default defineChapter({});\n";
+const MODULE = "import { createStage } from '@lerpit/framework/chapter';\nexport default createStage({});\n";
 const BYLINE = 'Author: Harsha | Date: 2026-09-22\n\n';
 
 let root: string;
@@ -219,5 +219,32 @@ describe('assets', () => {
     expect(local.assetEntries).toHaveLength(1);
     const prod = await loadLibrary({ LERPIT_VIEW: 'public' });
     expect(prod.assetEntries).toHaveLength(0);
+  });
+});
+
+describe('formatted titles', () => {
+  it('keeps a heading’s bold, italics, code and math for its header, and plain words for the rest', async () => {
+    await lesson(
+      'a',
+      '# The **bold** one {#intro +viewport2d}\n\nSummary.\n\n## *Euler*, `step()` and $F = ma$ {#euler +table}\n\nText.\n\n## Plain {#plain}\n\nText.\n'
+    );
+    const mixtape = (await loadLibrary()).mixtapes[0];
+    expect(mixtape.title).toBe('The bold one');
+    expect(mixtape.titleHtml).toBe('The <strong>bold</strong> one');
+
+    const [euler, plain] = mixtape.steps;
+    expect(euler.id).toBe('euler');
+    expect(euler.title).toBe('Euler, step() and F = ma');
+    expect(euler.titleHtml).toContain('<em>Euler</em>');
+    expect(euler.titleHtml).toContain('<code>step()</code>');
+    expect(euler.titleHtml).toContain('class="katex"');
+    expect(euler.titleHtml).not.toContain('{#');
+    expect(euler.titleHtml).not.toMatch(/^<p>|<\/p>$/);
+    expect(plain.titleHtml).toBe('Plain');
+  });
+
+  it('escapes a title with no heading behind it', async () => {
+    await lesson('a-b', 'Summary.\n\n## One {#one +viewport2d}\n\nText.\n');
+    expect((await loadLibrary()).mixtapes[0].titleHtml).toBe('A b');
   });
 });

@@ -13,7 +13,7 @@ import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '../types';
 import { loadModule } from '../wasm/loadModule';
 import { clampDelta } from './frameLoop';
 import { byBuild } from '@lerpit/libs/live-code/js/languages';
-import { compileCpp, compileJsFiles, type EditorFile, type FileEditor } from '@lerpit/libs/live-code/js';
+import type { EditorFile, FileEditor } from '@lerpit/libs/live-code/js';
 
 /**
  * A chapter: one model, a view per panel, and an editor wherever the prose left a fence.
@@ -21,7 +21,7 @@ import { compileCpp, compileJsFiles, type EditorFile, type FileEditor } from '@l
  * This is the only runtime most chapters ever run under. A chapter's code reaches it
  * one of two ways, and both are the same shape (see panels/contract.ts):
  *
- *   module source  `defineChapter({...})` in code/<id>/js/index.ts, bundled with the site
+ *   module source  `createStage({...})` in code/<id>/js/index.ts, bundled with the site
  *   editor source  the files a `lerpit` fence names, built in the reader's tab
  *
  * When a chapter has both, a build replaces the module's names one by one, so a lesson
@@ -110,9 +110,10 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
 
   const ctxFor = (mounted: MountedPanel | null): LerpetteCtx => {
     const stage = ctx!.stage;
+    const size = mounted && stack ? stack.sizeOf(mounted) : stack?.active() ? stack.sizeOf(stack.active()!) : { width: 0, height: 0, dpr: 1 };
     return {
       wasm,
-      view: mounted && stack ? stack.sizeOf(mounted) : stack?.active() ? stack.sizeOf(stack.active()!) : { width: 0, height: 0, dpr: 1 },
+      view: { ...size, halfWidth: 1, halfHeight: size.width && size.height ? size.height / size.width : 1 },
       input: mounted ? pointers.get(mounted.panel.name) ?? idlePointer : idlePointer,
       time,
       controls: (options) => stage.controls(options),
@@ -307,9 +308,17 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     reporter = editor;
     faulted = false;
 
+    // The compilers load on the first build, not with the page: a reader who never
+    // presses run never downloads a TypeScript compiler or the C++ toolchain's glue.
     const split = byBuild(files);
-    const builtWasm = split.wasm.length > 0 ? await compileCpp(split.wasm, (line) => editor.log(line)) : null;
-    const exports = split.module.length > 0 ? (compileJsFiles(split.module) as Record<string, unknown>) : {};
+    const builtWasm =
+      split.wasm.length > 0
+        ? await (await import('@lerpit/libs/live-code/js/compileCpp')).compileCpp(split.wasm, (line) => editor.log(line))
+        : null;
+    const exports =
+      split.module.length > 0
+        ? ((await import('@lerpit/libs/live-code/js/compileJs')).compileJsFiles(split.module) as Record<string, unknown>)
+        : {};
 
     // Restart rebuilds rather than rerunning the old instance: a C++ module keeps its
     // statics, so the only clean start for compiled code is a fresh one.

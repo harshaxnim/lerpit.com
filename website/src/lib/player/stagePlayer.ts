@@ -4,6 +4,7 @@ import type { EditorLayer } from '@lerpit/framework/runtimes/editorLayer';
 import { createStageChrome } from '@lerpit/framework/stage/chrome';
 import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '@lerpit/framework/types';
 import { loadLerpetteStepRuntime } from '../runtimeLoader';
+import { captionHtml } from './caption';
 
 /**
  * The stage: the right-hand column, and what runs in it.
@@ -77,7 +78,7 @@ export function createStagePlayer(options: StagePlayerOptions): StagePlayer {
   monitors.className = 'lerpette-panel__monitors';
 
   const writeCaption = (value: string) => {
-    if (options.caption) options.caption.textContent = value;
+    if (options.caption) options.caption.innerHTML = captionHtml(value);
   };
   const chrome = createStageChrome({ tray, monitors, setCaption: writeCaption });
 

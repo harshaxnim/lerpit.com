@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import { createStage, type LerpetteCtx } from '@lerpit/framework/chapter';
 import type { Viewport3dTarget } from '@lerpit/framework/panels/viewport3d/viewport3dPanel';
 import { hex } from '@lerpit/framework/theme';
 
@@ -65,7 +65,7 @@ function buildScene(target: Viewport3dTarget, state: State) {
 export function createIssueZeroStepRuntime(config: IssueZeroConfig) {
   const goal = Math.min(Math.max(config.target, 0), 1);
 
-  return defineChapter<State>({
+  return createStage<State>({
     panels: ['viewport3d'],
     caption: config.status,
     // Restarting a lerp to where it already is would do nothing a reader could see.

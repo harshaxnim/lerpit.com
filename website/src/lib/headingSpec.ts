@@ -46,6 +46,9 @@ export const NO_PANEL = 'none';
 const HEADING = /^(.*?)\s*\{#([A-Za-z0-9][A-Za-z0-9-_]*)((?:\s+[^}\s]+)*)\s*\}$/;
 const OP = /^([+\-=])([A-Za-z][A-Za-z0-9-]*)$/;
 
+/** The brace group alone, at the end of a heading's last run of text. */
+export const HEADING_SPEC_TAIL = /\s*\{#[A-Za-z0-9][A-Za-z0-9-_]*(?:\s+[^}\s]+)*\s*\}\s*$/;
+
 function slugify(raw: string): string {
   return raw
     .toLowerCase()

@@ -1,4 +1,5 @@
-import { createEditorLayer } from '@lerpit/framework/runtimes/editorLayer';
+import type { EditorLayer } from '@lerpit/framework/runtimes/editorLayer';
+import { setCollectionColors } from '@lerpit/framework/theme';
 import { createPageChrome } from './player/pageChrome';
 import { createStagePlayer, initialPanelLabel, type ClientStep } from './player/stagePlayer';
 
@@ -11,6 +12,8 @@ import { createStagePlayer, initialPanelLabel, type ClientStep } from './player/
 type PlayerConfig = {
   lessonTitle: string;
   steps: ClientStep[];
+  /** The colours of this lesson's collection, for randomColor's 'collection' family. */
+  collectionColors?: string[];
 };
 
 const initializedPlayers = new WeakSet<HTMLElement>();
@@ -23,6 +26,19 @@ function readPlayerConfig(root: HTMLElement): PlayerConfig | null {
   } catch {
     return null;
   }
+}
+
+/*
+ * Under npm run dev, a saved lesson file reloads only the pages playing that lesson;
+ * the server says which lesson it was (lerpit-watcher in astro.config.mjs).
+ */
+if (import.meta.hot) {
+  import.meta.hot.on('lerpit:lesson-code', (changed: { collection: string; lerpette: string }) => {
+    const playing = Array.from(document.querySelectorAll<HTMLElement>('[data-lerpette-player]')).some(
+      (root) => root.dataset.collection === changed.collection && root.dataset.lerpette === changed.lerpette
+    );
+    if (playing) window.location.reload();
+  });
 }
 
 export function initLerpettePlayers() {
@@ -39,6 +55,8 @@ export function initLerpettePlayers() {
 
 function initPlayer(root: HTMLElement, host: HTMLElement, config: PlayerConfig) {
   const { steps, lessonTitle } = config;
+  // Before any chapter loads, so its first randomColor(i, { from: 'collection' }) has them.
+  if (config.collectionColors) setCollectionColors(config.collectionColors);
   const stepIds = new Set(steps.map((step) => step.id));
   const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-section-id]'));
   const caption = root.querySelector<HTMLElement>('[data-stage-status]');
@@ -96,14 +114,20 @@ function initPlayer(root: HTMLElement, host: HTMLElement, config: PlayerConfig) 
    * this: a runtime claims its boxes while mounting, which happens once.
    */
   const idle = new Map(steps.filter((step) => step.idleStatus).map((step) => [step.id, step.idleStatus!]));
-  const editors = createEditorLayer({
-    sections,
-    codePathFor: (stepId) => steps.find((step) => step.id === stepId)?.codePath ?? null,
-    idleStatusFor: (stepId) => idle.get(stepId),
-    // Pressing run on a chapter scrolled away builds into a panel nobody is looking
-    // at, so it is made the active one first.
-    activate: (stepId) => activate(stepId)
-  });
+  // The editor is CodeMirror and a TypeScript compiler: most of this page's script by
+  // weight. A lesson with no code box in its prose never loads it.
+  const editors: Promise<EditorLayer | null> = root.querySelector('[data-lerpit-code]')
+    ? import('@lerpit/framework/runtimes/editorLayer').then(({ createEditorLayer }) =>
+        createEditorLayer({
+          sections,
+          codePathFor: (stepId) => steps.find((step) => step.id === stepId)?.codePath ?? null,
+          idleStatusFor: (stepId) => idle.get(stepId),
+          // Pressing run on a chapter scrolled away builds into a panel nobody is looking
+          // at, so it is made the active one first.
+          activate: (stepId) => activate(stepId)
+        })
+      )
+    : Promise.resolve(null);
   stage.setEditors(editors);
 
   const onResize = () => {

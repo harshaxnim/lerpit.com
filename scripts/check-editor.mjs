@@ -373,7 +373,7 @@ try {
   await shot('09c-lesson-collection');
   await saveKey();
   await sleep(5000);
-  check(read('control.toml').includes('card_palette = "Tropicana 1980"') && read('control.toml').includes('card_style = "wheel"'), 'picking a palette there writes the collection\'s control.toml');
+  check(read('control.toml').includes('palette = "Tropicana 1980"') && !read('control.toml').includes('card_palette') && read('control.toml').includes('card_style = "wheel"'), 'picking a palette there writes the collection\'s control.toml');
 
   console.log('\nLibrary: editing a collection');
   await go('/library/');

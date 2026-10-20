@@ -45,7 +45,7 @@ export type LerpetteRuntimeContext<Surface = CanvasTarget> = LerpettePanelSlot &
  * keeps it for the life of the page and mounts it again only after the stack it was
  * mounted on has been taken down.
  *
- * Most chapters never write one of these: `defineChapter` (framework/chapter.ts) turns
+ * Most chapters never write one of these: `createStage` (framework/chapter.ts) turns
  * the chapter contract into one. Writing it by hand is for a chapter that needs the
  * whole lifecycle, and gets the same context as everything else.
  *
@@ -89,7 +89,10 @@ export type LerpetteProblem = {
 
 export type LerpetteStep = {
   id: string;
+  /** Plain words, for the byline, tabs and labels. */
   title: string;
+  /** The heading as written, bold, italics, code and math included, for its header. */
+  titleHtml: string;
   bodyHtml: string;
   runtimeImportKey: string;
   assetBasePath: string;
@@ -116,7 +119,10 @@ export type LerpetteStatus = 'published' | 'unlisted' | 'draft';
 export type LerpetteMixtape = {
   slug: string;
   href: string;
+  /** Plain words, for the page title, cards and the byline. */
   title: string;
+  /** The title heading as written, formatting included, for the opening section. */
+  titleHtml: string;
   summary: string;
   publishedOn: string;
   author: string;
@@ -138,8 +144,14 @@ export type LerpetteMixtape = {
   /** Which generated card style this lerpette draws: its collection's `card_style`, or
    *  assigned across the whole library so two collections do not share one. */
   cardStyle?: string;
-  /** Its collection's `card_palette`, or absent for the palette the name draws. */
-  cardPalette?: string;
+  /** Its collection's `palette`, or absent for the palette the name draws. */
+  palette?: string;
+  /**
+   * Its collection's colours, resolved: the palette its cards are painted from and
+   * its panels draw from (randomColor's 'collection' family). The same for every
+   * lerpette in the collection.
+   */
+  collectionColors?: string[];
 };
 
 export type LerpetteCollection = {
@@ -150,8 +162,10 @@ export type LerpetteCollection = {
   bodyHtml: string;
   /** The collection control.toml's `card_style`, which every card in it draws. */
   cardStyle?: string;
-  /** The collection control.toml's `card_palette`. */
-  cardPalette?: string;
+  /** The collection control.toml's `palette`: its cards' colours and its panels'. */
+  palette?: string;
+  /** That palette (or the one the name draws) as '#rrggbb', for everything that draws. */
+  colors: string[];
   mixtapes: LerpetteMixtape[];
   problems: LerpetteProblem[];
 };

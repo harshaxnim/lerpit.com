@@ -39,7 +39,7 @@ describe('setKey', () => {
   it('writes booleans and numbers bare, text quoted and escaped', () => {
     expect(setKey('', 'landing', true)).toBe('landing = true\n');
     expect(setKey('', 'order', 3)).toBe('order = 3\n');
-    expect(setKey('', 'card_palette', 'Saffron & "indigo" 1973')).toBe('card_palette = "Saffron & \\"indigo\\" 1973"\n');
+    expect(setKey('', 'palette', 'Saffron & "indigo" 1973')).toBe('palette = "Saffron & \\"indigo\\" 1973"\n');
   });
 
   it('does not touch a key of the same name inside a table', () => {

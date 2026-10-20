@@ -1,8 +1,8 @@
-import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import { createStage, type LerpetteCtx } from '@lerpit/framework/chapter';
 import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
 /** A typed view straight onto the vector's memory: no copy, one row per element. */
-export default defineChapter({
+export default createStage({
   panels: ['table'],
   wasm: () => import('../build/fibArray.js'),
   table: {

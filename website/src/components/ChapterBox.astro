@@ -6,14 +6,15 @@ interface Props {
   id: string;
   /** `00` for the intro, then `01`, `02`… */
   index: string;
-  title: string;
+  /** The heading as rendered HTML: its bold, italics, code and math as written. */
+  titleHtml: string;
   html: string;
   intro?: boolean;
   /** Whether this chapter has code of its own; the `!` mark says so when it does not. */
   hasOwnRuntime?: boolean;
 }
 
-const { id, index, title, html, intro = false, hasOwnRuntime = true } = Astro.props as Props;
+const { id, index, titleHtml, html, intro = false, hasOwnRuntime = true } = Astro.props as Props;
 // The missing-code mark is an authoring problem: local view only (see showsAuthoringProblems).
 const markMissing = !hasOwnRuntime && showsAuthoringProblems();
 ---
@@ -27,7 +28,7 @@ const markMissing = !hasOwnRuntime && showsAuthoringProblems();
       <span class="lerpette-head__index-row">
         <span class="lerpette-head__index">{index}</span>
       </span>
-      <h2 class="lerpette-intro__title">{title}</h2>
+      <h2 class="lerpette-intro__title" set:html={titleHtml} />
     </div>
     <div class="prose-block" set:html={html}></div>
   </section>
@@ -40,7 +41,7 @@ const markMissing = !hasOwnRuntime && showsAuthoringProblems();
           <span class="lerpette-step__missing-runtime" role="img" aria-label="Missing code folder" data-tooltip="missing code folder">!</span>
         )}
       </span>
-      <h2 id={`${id}-title`}>{title}</h2>
+      <h2 id={`${id}-title`} set:html={titleHtml} />
     </div>
     <div class="prose-block" set:html={html}></div>
   </section>

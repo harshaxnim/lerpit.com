@@ -7,6 +7,7 @@
 import { assignStyles, cardArt, STYLES, STYLE_IDS } from '../../lib/cardArt';
 import { PRESETS } from '../../lib/cardArt/palette';
 import { h } from './dom';
+import { setKey } from '../lib/tomlEdit';
 
 /** Redraws one cassette card in place, exactly as CassetteCard.astro draws it. */
 export function redrawCard(card: HTMLElement, input: Parameters<typeof cardArt>[0], options: { style?: string; palette?: string }) {
@@ -46,8 +47,17 @@ export function autoStyleFor(title: string, allTitles: readonly string[]): strin
   return assignStyles(allTitles).get(title.trim() || 'Lerpette') ?? STYLE_IDS[0];
 }
 
-/** Style and palette pickers. `onPick` gets null for "auto". */
-export function cardPickers(current: { style: string | null; palette: string | null }, autoStyle: string, onPick: (key: 'card_style' | 'card_palette', value: string | null) => void) {
+/**
+ * The collection's palette and card style, written to its control.toml. A palette key
+ * also takes out a `card_palette` line, the key's old name, so the file says it once.
+ */
+export function setCollectionKey(text: string, key: 'card_style' | 'palette', value: string | null): string {
+  const next = setKey(text, key, value);
+  return key === 'palette' ? setKey(next, 'card_palette', null) : next;
+}
+
+/** Palette and card style pickers. `onPick` gets null for "auto". */
+export function cardPickers(current: { style: string | null; palette: string | null }, autoStyle: string, onPick: (key: 'card_style' | 'palette', value: string | null) => void) {
   const chip = (label: string, pressed: boolean, title: string, onclick: () => void, swatch?: string[]) =>
     h('button.ed-chip', { type: 'button', 'aria-pressed': String(pressed), title, onclick },
       swatch ? h('span.ed-swatch', { style: `background:linear-gradient(90deg,${swatch.join(',')})` }) : null,
@@ -60,10 +70,10 @@ export function cardPickers(current: { style: string | null; palette: string | n
       chip(`auto · ${autoStyle}`, current.style === null, 'Assigned across the library so no two collections share one', () => pick('card_style', null)),
       ...STYLE_IDS.map((id) => chip(id, current.style === id, STYLES[id].label, () => pick('card_style', id))));
     palettes.replaceChildren(
-      chip('auto', current.palette === null, 'Drawn from the collection\'s name', () => pick('card_palette', null)),
-      ...PRESETS.map((preset) => chip(preset.id, current.palette === preset.id, preset.id, () => pick('card_palette', preset.id), preset.hues.slice(0, 6))));
+      chip('auto', current.palette === null, 'Drawn from the collection\'s name', () => pick('palette', null)),
+      ...PRESETS.map((preset) => chip(preset.id, current.palette === preset.id, `${preset.id}: the collection's cards and its panels' colours`, () => pick('palette', preset.id), preset.hues.slice(0, 6))));
   };
-  const pick = (key: 'card_style' | 'card_palette', value: string | null) => {
+  const pick = (key: 'card_style' | 'palette', value: string | null) => {
     if (key === 'card_style') current.style = value;
     else current.palette = value;
     draw();

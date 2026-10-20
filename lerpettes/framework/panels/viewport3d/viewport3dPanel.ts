@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { LerpettePanel, PanelScope } from '../panel';
 import type { ViewSize } from '../contract';
 import type { LerpettePanelSlot } from '../types';
+import { colors as theme } from '../../theme';
 import {
   addLights,
   createThreeBundle,
@@ -43,6 +44,11 @@ export type Viewport3dTarget = {
    * turned off; a diagram is looked at straight on.
    */
   orthographic(halfWidth: number, halfHeight: number): void;
+  /**
+   * The x, y and z axes from the origin, `size` long, in red, green and blue. Call it
+   * once, in `build`; calling it again replaces them, and `axes(0)` removes them.
+   */
+  axes(size?: number): void;
   /** The band at the foot of the stage. The last value set stands. */
   caption(value: string): void;
 };
@@ -71,6 +77,7 @@ function makeTarget(state: Shared, size: ViewSize): Viewport3dTarget {
   controls.enableDamping = true;
 
   let caption = '';
+  let axes: THREE.AxesHelper | null = null;
   const target: Viewport3dTarget = {
     scene,
     camera,
@@ -87,6 +94,17 @@ function makeTarget(state: Shared, size: ViewSize): Viewport3dTarget {
       target.controls = new OrbitControls(target.camera, state.bundle.canvas);
       target.controls.enabled = false;
       fitCamera(target.camera, state.size);
+    },
+    axes(size = 1) {
+      if (axes) {
+        scene.remove(axes);
+        axes.dispose();
+        axes = null;
+      }
+      if (size <= 0) return;
+      axes = new THREE.AxesHelper(size);
+      axes.setColors(new THREE.Color(theme.red), new THREE.Color(theme.green), new THREE.Color(theme.blue));
+      scene.add(axes);
     },
     caption(value) {
       // Only when it changed: this runs inside a frame, and rewriting the same text

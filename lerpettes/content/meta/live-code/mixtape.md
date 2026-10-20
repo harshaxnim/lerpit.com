@@ -13,12 +13,12 @@ Every chapter on this site runs the same two-phase frame. The page owns the cloc
 ```js
 export const state = { x: 1, v: 0 };                 // where it starts. optional
 export function step(s, dt, ctx) { }                 // advance it. dt is seconds
-export const viewport2d = { draw(g, s, ctx) { } };   // paint it, in the panel of that name
+export const viewport2d = { draw(sketch, s, ctx) { } };   // paint it, in the panel of that name
 ```
 
 A chapter needs at least one of `step` and a view. Nothing else is required, and nothing else is looked for except `setup(s, ctx)`, which runs once before the first frame.
 
-`dt` arrives already clamped, so a tab left in the background comes back without integrating one enormous step. A view lives under the name of the panel it draws, the same word the chapter's heading uses to ask for that panel, so a chapter with two panels has two views and each one is called `draw`. For `viewport2d`, `g` is a sketch surface in layout pixels, cleared for you. The state is rebuilt on every run, which is what makes pressing run a clean start rather than a continuation.
+`dt` arrives already clamped, so a tab left in the background comes back without integrating one enormous step. A view lives under the name of the panel it draws, the same word the chapter's heading uses to ask for that panel, so a chapter with two panels has two views and each one is called `draw`. For `viewport2d`, `sketch` is a drawing surface, cleared for you: its calls take positions in units with the origin in the middle, and `sketch.pixels` takes layout pixels. The state is rebuilt on every run, which is what makes pressing run a clean start rather than a continuation.
 
 `ctx` is the last argument to everything. It carries the size of the panel (`ctx.view`), the pointer over it (`ctx.input`), the seconds since the run began (`ctx.time`), and the module you compiled from C++ (`ctx.wasm`): the physics can be C++, but a wasm module cannot reach a panel, so copying its numbers out is a file you can open rather than wiring hidden in the lesson. It also reaches the stage: `ctx.controls()` for sliders, `ctx.monitors()` for readings, `ctx.caption()` for the line under the panel.
 

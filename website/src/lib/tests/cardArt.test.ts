@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GROUNDS, toRgb } from '../cardArt/palette';
-import { STYLE_IDS, assignStyles, cardArt } from '../cardArt';
+import { STYLE_IDS, assignStyles, cardArt, collectionPalette } from '../cardArt';
 
 /**
  * The card generator is pure and runs at build time, so everything worth
@@ -27,6 +27,34 @@ const colours = (svg: string): string[] =>
     // per card by design
     .filter((c) => c !== 'none' && !c.startsWith('url('));
 
+describe('collectionPalette', () => {
+  it('is the collection’s, the same whichever lesson asks', () => {
+    // No document goes in: two lessons in one collection get one palette.
+    expect(collectionPalette('Physics engine')).toEqual(collectionPalette('Physics engine'));
+    expect(collectionPalette(' Physics engine ')).toEqual(collectionPalette('Physics engine'));
+  });
+
+  it('gives colours to draw with, visible on the paper', () => {
+    for (const chosen of [undefined, 'Love drop 1974', 'Blue hour 1973', 'Spectrum drop 1975']) {
+      const { colors } = collectionPalette('Meta', chosen);
+      expect(colors.length, String(chosen)).toBeGreaterThanOrEqual(2);
+      for (const value of colors) expect(value).toMatch(/^#[0-9a-f]{6}$/);
+    }
+    // Spectrum drop has a cream and a near-black among its hues; neither is drawn with.
+    const spectrum = collectionPalette('Meta', 'Spectrum drop 1975').colors;
+    expect(spectrum).not.toContain('#211616');
+    expect(spectrum.length).toBeLessThan(11);
+  });
+
+  it('follows the palette a collection chooses', () => {
+    const love = collectionPalette('Meta', 'Love drop 1974').colors;
+    expect(love).not.toEqual(collectionPalette('Meta', 'Blue hour 1973').colors);
+    // Love drop is the warm stripe: its first colour is a yellow-orange, not a blue.
+    const [r, , b] = toRgb(love[0]!);
+    expect(r).toBeGreaterThan(b);
+  });
+});
+
 describe('cardArt', () => {
   it('gives the same document the same card every time', () => {
     const a = cardArt(doc());
@@ -34,6 +62,13 @@ describe('cardArt', () => {
     expect(a.body).toBe(b.body);
     expect(a.style).toBe(b.style);
     expect(a.ground.id).toBe(b.ground.id);
+  });
+
+  it('paints a collection’s cards from the collection’s palette', () => {
+    const named = collectionPalette('Physics engine').id;
+    expect(cardArt(doc()).palette).toBe(named ?? 'generated');
+    expect(cardArt(doc(), { palette: 'Canyon 1974' }).palette).toBe('Canyon 1974');
+    expect(collectionPalette('Physics engine', 'Canyon 1974').id).toBe('Canyon 1974');
   });
 
   it('renders every style without a broken number in it', () => {

@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { createGlyphAtlas } from './glyphAtlas';
+import { colors as theme } from '../../theme';
+import type { Trail } from '../../trail';
 
 /**
  * An immediate-mode face on a retained-mode engine.
@@ -10,41 +13,83 @@ import * as THREE from 'three';
  * where the subject is a line whose length is a number in the state, and where a
  * reader's exercise is four lines of physics rather than scene bookkeeping.
  *
- * So the panel does the bookkeeping and the reader does not. Every call here takes the
- * next object out of a pool, configures it, and marks it used; at the end of the frame
- * whatever went unused is hidden rather than destroyed. The pool settles at the high
- * water mark of a scene and stops allocating, so a loop over a list of any length costs
- * nothing after its first frame and there is no `dispose` anyone can forget.
+ * So the panel does the bookkeeping and the reader does not.
  *
- * Coordinates are the ones a reader expects: pixels, origin at the top left, y down.
- * The camera underneath is an ordinary y-up orthographic one and this maps into it,
- * because a y-flipped frustum reverses winding order and silently culls every face.
+ * Everything a frame draws is written as triangles into one growing vertex buffer and
+ * drawn in a single call: position, colour and texture coordinate per vertex. This used
+ * to be one mesh per shape and a canvas texture per label, and that does not survive
+ * contact with a real sketch: a 300-point trail was 300 draw calls, each with
+ * three.js's per-object work (a transparent double-sided material is even drawn twice,
+ * recompiling its program key both times), and a readout uploaded a texture every
+ * frame. Measured on meta/perf-lab, 3,000 lines took 62ms a frame that way.
+ *
+ * Text is quads over a glyph atlas (glyphAtlas.ts), so it shares the buffer. Shapes
+ * sample the atlas's plain white patch, glyphs are white, and the vertex colour does
+ * the rest. Order in the buffer is the order of the calls, so painting works the way a
+ * 2D context does: a later call covers an earlier one, text included.
+ *
+ * Nothing is created per frame once a scene has reached its high-water mark: the
+ * buffer grows by doubling and is kept, glyphs are rasterised once, and there is no
+ * `dispose` a reader can forget.
+ *
+ * Two coordinate systems, because a diagram has two kinds of number in it:
+ *
+ *   - Positions are in units, the way the maths is written: the origin in the middle,
+ *     x from -1 at the left edge to 1 at the right, y up to `ctx.view.halfHeight`.
+ *     `sketch.circle(s.x, s.y, 8)` puts a particle where the state says it is.
+ *   - Sizes are in pixels: a radius, a line's width, text, an arrowhead. A dot should
+ *     stay a dot and a label stay legible whatever size the panel is.
+ *
+ * `sketch.pixels` is the same set of calls in plain pixels (origin top left, y down),
+ * for anything laid out against the panel's edges rather than the maths.
+ *
+ * The camera underneath is an ordinary y-up orthographic one in pixels, because a
+ * y-flipped frustum reverses winding order and silently culls every face.
  */
-
-/** Pooled objects of one shape, and how many of them this frame has claimed. */
-type Pool<T extends THREE.Object3D> = {
-  items: T[];
-  used: number;
-  make: () => T;
-};
-
-const UNIT_QUAD = new THREE.PlaneGeometry(1, 1);
-const UNIT_CIRCLE = new THREE.CircleGeometry(1, 32);
 
 /** Colours arrive as 0xrrggbb from a reader, or as a CSS string when that is easier. */
 export type Paint = number | string;
 
-export type Sketch2D = {
-  /** A filled rectangle. `x, y` is its top-left corner. */
-  rect(x: number, y: number, width: number, height: number, color?: Paint): void;
-  /** A filled circle centred on `x, y`. */
+/** Points as `[[x, y], ...]` or a flat `[x, y, x, y, ...]`. */
+export type Points = ReadonlyArray<readonly [number, number]> | readonly number[];
+
+/** The drawing calls, in whichever coordinates the object they hang off uses. */
+export type Draw2D = {
+  /** A filled rectangle from corner `x1, y1` to the opposite corner `x2, y2`. */
+  rect(x1: number, y1: number, x2: number, y2: number, color?: Paint): void;
+  /** A filled circle centred on `x, y`. The radius is in pixels. */
   circle(x: number, y: number, radius: number, color?: Paint): void;
-  /** A straight line of real width, unlike WebGL's own, which ignores it. */
+  /** A straight line of real width (pixels), unlike WebGL's own, which ignores it. */
   line(x1: number, y1: number, x2: number, y2: number, color?: Paint, width?: number): void;
-  /** A run of connected segments. Takes `[[x, y], ...]` or a flat `[x, y, x, y, ...]`. */
-  path(points: ReadonlyArray<readonly [number, number]> | readonly number[], color?: Paint, width?: number): void;
-  /** A line of text. `x, y` is its left baseline-ish anchor. */
+  /** A line from `x1, y1` with an arrowhead at `x2, y2`. The head grows with the width. */
+  arrow(x1: number, y1: number, x2: number, y2: number, color?: Paint, width?: number): void;
+  /** A run of connected segments. */
+  path(points: Points, color?: Paint, width?: number): void;
+  /**
+   * A path that fades in from the paper at its first point to `color` at its last:
+   * the history a moving thing leaves behind, oldest first. See `Trail` in
+   * `@lerpit/framework/trail` for keeping one. `fade: false` draws it solid, as `path`.
+   *
+   *   sketch.trail(points, { color: colors.orange, width: 1, fade: false });
+   */
+  trail(points: Points | Trail, options?: { color?: Paint; width?: number; fade?: boolean }): void;
+  /** A line of text, size in pixels. `x` is where it starts; the line is centred on `y`. */
   text(value: string, x: number, y: number, color?: Paint, size?: number): void;
+};
+
+export type Sketch2D = Draw2D & {
+  /** The same calls in pixels: origin at the top left, y down. */
+  pixels: Draw2D;
+  /**
+   * The x and y axes through the origin, edge to edge, x red and y green as in 3D, with
+   * a tick and a label every `ticks` units (0.5 unless given; 0 for none).
+   */
+  axes(ticks?: number): void;
+  /** Units to pixels, for mixing the two: `sketch.pixels.text('A', sketch.px(x) + 6, ...)`. */
+  px(x: number): number;
+  py(y: number): number;
+  /** Pixels per unit: half the panel's width. */
+  unit: number;
   /**
    * The band under the tabs, for a sentence about what the panel is showing.
    *
@@ -55,106 +100,246 @@ export type Sketch2D = {
   caption(value: string): void;
   /** The scene itself, for a chapter that wants three.js rather than this. */
   scene: THREE.Scene;
-  /** The panel box, in the same pixels every call above uses. */
+  /** The panel box in pixels. */
   width: number;
   height: number;
 };
 
-/** Text is rasterised to a texture, which is slow enough to be worth not repeating. */
-const LABEL_CACHE_LIMIT = 64;
+/** Segments in a full circle, as many as the circle mesh this replaced. */
+const CIRCLE_SEGMENTS = 32;
+const CIRCLE_COS = Float32Array.from({ length: CIRCLE_SEGMENTS + 1 }, (_, i) => Math.cos((i / CIRCLE_SEGMENTS) * Math.PI * 2));
+const CIRCLE_SIN = Float32Array.from({ length: CIRCLE_SEGMENTS + 1 }, (_, i) => Math.sin((i / CIRCLE_SEGMENTS) * Math.PI * 2));
+
+/** Floats per vertex: x, y, z, r, g, b, u, v. Interleaved, so a frame is one upload. */
+const STRIDE = 8;
+
+/** Parsed colours, so a CSS string is not parsed again for every shape of every frame. */
+const COLOR_CACHE_LIMIT = 512;
 
 export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) => void) {
-  const labels = new Map<string, THREE.CanvasTexture>();
+  const colors = new Map<Paint, THREE.Color>();
+  const atlas = createGlyphAtlas();
+  let data = new Float32Array(STRIDE * 3 * 1024);
+  let buffer = new THREE.InterleavedBuffer(data, STRIDE).setUsage(THREE.DynamicDrawUsage);
+  let count = 0;
   let caption = '';
   let width = 0;
   let height = 0;
-  let order = 0;
 
-  const flat = <T extends THREE.Object3D>(pool: Pool<T>): T => {
-    if (pool.used === pool.items.length) {
-      const made = pool.make();
-      made.frustumCulled = false;
-      scene.add(made);
-      pool.items.push(made);
-    }
-
-    const item = pool.items[pool.used];
-    pool.used += 1;
-    item.visible = true;
-    // Painter's order, so a later call covers an earlier one the way a 2D context does.
-    item.renderOrder = order;
-    order += 1;
-    return item;
+  const geometry = new THREE.BufferGeometry();
+  const bind = () => {
+    geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(buffer, 3, 0));
+    geometry.setAttribute('color', new THREE.InterleavedBufferAttribute(buffer, 3, 3));
+    geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(buffer, 2, 6));
   };
+  bind();
 
-  const material = () =>
+  const mesh = new THREE.Mesh(
+    geometry,
     new THREE.MeshBasicMaterial({
-      // Depth is meaningless in a flat sketch, and leaving it on makes what is in front
-      // depend on creation order rather than on the order the reader drew things.
+      map: atlas.texture,
+      vertexColors: true,
+      // Depth is meaningless in a flat sketch; order is the order of the calls.
       depthTest: false,
       depthWrite: false,
+      // For the glyphs' edges, and anything a chapter adds to the scene to sort against.
       transparent: true,
-      side: THREE.DoubleSide
-    });
+      // A rect with a negative width faces away; drawn either way, in one pass.
+      side: THREE.DoubleSide,
+      forceSinglePass: true
+    })
+  );
+  mesh.frustumCulled = false;
+  mesh.matrixAutoUpdate = false;
+  scene.add(mesh);
 
-  const quads: Pool<THREE.Mesh> = { items: [], used: 0, make: () => new THREE.Mesh(UNIT_QUAD, material()) };
-  const discs: Pool<THREE.Mesh> = { items: [], used: 0, make: () => new THREE.Mesh(UNIT_CIRCLE, material()) };
-  const sprites: Pool<THREE.Sprite> = {
-    items: [],
-    used: 0,
-    make: () => new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, depthWrite: false, transparent: true }))
+  // The atlas doubled mid-frame: what this frame already wrote points at the old layout.
+  atlas.onGrow = (factor) => {
+    for (let i = 0; i < count; i += 1) {
+      const at = i * STRIDE;
+      data[at + 6] *= factor;
+      data[at + 7] = 1 - (1 - data[at + 7]) * factor;
+    }
   };
 
-  const paint = (mesh: THREE.Mesh, color: Paint) => {
-    const mat = mesh.material as THREE.MeshBasicMaterial;
-    mat.color.set(color as never);
-    return mat;
+  const colorOf = (paint: Paint): THREE.Color => {
+    let color = colors.get(paint);
+    if (!color) {
+      if (colors.size >= COLOR_CACHE_LIMIT) colors.clear();
+      color = new THREE.Color(paint as never);
+      colors.set(paint, color);
+    }
+    return color;
+  };
+
+  /** Room for `vertices` more, doubling the buffer if it must. */
+  const reserve = (vertices: number) => {
+    const need = (count + vertices) * STRIDE;
+    if (need <= data.length) return;
+    let size = data.length;
+    while (size < need) size *= 2;
+    const next = new Float32Array(size);
+    next.set(data.subarray(0, count * STRIDE));
+    data = next;
+    // A bigger array is a new GL buffer. Disposing first gives the old one back; three
+    // uploads the geometry again the next time it draws it.
+    geometry.dispose();
+    buffer = new THREE.InterleavedBuffer(data, STRIDE).setUsage(THREE.DynamicDrawUsage);
+    bind();
+  };
+
+  const vertex = (x: number, y: number, color: THREE.Color, u: number, v: number) => {
+    const i = count * STRIDE;
+    data[i] = x;
+    data[i + 1] = y;
+    data[i + 2] = 0;
+    data[i + 3] = color.r;
+    data[i + 4] = color.g;
+    data[i + 5] = color.b;
+    data[i + 6] = u;
+    data[i + 7] = v;
+    count += 1;
+  };
+
+  /** Two triangles over four corners in world space, in order around the quad, solid. */
+  const quad = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number, color: THREE.Color) => {
+    reserve(6);
+    const { u, v } = atlas.solid;
+    vertex(ax, ay, color, u, v);
+    vertex(bx, by, color, u, v);
+    vertex(cx, cy, color, u, v);
+    vertex(ax, ay, color, u, v);
+    vertex(cx, cy, color, u, v);
+    vertex(dx, dy, color, u, v);
   };
 
   /** Reader y counts down from the top; the camera counts up from the bottom. */
   const worldY = (y: number) => height - y;
 
-  const textureFor = (value: string, size: number, color: Paint): THREE.CanvasTexture => {
-    const key = `${size}|${String(color)}|${value}`;
-    const cached = labels.get(key);
-    if (cached) {
-      return cached;
+  const segment = (x1: number, y1: number, x2: number, y2: number, color: THREE.Color, lineWidth: number) => {
+    const ay = worldY(y1);
+    const by = worldY(y2);
+    const dx = x2 - x1;
+    const dy = by - ay;
+    const length = Math.hypot(dx, dy);
+    if (length === 0) {
+      return;
     }
 
-    const scale = 2;
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('This browser would not give the panel a 2D context to rasterise text with.');
-    }
-
-    const font = `${size * scale}px "Syne", system-ui, sans-serif`;
-    context.font = font;
-    const measured = context.measureText(value);
-    canvas.width = Math.max(1, Math.ceil(measured.width));
-    canvas.height = Math.ceil(size * scale * 1.4);
-
-    // Setting the canvas size resets the context, so the font is set again after it.
-    context.font = font;
-    context.textBaseline = 'middle';
-    context.fillStyle = typeof color === 'number' ? `#${color.toString(16).padStart(6, '0')}` : color;
-    context.fillText(value, 0, canvas.height / 2);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-
-    if (labels.size >= LABEL_CACHE_LIMIT) {
-      // A readout whose text changes every frame would otherwise grow without bound.
-      const oldest = labels.keys().next().value as string;
-      labels.get(oldest)?.dispose();
-      labels.delete(oldest);
-    }
-
-    labels.set(key, texture);
-    return texture;
+    // Half the width, perpendicular to the segment.
+    const nx = (-dy / length) * (lineWidth / 2);
+    const ny = (dx / length) * (lineWidth / 2);
+    quad(x1 + nx, ay + ny, x2 + nx, by + ny, x2 - nx, by - ny, x1 - nx, ay - ny, color);
   };
 
+  /** Arrowhead strokes swept back from `x2, y2`, in pixels; never more than 40% of the arrow. */
+  const head = (x1: number, y1: number, x2: number, y2: number, color: THREE.Color, lineWidth: number) => {
+    const a = Math.atan2(y2 - y1, x2 - x1);
+    const size = Math.min(4 + 2 * lineWidth, 0.4 * Math.hypot(x2 - x1, y2 - y1));
+    segment(x2, y2, x2 - size * Math.cos(a - 0.45), y2 - size * Math.sin(a - 0.45), color, lineWidth);
+    segment(x2, y2, x2 - size * Math.cos(a + 0.45), y2 - size * Math.sin(a + 0.45), color, lineWidth);
+  };
+
+  const paper = new THREE.Color(theme.paper);
+  const faded = new THREE.Color();
+
+  /** Calls `fn` for each consecutive pair of points, in pixels after `map`. */
+  const pairs = (points: Points, toX: (x: number) => number, toY: (y: number) => number, fn: (i: number, n: number, x1: number, y1: number, x2: number, y2: number) => void) => {
+    if (points.length > 0 && typeof points[0] === 'number') {
+      const flat = points as readonly number[];
+      const n = flat.length / 2 - 1;
+      for (let i = 0; i < n; i += 1) {
+        fn(i, n, toX(flat[2 * i]), toY(flat[2 * i + 1]), toX(flat[2 * i + 2]), toY(flat[2 * i + 3]));
+      }
+      return;
+    }
+    const list = points as ReadonlyArray<readonly [number, number]>;
+    const n = list.length - 1;
+    for (let i = 0; i < n; i += 1) {
+      fn(i, n, toX(list[i][0]), toY(list[i][1]), toX(list[i + 1][0]), toY(list[i + 1][1]));
+    }
+  };
+
+  const same = (v: number) => v;
+  const px = (x: number) => width / 2 + (width / 2) * x;
+  const py = (y: number) => height / 2 - (width / 2) * y;
+
+  /** The drawing calls, with positions mapped to pixels by `toX` and `toY`. */
+  const drawIn = (toX: (x: number) => number, toY: (y: number) => number): Draw2D => ({
+    rect(x1, y1, x2, y2, color = 0x2e6da4) {
+      const ax = toX(x1), ay = worldY(toY(y1)), bx = toX(x2), by = worldY(toY(y2));
+      quad(ax, ay, bx, ay, bx, by, ax, by, colorOf(color));
+    },
+    circle(x, y, radius, color = 0x2e6da4) {
+      pixelCircle(toX(x), toY(y), radius, colorOf(color));
+    },
+    line(x1, y1, x2, y2, color = 0x2e6da4, lineWidth = 1.5) {
+      segment(toX(x1), toY(y1), toX(x2), toY(y2), colorOf(color), lineWidth);
+    },
+    arrow(x1, y1, x2, y2, color = 0x2e6da4, lineWidth = 1.5) {
+      const c = colorOf(color);
+      const ax = toX(x1), ay = toY(y1), bx = toX(x2), by = toY(y2);
+      segment(ax, ay, bx, by, c, lineWidth);
+      head(ax, ay, bx, by, c, lineWidth);
+    },
+    path(points, color = 0x2e6da4, lineWidth = 1.5) {
+      const c = colorOf(color);
+      pairs(points, toX, toY, (_i, _n, ax, ay, bx, by) => segment(ax, ay, bx, by, c, lineWidth));
+    },
+    trail(source, { color = 0x2e6da4, width: lineWidth = 1.5, fade = true } = {}) {
+      const c = colorOf(color);
+      const points = 'points' in source ? source.points : source;
+      pairs(points, toX, toY, (i, n, ax, ay, bx, by) => {
+        segment(ax, ay, bx, by, fade ? faded.lerpColors(paper, c, (i + 1) / n) : c, lineWidth);
+      });
+    },
+    text(value, x, y, color = 0x506270, size = 12) {
+      pixelText(value, toX(x), toY(y), colorOf(color), size);
+    }
+  });
+
+  const pixelCircle = (x: number, y: number, radius: number, c: THREE.Color) => {
+    const cy = worldY(y);
+    reserve(CIRCLE_SEGMENTS * 3);
+    const { u, v } = atlas.solid;
+    for (let i = 0; i < CIRCLE_SEGMENTS; i += 1) {
+      vertex(x, cy, c, u, v);
+      vertex(x + CIRCLE_COS[i] * radius, cy + CIRCLE_SIN[i] * radius, c, u, v);
+      vertex(x + CIRCLE_COS[i + 1] * radius, cy + CIRCLE_SIN[i + 1] * radius, c, u, v);
+    }
+  };
+
+  const pixelText = (value: string, x: number, y: number, c: THREE.Color, size: number) => {
+    if (!value) {
+      return;
+    }
+    const centre = worldY(y);
+    let pen = x;
+    for (const char of value) {
+      const g = atlas.glyph(char, size);
+      if (char.trim()) {
+        reserve(6);
+        const left = pen - g.left;
+        const right = left + g.width;
+        const top = centre + g.height / 2;
+        const bottom = centre - g.height / 2;
+        vertex(left, top, c, g.u0, g.v1);
+        vertex(right, top, c, g.u1, g.v1);
+        vertex(right, bottom, c, g.u1, g.v0);
+        vertex(left, top, c, g.u0, g.v1);
+        vertex(right, bottom, c, g.u1, g.v0);
+        vertex(left, bottom, c, g.u0, g.v0);
+      }
+      pen += g.advance;
+    }
+  };
+
+  /** A tick value as a short label: 0.5, -1, 1.25. */
+  const tickLabel = (v: number) => String(Math.round(v * 1000) / 1000);
+
   const api: Sketch2D = {
+    ...drawIn(px, py),
+    pixels: drawIn(same, same),
     scene,
     get width() {
       return width;
@@ -162,57 +347,42 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     get height() {
       return height;
     },
-
-    rect(x, y, w, h, color = 0x2e6da4) {
-      const mesh = flat(quads);
-      mesh.geometry = UNIT_QUAD;
-      paint(mesh, color);
-      mesh.scale.set(w || 0.0001, h || 0.0001, 1);
-      mesh.position.set(x + w / 2, worldY(y + h / 2), 0);
-      mesh.rotation.z = 0;
+    get unit() {
+      return width / 2;
     },
+    px,
+    py,
 
-    circle(x, y, radius, color = 0x2e6da4) {
-      const mesh = flat(discs);
-      paint(mesh, color);
-      mesh.scale.set(radius || 0.0001, radius || 0.0001, 1);
-      mesh.position.set(x, worldY(y), 0);
-      mesh.rotation.z = 0;
-    },
+    axes(ticks = 0.5) {
+      const ox = px(0), oy = py(0);
+      const xColor = colorOf(theme.red);
+      const yColor = colorOf(theme.green);
+      segment(0, oy, width, oy, xColor, 1.5);
+      head(0, oy, width, oy, xColor, 1.5);
+      segment(ox, height, ox, 0, yColor, 1.5);
+      head(ox, height, ox, 0, yColor, 1.5);
+      pixelText('x', width - 12, oy + 14, xColor, 12);
+      pixelText('y', ox + 10, 10, yColor, 12);
+      if (!(ticks > 0)) return;
 
-    line(x1, y1, x2, y2, color = 0x2e6da4, lineWidth = 1.5) {
-      const ax = x1;
-      const ay = worldY(y1);
-      const bx = x2;
-      const by = worldY(y2);
-      const dx = bx - ax;
-      const dy = by - ay;
-      const length = Math.hypot(dx, dy);
-      if (length === 0) {
-        return;
-      }
-
-      const mesh = flat(quads);
-      mesh.geometry = UNIT_QUAD;
-      paint(mesh, color);
-      mesh.scale.set(length, lineWidth, 1);
-      mesh.position.set((ax + bx) / 2, (ay + by) / 2, 0);
-      mesh.rotation.z = Math.atan2(dy, dx);
-    },
-
-    path(points, color = 0x2e6da4, lineWidth = 1.5) {
-      const pairs: Array<[number, number]> = [];
-      if (points.length > 0 && typeof points[0] === 'number') {
-        const flatPoints = points as readonly number[];
-        for (let i = 0; i + 1 < flatPoints.length; i += 2) {
-          pairs.push([flatPoints[i], flatPoints[i + 1]]);
+      const tick = 4;
+      const label = colorOf(theme.muted);
+      const reachX = 1, reachY = height / width;
+      // From the origin outwards, so a tick lands on 0 whatever the step; the last
+      // step before each edge is skipped, where the arrowhead and the name sit.
+      for (let k = 1; k * ticks < reachX - ticks / 2; k += 1) {
+        for (const v of [k * ticks, -k * ticks]) {
+          const x = px(v);
+          segment(x, oy - tick, x, oy + tick, xColor, 1);
+          pixelText(tickLabel(v), x - 6, oy + 14, label, 10);
         }
-      } else {
-        pairs.push(...(points as ReadonlyArray<readonly [number, number]>).map((p) => [p[0], p[1]] as [number, number]));
       }
-
-      for (let i = 0; i + 1 < pairs.length; i += 1) {
-        api.line(pairs[i][0], pairs[i][1], pairs[i + 1][0], pairs[i + 1][1], color, lineWidth);
+      for (let k = 1; k * ticks < reachY - ticks / 2; k += 1) {
+        for (const v of [k * ticks, -k * ticks]) {
+          const y = py(v);
+          segment(ox - tick, y, ox + tick, y, yColor, 1);
+          pixelText(tickLabel(v), ox + 8, y, label, 10);
+        }
       }
     },
 
@@ -226,66 +396,45 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
 
       caption = value;
       setCaption(value);
-    },
-
-    text(value, x, y, color = 0x506270, size = 12) {
-      if (!value) {
-        return;
-      }
-
-      const sprite = flat(sprites);
-      const texture = textureFor(value, size, color);
-      const mat = sprite.material as THREE.SpriteMaterial;
-      mat.map = texture;
-      mat.needsUpdate = true;
-
-      const w = texture.image.width / 2;
-      const h = texture.image.height / 2;
-      sprite.scale.set(w, h, 1);
-      // Sprites are centred; shift so the reader's x, y is the left of the line.
-      sprite.position.set(x + w / 2, worldY(y), 0);
     }
   };
 
   return {
     api,
 
-    /** Start a frame: nothing is claimed, and nothing has been drawn over anything. */
+    /** Start a frame: nothing drawn yet. */
     begin(nextWidth: number, nextHeight: number) {
       width = nextWidth;
       height = nextHeight;
-      quads.used = 0;
-      discs.used = 0;
-      sprites.used = 0;
-      order = 0;
+      count = 0;
     },
 
-    /** End a frame: whatever this frame did not claim is hidden, never destroyed. */
-    end() {
-      for (const pool of [quads, discs, sprites] as Array<Pool<THREE.Object3D>>) {
-        for (let i = pool.used; i < pool.items.length; i += 1) {
-          pool.items[i].visible = false;
-        }
-      }
+    /**
+     * End a frame: upload what was written, and any glyphs rasterised for it.
+     * Says whether the frame drew anything at all, through this face.
+     */
+    end(): boolean {
+      geometry.setDrawRange(0, count);
+      mesh.visible = count > 0;
+      // Only the part this frame wrote goes to the GPU, not the whole buffer.
+      buffer.clearUpdateRanges();
+      buffer.addUpdateRange(0, count * STRIDE);
+      buffer.needsUpdate = true;
+      atlas.flush();
+      return count > 0;
+    },
+
+    /** How many objects this face has put in the scene. */
+    objectCount() {
+      return 1;
     },
 
     dispose() {
-      for (const pool of [quads, discs, sprites] as Array<Pool<THREE.Object3D>>) {
-        for (const item of pool.items) {
-          scene.remove(item);
-          const mat = (item as THREE.Mesh).material;
-          if (Array.isArray(mat)) {
-            mat.forEach((entry) => entry.dispose());
-          } else {
-            mat?.dispose();
-          }
-        }
-        pool.items.length = 0;
-        pool.used = 0;
-      }
-
-      labels.forEach((texture) => texture.dispose());
-      labels.clear();
+      scene.remove(mesh);
+      geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+      atlas.dispose();
+      colors.clear();
     }
   };
 }

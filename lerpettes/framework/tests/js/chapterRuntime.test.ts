@@ -8,8 +8,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * on (enter/exit/resume/dispose, restart, scopes).
  */
 
-vi.mock('@lerpit/libs/live-code/js', () => ({
-  compileCpp: vi.fn(async () => ({ fromCpp: true })),
+// The runtime imports each compiler on its first build, from its own module.
+vi.mock('@lerpit/libs/live-code/js/compileCpp', () => ({
+  compileCpp: vi.fn(async () => ({ fromCpp: true }))
+}));
+vi.mock('@lerpit/libs/live-code/js/compileJs', () => ({
   compileJsFiles: vi.fn((files: Array<{ name: string; text: string }>) => {
     // A "build" in these tests is a module object smuggled in through the file text.
     return (globalThis as Record<string, unknown>).__nextBuild ?? {};
@@ -178,7 +181,9 @@ describe('a module chapter', () => {
         order.push(`setup x=${s.x}`);
       },
       viewport2d: {
-        build: () => order.push('build'),
+        build: () => {
+          order.push('build');
+        },
         draw: (_g: unknown, s: { x: number }) => order.push(`draw x=${s.x}`)
       }
     });

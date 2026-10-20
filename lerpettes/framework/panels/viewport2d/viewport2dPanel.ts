@@ -28,6 +28,8 @@ type Bundle = {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
   sketch: ReturnType<typeof createSketch2D>;
+  /** The canvas shows nothing: the last frame rendered drew nothing. */
+  blank: boolean;
 };
 
 const bundles = new WeakMap<Sketch2D, Bundle>();
@@ -50,7 +52,7 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
     const camera = new THREE.OrthographicCamera(0, Math.max(size.width, 1), Math.max(size.height, 1), 0, -1, 1);
 
     const sketch = createSketch2D(scene, slot.setCaption);
-    bundles.set(sketch.api, { canvas, three, scene, camera, sketch });
+    bundles.set(sketch.api, { canvas, three, scene, camera, sketch, blank: false });
     return sketch.api;
   },
 
@@ -69,7 +71,17 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
       return;
     }
 
-    bundle.sketch.end();
+    // A frame that drew nothing after one that drew nothing changes no pixel. Rendering
+    // it anyway still hands the compositor a new canvas frame sixty times a second, so a
+    // chapter that has not drawn yet costs real CPU. A chapter that adds its own objects
+    // to the scene is never skipped: what it draws is not visible from here.
+    const drew = bundle.sketch.end();
+    const ownObjectsOnly = bundle.scene.children.length === bundle.sketch.objectCount();
+    if (!drew && bundle.blank && ownObjectsOnly) {
+      return;
+    }
+
+    bundle.blank = !drew && ownObjectsOnly;
     bundle.three.render(bundle.scene, bundle.camera);
   },
 

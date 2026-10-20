@@ -75,7 +75,7 @@ when every invariant holds and every reported difference is one the phase meant 
 2. Stage chrome in the player slot: `ctx.controls()`, `ctx.monitors()`, `ctx.caption()` and
    restart for every runtime, state kept under `stage:` keys.
 3. One chapter contract: module source (`code/<id>/js/index.ts` default-exporting
-   `defineChapter({...})`) and editor source (a `lerpit` fence) are the same shape and merge.
+   `createStage({...})`) and editor source (a `lerpit` fence) are the same shape and merge.
 4. Presets on the chapter runtime, live-code runtime retired, `live-code#cpp` on `+viewport2d`.
 5. Lifecycle: runtimes cached per step; `resume()` on returning to the tab instead of
    `enter()`; per-chapter 3D scenes torn down whole; `dt` in seconds from one clock;

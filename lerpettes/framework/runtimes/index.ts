@@ -1,7 +1,7 @@
 /**
  * The runtime helpers a lesson imports.
  *
- * Most chapters need none of these: `defineChapter` (framework/chapter.ts) and the
+ * Most chapters need none of these: `createStage` (framework/chapter.ts) and the
  * panels a heading names cover them. These are presets for the shapes that recur, each
  * a chapter definition underneath, so they share one clock, one stage and one lifecycle.
  *

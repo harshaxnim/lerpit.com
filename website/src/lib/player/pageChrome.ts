@@ -99,10 +99,32 @@ export function createPageChrome(options: PageChromeOptions): PageChrome {
     setArrows(isOpen);
   };
 
+  // A reload keeps the drawer as it was: the dev server reloads the page on every save,
+  // and closing the panel each time hides exactly what the save was meant to show.
+  // Per tab and per page, so another lesson, or a fresh visit, still opens closed.
+  const drawerKey = `lerpit-drawer-open:${window.location.pathname}`;
+  const rememberDrawer = (isOpen: boolean) => {
+    try {
+      if (isOpen) sessionStorage.setItem(drawerKey, '1');
+      else sessionStorage.removeItem(drawerKey);
+    } catch {}
+  };
+  let wasOpen = false;
+  try {
+    wasOpen = sessionStorage.getItem(drawerKey) === '1';
+  } catch {}
+  if (wasOpen && drawerMedia.matches && stagePanel) {
+    // Already open on the first frame rather than sliding in after the reload.
+    stagePanel.style.transition = 'none';
+    stagePanel.classList.add('is-open');
+    void stagePanel.offsetWidth;
+    stagePanel.style.transition = '';
+  }
+
   if (stageToggle) {
     on(stageToggle, 'click', () => {
       if (!drawerMedia.matches || !stagePanel) return;
-      stagePanel.classList.toggle('is-open');
+      rememberDrawer(stagePanel.classList.toggle('is-open'));
       syncDrawer();
       options.onDrawer();
     });
@@ -129,9 +151,9 @@ export function createPageChrome(options: PageChromeOptions): PageChrome {
   };
 
   const sectionUnderByline = () => {
-    // The marker sits on the line where chapter headers freeze, just under the pinned
-    // byline, so the frozen header, the byline's last crumb and the stage agree.
-    const markerY = bylineEl ? bylineEl.getBoundingClientRect().bottom + 1 : window.innerHeight * 0.5;
+    // Half way down the window: a chapter takes over as soon as its header reaches the
+    // middle, while the reader is starting it, not once it has scrolled to the top.
+    const markerY = window.innerHeight * 0.5;
     const sections = sectionEls.map((section) => {
       const rect = section.getBoundingClientRect();
       return { id: section.dataset.sectionId ?? 'intro', contains: rect.top <= markerY && rect.bottom >= markerY, passed: rect.top <= markerY };

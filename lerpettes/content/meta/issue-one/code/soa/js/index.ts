@@ -1,4 +1,4 @@
-import { defineChapter, type LerpetteCtx } from '@lerpit/framework/chapter';
+import { createStage, type LerpetteCtx } from '@lerpit/framework/chapter';
 import type { TableTarget } from '@lerpit/framework/panels/table/tablePanel';
 
 class Vec3View {
@@ -43,7 +43,7 @@ type Spheres = {
  * A struct of arrays: one array per field, and a sphere is an index into all of them.
  * The views above read straight from those arrays, so a row here is assembled, not stored.
  */
-export default defineChapter({
+export default createStage({
   panels: ['table'],
   wasm: () => import('../build/soa.js'),
   table: {
