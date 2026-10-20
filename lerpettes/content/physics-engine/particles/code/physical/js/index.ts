@@ -4,10 +4,7 @@ import { colors } from '@lerpit/framework/theme';
 // Shared parameters
 const RADIUS = 10;
 // The ceiling never moves — only the mass does — so it is a constant, not state.
-// Centred on the rest length below plus the gravity sag at equilibrium, so the
-// ceiling-to-mass span sits around the panel's own centre rather than
-// crowding the top with empty space below.
-const ANCHOR_Y = 0.22;
+const ANCHOR_Y = 0.3;
 const CEILING_HALF_WIDTH = 0.2;
 const HATCH_COUNT = 5;
 const HATCH_LEN = 0.045;
@@ -34,7 +31,7 @@ export default createStage({
     ctx.controls().addBinding(s, 'gravity', { label: 'Gravity', min: 0, max: 10, step: 0.1 });
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
 
-    ctx.monitors().text('stretch', () => (ANCHOR_Y - s.y - s.length).toFixed(2)).fps();
+    ctx.monitors().graph('y', () => s.y).fps();
   },
 
   step(s, dt) {
