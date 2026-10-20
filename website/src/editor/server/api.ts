@@ -9,6 +9,7 @@
  *                                             silently overwrite each other
  *   images beside a mixtape.md                added, never overwritten
  *   new collection and lerpette folders       scaffolded from the templates below
+ *   a new chapter's code/<id>/js/index.ts     scaffolded once, on save; never overwritten
  *
  * Every path is built from validated slugs and checked to resolve inside the content
  * root, so nothing a request says can reach a file outside it.
@@ -404,6 +405,34 @@ async function renameCodeFolder(body: { c: string; l: string; from: string; to: 
   return { status: 200, json: { moved: true } };
 }
 
+/** A new chapter's starting code: state only, so it runs clean under whichever panel the
+ *  heading ends up naming, instead of opening with runtime-missing or chapter-code-unused. */
+const MINIMAL_CHAPTER = `import { createStage } from '@lerpit/framework/chapter';
+
+// A starting point for this chapter. Replace it with real state and a view.
+export default createStage({
+  state: {}
+});
+`;
+
+async function scaffoldChapter(body: { c: string; l: string; id: string }): Promise<Reply> {
+  const c = slug(body.c, 'The collection');
+  const l = slug(body.l, 'The lerpette');
+  if (!CHAPTER_ID.test(body.id ?? '')) throw new ApiError(400, 'Chapter ids are letters, digits, - and _.');
+  if (!fs.existsSync(inside(c, l))) throw new ApiError(404, `${c}/${l} is not there any more.`);
+
+  const codeDir = inside(c, l, 'code', body.id);
+  // Never over a folder that is already there: a rename that lands on a fresh id after
+  // this chapter already had code of its own must not be clobbered.
+  if (fs.existsSync(codeDir)) return { status: 200, json: { scaffolded: false } };
+
+  const module = path.join(codeDir, 'js', 'index.ts');
+  await fsp.mkdir(path.dirname(module), { recursive: true });
+  noteWrite(module);
+  await fsp.writeFile(module, MINIMAL_CHAPTER, 'utf8');
+  return { status: 201, json: { scaffolded: true }, created: [module] };
+}
+
 /** Card defaults the page needs to draw a collection's cards the way the site does. */
 function cardDefaults(): Reply {
   return { status: 200, json: CARD_DEFAULTS };
@@ -432,6 +461,7 @@ export async function handle(method: string, route: string, query: URLSearchPara
       case 'POST render': return await render(json());
       case 'POST image': return await addImage(query, raw);
       case 'POST rename-code': return await renameCodeFolder(json());
+      case 'POST scaffold-chapter': return await scaffoldChapter(json());
       default: throw new ApiError(404, `No editor endpoint ${method} ${route}.`);
     }
   } catch (error) {

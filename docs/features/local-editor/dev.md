@@ -51,7 +51,10 @@ There is no new storage. The files are the model:
 
 A new lerpette is `mixtape.md` (byline, `# Title {#intro +viewport2d}`, one chapter),
 `control.toml` (`status = "draft"`), and `code/first-steps/js/index.ts` (the spring from
-docs/authoring.md), so it opens alive with no problems.
+docs/authoring.md), so it opens alive with no problems. Adding a chapter to an existing
+lerpette gets the same treatment one level down: on save, `scaffold-chapter` writes a
+minimal `code/<id>/js/index.ts` for it, so the new chapter runs its own code instead of
+silently inheriting its nearest neighbour's or sitting there `runtime-missing`.
 
 ## Endpoints
 
@@ -67,6 +70,7 @@ All under `/__lerpit/edit/api/`, JSON in and out.
 | `POST render` | `{ c, l?, chapter?, markdown }` → `{ html, problems }` |
 | `POST image?c&l&name` | raw bytes; images only, 15 MB cap |
 | `POST rename-code` | `{ c, l, from, to }`: moves `code/<from>/`; 409 if `to` exists |
+| `POST scaffold-chapter` | `{ c, l, id }`: writes `code/<id>/js/index.ts` (a `state: {}` stub) if nothing is there yet; `{ scaffolded: false }` and no write if `code/<id>/` already exists |
 
 ## The permission seam
 

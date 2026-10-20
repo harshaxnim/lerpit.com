@@ -86,6 +86,17 @@ describe('what the API will touch', () => {
     expect(data.control.text).toContain('[idle_status]');
   });
 
+  it('refuses a chapter id scaffold-chapter does not accept', async () => {
+    const reply = await handle('POST', 'scaffold-chapter', new URLSearchParams(), json({ c: 'meta', l: 'issue-zero', id: '../../x' }));
+    expect(reply.status).toBe(400);
+  });
+
+  it('does not scaffold over a chapter that already has code', async () => {
+    const reply = await handle('POST', 'scaffold-chapter', new URLSearchParams(), json({ c: 'meta', l: 'issue-zero', id: 'start' }));
+    expect(reply.status).toBe(200);
+    expect(reply.json).toEqual({ scaffolded: false });
+  });
+
   it('renders a preview through the site\'s own pipeline', async () => {
     const reply = await handle('POST', 'render', new URLSearchParams(), json({ c: 'meta', l: 'issue-zero', markdown: 'Some $x^2$ maths and ![a figure](missing.png)' }));
     const data = reply.json as { html: string; problems: Array<{ id: string }> };

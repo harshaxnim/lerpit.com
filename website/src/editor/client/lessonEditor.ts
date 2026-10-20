@@ -695,6 +695,10 @@ export async function startLesson(player: HTMLElement, c: string, l: string) {
         collectionControl.file = saved.hash ? { text: collectionControl.text, hash: saved.hash } : null;
       }
       for (const rename of renames) await api('POST', 'rename-code', { c, l, ...rename });
+      // A freshly added chapter opens with something to run, rather than silently
+      // inheriting its neighbour's runtime or sitting there with runtime-missing.
+      const newChapters = live().filter((entry) => entry.kind === 'chapter' && entry.isNew).map((entry) => entry.fields.id);
+      for (const id of newChapters) await api('POST', 'scaffold-chapter', { c, l, id });
       try {
         localStorage.removeItem(backupKey);
       } catch {}
