@@ -20,7 +20,7 @@ const velocityField = (x: number, y: number, maxSpeed: number, t: number=1.) =>
 export default createStage({
   caption: 'Particles drifting along:\n$v = s\\,(-y, x)$',
   
-  state: { maxSpeed:2, count: 2, particles: [] as Particle[] },
+  state: { maxSpeed:2, count: 2, particles: [] as Particle[], substeps: 1},
 
   setup(s, ctx) {
     const spread = () => {
@@ -34,14 +34,20 @@ export default createStage({
     spread();
     ctx.controls().addBinding(s, 'maxSpeed', { label: 'Max Speed', min: 1e-6, max: 5, step: .1 });
     ctx.controls().addBinding(s, 'count', { label: 'Particles', min: 1, max: 200, step: 1 }).on('change', spread);
+    ctx.controls().addBinding(s, 'substeps', {label: 'Sub-steps', min: 1, max: 50, step: 1});
   },
   
   step(s, dt, ctx) {
     // Wrap a radius beyond each edge, so a particle leaves and enters fully off screen.
     const margin = ctx.view.width ? RADIUS / (ctx.view.width / 2) : 0;
     for (const p of s.particles) {
-      const [vx, vy] = velocityField(p.x, p.y, s.maxSpeed, ctx.time);
-      const x = p.x + vx * dt, y = p.y + vy * dt;
+      let x = p.x, y = p.y;
+      for (let i = 0; i < s.substeps; i += 1)
+      {
+        const [vx, vy] = velocityField(x, y, s.maxSpeed, ctx.time);
+        const sdt = dt/s.substeps;
+        x += vx * sdt, y += vy * sdt;
+      }
       p.x = WRAP ? wrap(x, ctx.view.halfWidth + margin) : x;
       p.y = WRAP ? wrap(y, ctx.view.halfHeight + margin) : y;
       // A wrap jumps across the screen; drop the old trail rather than streak across it.
@@ -56,18 +62,18 @@ export default createStage({
       // Vector field
       const SPACING = 0.05;
       // Arrow length per unit of speed; at speed 0 every arrow is zero length anyway.
-      const reach = (0.3 * SPACING) / s.maxSpeed;
+      const reach = (0.5 * SPACING) / s.maxSpeed;
       const { halfWidth, halfHeight } = ctx.view;
       for (let x = -halfWidth + SPACING / 2; x < halfWidth; x += SPACING) {
         for (let y = -halfHeight + SPACING / 2; y < halfHeight; y += SPACING) {
           const [vx, vy] = velocityField(x, y, s.maxSpeed, ctx.time);
           sketch.arrow(x - vx * reach, y - vy * reach, x + vx * reach, y + vy * reach, colors.gray, 1);
-          sketch.circle(x - vx * reach, y - vy * reach, 1, colors.orange);
+          sketch.circle(x - vx * reach, y - vy * reach, .5, colors.orange);
         }
       }
 
       // Particles
-      for (const p of s.particles) sketch.trail(p.trail, { color: colors.orange, width: 1, fade: false });
+      for (const p of s.particles) sketch.trail(p.trail, { color: colors.orange, width: 2, fade: false });
       for (const p of s.particles) sketch.circle(p.x, p.y, RADIUS, colors.orange);
     },
   },

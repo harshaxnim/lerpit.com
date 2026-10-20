@@ -5,7 +5,7 @@ import { Trail } from '@lerpit/framework/trail';
 // A starting point: a ball on a spring. Replace it with this chapter's own code.
 export default createStage({
   caption: 'A particle on the function:\n$(x,y) = (sin(4t), sin(3t))$',
-  state: { x: 0, y: 0, t: 0, h: Trail.create(500) },
+  state: { x: 0, y: 0, t: 0, h: Trail.create(360) },
   setup(s, ctx) {
     ctx.monitors().text('pos', ()=>`(${s.x.toFixed(1)}, ${s.y.toFixed(1)})`).fps();
   },
@@ -19,7 +19,7 @@ export default createStage({
     draw(sketch, s, ctx) {
       // The curve spans -1..1 both ways; shrink it to fit the panel's shorter side.
       const k = 0.65 * Math.min(1, ctx.view.halfHeight);
-      sketch.trail(s.h.points.map(([x, y]) => [k * x, k * y]), { color: colors.orange, width: 1 });
+      sketch.trail(s.h.points.map(([x, y]) => [k * x, k * y]), { color: colors.orange, width: 2, fade: false});
       sketch.circle(k * s.x, k * s.y, 12, colors.orange);
     }
   }

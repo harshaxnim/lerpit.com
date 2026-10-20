@@ -34,7 +34,40 @@ $$
 \frac{dp}{dt} = v(p), \qquad p = (x, y)
 $$
 
-Applying our field to it, 
+For very simple cases such as these, we could solve it analytically. Applying our field to it,
+
 $$
-\frac{dx}{dt} = -y, \frac{dy}{dt} = x
+\frac{dx}{dt} = -y, \qquad \frac{dy}{dt} = x
+$$
+
+which is satisfied by a circle around the origin:
+
+$$
+x = r\cos(t + \phi), \qquad y = r\sin(t + \phi)
+$$
+
+where the radius $r$ and the starting angle $\phi$ come from where the particle starts.
+
+But for general cases, we need numerical integration to solve this system, which is an approximation. Start from the definition of the derivative:
+
+$$
+\frac{dp}{dt} = \lim_{\epsilon \to 0} \frac{p(t + \epsilon) - p(t)}{\epsilon}
+$$
+
+To approximate it discretely, we replace the limit $\epsilon \to 0$ with a small finite step $\epsilon = \Delta t$:
+
+$$
+\frac{dp}{dt} \approx \frac{p(t + \Delta t) - p(t)}{\Delta t}
+$$
+
+Substituting into $\frac{dp}{dt} = v(p)$:
+
+$$
+\frac{p(t + \Delta t) - p(t)}{\Delta t} = v(p(t))
+$$
+
+and rearranging gives the next position from the current one:
+
+$$
+p(t + \Delta t) = p(t) + \Delta t \, v(p(t))
 $$
