@@ -1,17 +1,17 @@
-import { RotateCcw } from 'lucide-static';
+import { Pause, Play, RotateCcw } from 'lucide-static';
 import { Pane } from 'tweakpane';
 import { createReadingsCard, type Readings, type ReadingsCard } from '../monitors/readings';
 import type { ReadingsView } from '../monitors/view';
 import './chrome.css';
 
 /*
- * The stage's own chrome: the controls card with restart in the top right, the
- * readings card in the top left, and the caption band at the foot.
+ * The stage's own chrome: the controls card with pause and restart in the top right,
+ * the readings card in the top left, and the caption band at the foot.
  *
  * These used to belong to the 3D runtime, which is why only 3D chapters had them. They
  * belong to the stage instead, the slot the player owns, so every chapter gets them
  * whatever panel it draws into: a 2D sketch can graph its energy, a table can have a
- * slider, and restart means the same thing everywhere.
+ * slider, and pause and restart mean the same thing everywhere.
  *
  * Each chapter gets its own set of cards (an owner). Moving to another chapter hides
  * the set rather than destroying it, so coming back finds the cards as the reader
@@ -40,6 +40,8 @@ export type StageOwner = {
   pin(value: string | null): void;
   /** Offer a restart button that calls this, or take it away with null. */
   restartable(run: (() => void) | null): void;
+  /** Offer a pause/resume toggle that calls this with the next paused state, or take it away with null. */
+  pausable(run: ((paused: boolean) => void) | null): void;
   /** The chapter has finished adding readings: apply the starting view. */
   settle(): void;
   /** Sample the readings that are due. Once per frame, after the frame was drawn. */
@@ -89,6 +91,9 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
     let caption = '';
     let pinned: string | null = null;
     let restartRun: (() => void) | null = null;
+    let pauseRun: ((paused: boolean) => void) | null = null;
+    /** The button's own toggle state: presentation only, the runtime is told on every flip. */
+    let paused = false;
 
     // Each corner's contents live in a wrapper that takes no box of its own, so the
     // cards lay out exactly as if they were the corner's direct children.
@@ -100,6 +105,7 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
     let card: HTMLElement | null = null;
     let head: HTMLElement | null = null;
     let restartButton: HTMLButtonElement | null = null;
+    let pauseButton: HTMLButtonElement | null = null;
     let pane: Pane | null = null;
     let readings: ReadingsCard | null = null;
 
@@ -118,7 +124,7 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
       if (!restartRun) {
         restartButton?.remove();
         restartButton = null;
-        if (card && !pane) {
+        if (card && !pane && !pauseButton) {
           card.remove();
           card = null;
           head = null;
@@ -137,6 +143,43 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
       restartButton.querySelector('svg')?.setAttribute('aria-hidden', 'true');
       restartButton.addEventListener('click', () => restartRun?.());
       parts.head.append(restartButton);
+    };
+
+    // To restart's left: a toggle, so its own icon/aria-pressed are presentation state
+    // kept here, the same way the controls title keeps its own fold state.
+    const applyPauseState = () => {
+      if (!pauseButton) return;
+      pauseButton.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+      pauseButton.title = paused ? 'Resume' : 'Pause';
+      pauseButton.setAttribute('aria-pressed', String(paused));
+      pauseButton.innerHTML = paused ? Play : Pause;
+      pauseButton.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+    };
+
+    const syncPause = () => {
+      if (!pauseRun) {
+        pauseButton?.remove();
+        pauseButton = null;
+        if (card && !pane && !restartButton) {
+          card.remove();
+          card = null;
+          head = null;
+        }
+        return;
+      }
+
+      if (pauseButton) return;
+      const parts = ensureCard();
+      pauseButton = document.createElement('button');
+      pauseButton.type = 'button';
+      pauseButton.className = 'lerpette-stage__icon';
+      pauseButton.addEventListener('click', () => {
+        paused = !paused;
+        applyPauseState();
+        pauseRun?.(paused);
+      });
+      parts.head.append(pauseButton);
+      applyPauseState();
     };
 
     const owner: StageOwner & { dispose(): void } = {
@@ -192,6 +235,11 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         syncRestart();
       },
 
+      pausable(run) {
+        pauseRun = run;
+        syncPause();
+      },
+
       settle() {
         readings?.settle();
         // Slider values the reader set before a restart go back on the new pane, which
@@ -238,15 +286,20 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         card = null;
         head = null;
         restartButton = null;
+        pauseButton = null;
+        paused = false;
         trayItems.replaceChildren();
         monitorItems.replaceChildren();
-        // Restart is offered by the runtime, not by the cards, so it survives them.
+        // Pause and restart are offered by the runtime, not by the cards, so they
+        // survive them; pause always comes back unpaused, since a fresh run is running.
+        syncPause();
         syncRestart();
       },
 
       dispose() {
         owner.reset(false);
         restartRun = null;
+        pauseRun = null;
         caption = '';
         owner.hide();
       }

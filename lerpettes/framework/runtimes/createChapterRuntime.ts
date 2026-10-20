@@ -82,6 +82,9 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
   let time = 0;
   /** Set whenever the model moved, so a `change` panel knows it has work to do. */
   let dirty = true;
+  /** The reader's own pause, independent of running/entered: scrolling away and back,
+   *  or the tab going hidden and visible, must not silently resume it. */
+  let userPaused = false;
   /** Bumped by every run, so an older run still awaiting its setup knows to give up. */
   let runToken = 0;
   /** Whether a run has started, i.e. whether there is anything to end. */
@@ -166,9 +169,10 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
 
   const frame = (nowMs: number) => {
     if (!running) return;
-    if (document.hidden) {
-      // Hidden tabs throttle rather than stop, which burns battery drawing what nobody
-      // is looking at. The clock is reset so returning is not one enormous step.
+    if (document.hidden || userPaused) {
+      // A hidden tab and the reader's own pause both idle the clock rather than stop
+      // it, so neither burns battery nor wastes a frame nobody is looking at, and
+      // resuming is never one enormous step.
       lastMs = 0;
       raf = window.requestAnimationFrame(frame);
       return;
@@ -266,6 +270,7 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     state = freshState(code.state);
     time = 0;
     live = true;
+    userPaused = false;
 
     if (model.setup) {
       try {
@@ -288,7 +293,11 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     }
 
     ctx?.stage.settle();
-    const restartable = def.restart ?? Boolean(model.step);
+    const hasStep = Boolean(model.step);
+    // Registered before restart, so it lands to restart's left: a plain card-head
+    // append puts each new button after what is already there.
+    ctx?.stage.pausable(hasStep ? (next) => (userPaused = next) : null);
+    const restartable = def.restart ?? hasStep;
     ctx?.stage.restartable(restartable ? () => rerun?.() : null);
     dirty = true;
     tick(0);
@@ -416,6 +425,7 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
       entered = false;
       reporter = null;
       rerun = null;
+      userPaused = false;
       views = new Map();
       model = {};
       wasm = null;

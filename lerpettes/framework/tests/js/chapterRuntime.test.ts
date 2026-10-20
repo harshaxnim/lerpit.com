@@ -100,6 +100,7 @@ function fakeStage() {
   return {
     captions: [] as string[],
     restart: null as null | (() => void),
+    pause: null as null | ((paused: boolean) => void),
     resets: [] as boolean[],
     settled: 0,
     ticks: 0,
@@ -111,6 +112,9 @@ function fakeStage() {
     pin: vi.fn(),
     restartable(run: (() => void) | null) {
       this.restart = run;
+    },
+    pausable(run: ((paused: boolean) => void) | null) {
+      this.pause = run;
     },
     settle() {
       this.settled += 1;
@@ -252,6 +256,67 @@ describe('a module chapter', () => {
     const refused = fakeStage();
     await createChapterRuntime({ restart: false, step: () => undefined }).mount(context(fakeStack([fakePanel('canvas')]), refused));
     expect(refused.restart).toBeNull();
+  });
+
+  it('offers pause to any chapter that moves, even with restart turned off', async () => {
+    const still = fakeStage();
+    await createChapterRuntime({ canvas: { draw: () => undefined } }).mount(context(fakeStack([fakePanel('canvas')]), still));
+    expect(still.pause).toBeNull();
+
+    const steppingNoRestart = fakeStage();
+    await createChapterRuntime({ restart: false, step: () => undefined }).mount(context(fakeStack([fakePanel('canvas')]), steppingNoRestart));
+    expect(steppingNoRestart.pause).toBeTypeOf('function');
+    expect(steppingNoRestart.restart).toBeNull();
+  });
+
+  it('pausing stops step from being called, and resuming continues it', async () => {
+    const seen: number[] = [];
+    const stack = fakeStack([fakePanel('canvas')]);
+    const stage = fakeStage();
+    const runtime = createChapterRuntime({ step: () => seen.push(1), canvas: { draw: () => undefined } });
+    const ctx = context(stack, stage);
+    await runtime.mount(ctx);
+    runtime.enter?.(ctx);
+
+    runFrame(16); // primes the clock
+    runFrame(16); // a real step, so the loop is warmed up
+    expect(seen).toHaveLength(1);
+
+    stage.pause!(true);
+    runFrame(16);
+    runFrame(16);
+    expect(seen).toHaveLength(1); // frozen: still just the one step from before
+
+    stage.pause!(false);
+    runFrame(16); // primes again, since the clock was reset while paused
+    runFrame(16);
+    expect(seen).toHaveLength(2);
+  });
+
+  it('a restart always resumes, even if the chapter was paused', async () => {
+    const seen: number[] = [];
+    const stack = fakeStack([fakePanel('canvas')]);
+    const stage = fakeStage();
+    const runtime = createChapterRuntime({ step: () => seen.push(1), canvas: { draw: () => undefined } });
+    const ctx = context(stack, stage);
+    await runtime.mount(ctx);
+    runtime.enter?.(ctx);
+
+    runFrame(16);
+    runFrame(16);
+    expect(seen).toHaveLength(1);
+
+    stage.pause!(true);
+    runFrame(16);
+    expect(seen).toHaveLength(1);
+
+    stage.restart!();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    runFrame(16); // primes again, picking up where the ongoing loop's clock left off
+    runFrame(16);
+    expect(seen).toHaveLength(2);
   });
 
   it('draws only the panel on screen, and a change panel only when the state moved', async () => {

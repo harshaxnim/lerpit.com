@@ -116,9 +116,13 @@ a view shows it and should not change it. Each run starts from a fresh copy of `
 | `ctx.monitors()` | the stage's readings card: `.number`, `.vector`, `.graph`, `.meter`, `.text`, `.fps`, then `.expand()` (every reading) or `.mini(label)` (one reading alone, the default) |
 | `ctx.caption(text)` | the line under the panel |
 
-Controls, readings and restart are the stage's, so every chapter has them whatever panel
-it draws into. Restart is offered to any chapter with a `step` (set `restart: false` to
-hide it); it starts a fresh run and keeps the reader's slider values and folds.
+Controls, readings, pause and restart are the stage's, so every chapter has them whatever
+panel it draws into. Both are offered to any chapter with a `step`; restart can be turned
+off with `restart: false`, but pause cannot, since it freezes the run rather than ending
+it. Restart starts a fresh run and keeps the reader's slider values and folds. Pause
+freezes the model, the panel and the readings exactly where they are — time stops
+advancing, nothing in state changes — and keeps that even if the reader scrolls away and
+back; only a restart clears it.
 
 ### As a module
 
