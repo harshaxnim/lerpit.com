@@ -4,22 +4,28 @@ import { colors } from '@lerpit/framework/theme';
 // Shared parameters
 const RADIUS = 10;
 // The ceiling never moves — only the mass does — so it is a constant, not state.
-// Low enough that the ceiling-to-mass span sits around the panel's own centre
-// rather than crowding the top with empty space below.
-const ANCHOR_Y = 0.32;
+// Centred on the rest length below plus the gravity sag at equilibrium, so the
+// ceiling-to-mass span sits around the panel's own centre rather than
+// crowding the top with empty space below.
+const ANCHOR_Y = 0.22;
 const CEILING_HALF_WIDTH = 0.2;
 const HATCH_COUNT = 5;
 const HATCH_LEN = 0.045;
-const SPRING_COILS = 14;
+// Kept odd, so the zigzag's interior points (SPRING_COILS - 1, even) end on
+// the opposite side from where they started — a mirrored, centred coil
+// rather than one that leans to whichever side it happened to start on.
+const SPRING_COILS = 17;
 const SPRING_AMPLITUDE = 0.045;
 // A short straight run before the first coil and after the last, so the zigzag
 // doesn't run flush into the ceiling or the mass.
-const SPRING_LEAD = 0.06;
+const SPRING_LEAD = 0.035;
 
 export default createStage({
   caption: 'A mass hanging from a spring:\n$F = k(\\Delta l) - mg$',
 
-  state: { mass: 1, k: 20, length: 0.5, gravity: 3, y: ANCHOR_Y - 0.5, v: 0, substeps: 1 },
+  // A shorter rest length than a free-floating spring would use: this one
+  // reads better compact, with the coil doing the work rather than bare wire.
+  state: { mass: 1, k: 20, length: 0.3, gravity: 3, y: ANCHOR_Y - 0.3, v: 0, substeps: 1 },
 
   setup(s, ctx) {
     ctx.controls().addBinding(s, 'mass', { label: 'Mass', min: 0.2, max: 4, step: 0.1 });
