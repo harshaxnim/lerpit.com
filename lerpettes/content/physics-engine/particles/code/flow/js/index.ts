@@ -62,7 +62,7 @@ export default createStage({
         for (let y = -halfHeight + SPACING / 2; y < halfHeight; y += SPACING) {
           const [vx, vy] = velocityField(x, y, s.maxSpeed, ctx.time);
           sketch.arrow(x - vx * reach, y - vy * reach, x + vx * reach, y + vy * reach, colors.gray, 1);
-          sketch.circle(x - vx * reach, y - vy * reach, 1.5, colors.orange);
+          sketch.circle(x - vx * reach, y - vy * reach, 1, colors.orange);
         }
       }
 
