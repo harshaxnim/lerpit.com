@@ -7,10 +7,10 @@ const RADIUS = 10;
 // Low enough that the ceiling-to-mass span sits around the panel's own centre
 // rather than crowding the top with empty space below.
 const ANCHOR_Y = 0.32;
-const CEILING_HALF_WIDTH = 0.34;
-const HATCH_COUNT = 7;
+const CEILING_HALF_WIDTH = 0.2;
+const HATCH_COUNT = 5;
 const HATCH_LEN = 0.045;
-const SPRING_COILS = 8;
+const SPRING_COILS = 14;
 const SPRING_AMPLITUDE = 0.045;
 // A short straight run before the first coil and after the last, so the zigzag
 // doesn't run flush into the ceiling or the mass.
@@ -66,7 +66,7 @@ export default createStage({
         points.push([i % 2 === 1 ? SPRING_AMPLITUDE : -SPRING_AMPLITUDE, y]);
       }
       points.push([0, s.y + lead], [0, s.y]);
-      sketch.path(points, colors.slate, 2);
+      sketch.path(points, colors.blue, 2);
 
       // The mass.
       sketch.circle(0, s.y, RADIUS, colors.orange);
