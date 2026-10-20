@@ -4,7 +4,9 @@ import { colors } from '@lerpit/framework/theme';
 // Shared parameters
 const RADIUS = 10;
 // The ceiling never moves — only the mass does — so it is a constant, not state.
-const ANCHOR_Y = 0.8;
+// Low enough that the ceiling-to-mass span sits around the panel's own centre
+// rather than crowding the top with empty space below.
+const ANCHOR_Y = 0.32;
 const CEILING_HALF_WIDTH = 0.34;
 const HATCH_COUNT = 7;
 const HATCH_LEN = 0.045;
@@ -15,7 +17,7 @@ const SPRING_AMPLITUDE = 0.045;
 const SPRING_LEAD = 0.06;
 
 export default createStage({
-  caption: 'A mass hanging from a spring:\n$F = k(\\ell - \\ell_0) - mg$',
+  caption: 'A mass hanging from a spring:\n$F = k(\\Delta l) - mg$',
 
   state: { mass: 1, k: 20, length: 0.5, gravity: 3, y: ANCHOR_Y - 0.5, v: 0, substeps: 1 },
 
@@ -46,12 +48,12 @@ export default createStage({
 
   viewport2d: {
     draw(sketch, s) {
-      // The ceiling: a solid bar with hatching below it, the textbook symbol for a
-      // fixed support.
+      // The ceiling: a solid bar with hatching above it (the solid side), the
+      // textbook symbol for a fixed support — hatching below would read as ground.
       sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y, CEILING_HALF_WIDTH, ANCHOR_Y, colors.charcoal, 2.5);
       for (let i = 0; i <= HATCH_COUNT; i += 1) {
         const x = -CEILING_HALF_WIDTH + (i / HATCH_COUNT) * (2 * CEILING_HALF_WIDTH);
-        sketch.line(x, ANCHOR_Y, x - HATCH_LEN, ANCHOR_Y - HATCH_LEN, colors.charcoal, 1.5);
+        sketch.line(x, ANCHOR_Y, x - HATCH_LEN, ANCHOR_Y + HATCH_LEN, colors.charcoal, 1.5);
       }
 
       // The spring: a zigzag between the ceiling and the mass, the textbook symbol
@@ -66,10 +68,8 @@ export default createStage({
       points.push([0, s.y + lead], [0, s.y]);
       sketch.path(points, colors.slate, 2);
 
-      // The mass, labelled the way the spring and the ceiling are.
+      // The mass.
       sketch.circle(0, s.y, RADIUS, colors.orange);
-      sketch.text('m', 0.08, s.y, colors.ink, 13);
-      sketch.text('k', 0.08, (ANCHOR_Y + s.y) / 2, colors.muted, 12);
     },
   },
 });
