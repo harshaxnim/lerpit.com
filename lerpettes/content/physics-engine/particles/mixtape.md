@@ -57,12 +57,6 @@ $$
 To approximate it discretely, we replace the limit $\epsilon \to 0$ with a small finite step $\epsilon = \Delta t$:
 
 $$
-\frac{dp}{dt} \approx \frac{p(t + \Delta t) - p(t)}{\Delta t}
-$$
-
-Substituting into $\frac{dp}{dt} = v(p)$:
-
-$$
 \frac{p(t + \Delta t) - p(t)}{\Delta t} = v(p(t))
 $$
 
@@ -71,3 +65,13 @@ and rearranging gives the next position from the current one:
 $$
 p(t + \Delta t) = p(t) + \Delta t \, v(p(t))
 $$
+
+We're using an integration scheme to find a particle's position in the next timestep given the current position, velocity and step size. Intuitively you may observe that the smaller the timestep, the more accurate the output is in following the circle. If you look into the panel you should see how our paritcles aren't actually following a circle, but are rather spiraling out. This is because we are using the velocity at timestep $t$ and using the same velocity over $\Delta{t}$.
+
+> Check out the `Controls -> Sub-steps`, and observe how changing the number of sub-steps impacts the particle's trajectory.
+
+Contrast with the previous solution where we had a closed form solution for particle positions, where the step size doesn't really matter.
+
+## Let's get _Physical_ {#physical}
+
+Now we will drive particles based on Newton's law $F=ma$. To introduce forces like gravity and springs, we will need to introduce a measure of inertia for these particles, i.e., mass.
