@@ -132,6 +132,23 @@ describe('document checks', () => {
     expect(problems[0].message).toContain('<div>');
   });
 
+  it('reports an open LERP: note, once per lerpette, pointing at the first one', async () => {
+    await lesson(
+      'a',
+      '# A\n\nS.\n\n<!-- LERP: write a second paragraph -->\n\n## One {#one +canvas}\n\nT.\n',
+      { 'lerpettes/content/physics-engine/a/code/one/js/index.ts': `${MODULE}// LERP: add a control for x\n` }
+    );
+    const problems = (await loadLibrary()).mixtapes[0].problems.filter((p) => p.id === 'note-open');
+    expect(problems).toHaveLength(1);
+    expect(problems[0].message).toContain('2 open author notes');
+    expect(problems[0].where).toBe('physics-engine/a/mixtape.md:7');
+  });
+
+  it('does not report note-open when there is no LERP: tag', async () => {
+    await lesson('a', '# A\n\nS.\n\n<!-- a note to self -->\n\n## One {#one +canvas}\n\nT.\n');
+    expect(ids((await loadLibrary()).mixtapes[0].problems)).not.toContain('note-open');
+  });
+
   it('every problem carries a catalogued id', async () => {
     const { PROBLEMS } = await import('../problems');
     await lesson('a', '# A\n\n## One\n\n<span>x</span>\n\n## One\n', {

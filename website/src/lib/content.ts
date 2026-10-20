@@ -564,6 +564,7 @@ async function parseMixtapeDocument(mixtapeDir: string, report: Report, control:
 
   reportCodeDirectory(mixtapeDir, steps, report);
   reportControlChapters(control, steps, report, path.join(mixtapeDir, CONTROL_FILE));
+  await reportOpenNotes(mixtapeDir, report);
 
   return {
     title: titleSpec.title,
@@ -849,6 +850,59 @@ function reportCodeDirectory(mixtapeDir: string, steps: LerpetteStep[], report: 
       );
     }
   }
+}
+
+// A LERP: note is an author's own inline reminder, left in whichever comment syntax the
+// file already uses (<!-- LERP: ... --> in Markdown, // LERP: ... in TOML or code). It
+// never reaches a reader — comments are dropped the same as the "note to self" case
+// reportRawHtml already lets through — so this just keeps an open one from being
+// forgotten rather than protecting anything the reader would see.
+const NOTE_TAG_EXTENSIONS = new Set([
+  '.md', '.toml', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp'
+]);
+
+async function reportOpenNotes(mixtapeDir: string, report: Report) {
+  // mixtape.md and control.toml before code/, so "the first one" points an author at
+  // the document they are reading rather than wherever a directory walk lands first.
+  const topLevel = (await fsp.readdir(mixtapeDir, { withFileTypes: true }))
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.join(mixtapeDir, entry.name));
+  const codeDir = path.join(mixtapeDir, 'code');
+  const codeFiles = fs.existsSync(codeDir) ? await walkFiles(codeDir) : [];
+  const files = [...topLevel, ...codeFiles].filter((file) => NOTE_TAG_EXTENSIONS.has(path.extname(file)));
+  let count = 0;
+  let firstWhere = '';
+
+  for (const file of files) {
+    let text: string;
+    try {
+      text = await fsp.readFile(file, 'utf8');
+    } catch {
+      continue;
+    }
+
+    text.split('\n').forEach((line, index) => {
+      if (!line.includes('LERP:')) {
+        return;
+      }
+
+      count += 1;
+      if (!firstWhere) {
+        firstWhere = `${file}:${index + 1}`;
+      }
+    });
+  }
+
+  if (count === 0) {
+    return;
+  }
+
+  report(
+    'note-open',
+    `${count} open author note${count === 1 ? '' : 's'} (\`LERP:\`) in this lerpette.`,
+    `Run \`lerp-assist\` to resolve ${count === 1 ? 'it' : 'them'}, or delete the tag${count === 1 ? '' : 's'} by hand.`,
+    firstWhere
+  );
 }
 
 function parseMarkdown(source: string): MarkdownRoot {

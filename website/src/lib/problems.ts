@@ -37,6 +37,7 @@ export const PROBLEMS = {
   'front-matter': { area: 'document', title: 'The document starts with a --- front-matter block', costs: 'It renders as a rule and a stray heading.' },
   'raw-html': { area: 'document', title: 'Raw HTML in prose', costs: 'The tag and what it wraps are left out of the page.' },
   'link-missing': { area: 'document', title: 'A relative link or image points at a missing file', costs: 'A broken link or image.' },
+  'note-open': { area: 'document', title: 'An author left a `LERP:` note unresolved', costs: 'Nothing to the reader — the tag is already invisible, like any comment — but the task behind it is still pending.' },
 
   'chapters-missing': { area: 'chapters', title: 'A lerpette has no ## chapters', costs: 'There is no stage and nothing to play.' },
   'chapter-id-missing': { area: 'chapters', title: 'A chapter heading has no {#id}', costs: 'Its id is guessed from the title, so renaming it moves its code folder and breaks links.' },

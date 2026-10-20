@@ -30,6 +30,7 @@ Generated from `website/src/lib/problems.ts`; a test fails when the two disagree
 | `front-matter` | The document starts with a --- front-matter block | It renders as a rule and a stray heading. | Delete the `---` block; settings go in control.toml. |
 | `raw-html` | Raw HTML in prose | The tag and what it wraps are left out of the page. | Write it in Markdown. HTML comments (`<!-- -->`) are fine and are dropped. |
 | `link-missing` | A relative link or image points at a missing file | A broken link or image. | Add the file beside the document, or correct the path. |
+| `note-open` | An author left a `LERP:` note unresolved | Nothing to the reader — the tag is already invisible, like any comment — but the task behind it is still pending. | Run `lerp-assist` to resolve it, or delete the `LERP:` tag by hand. |
 
 ## Chapters and headings
 

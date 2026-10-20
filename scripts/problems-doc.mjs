@@ -20,6 +20,7 @@ const FIX = {
   'front-matter': 'Delete the `---` block; settings go in control.toml.',
   'raw-html': 'Write it in Markdown. HTML comments (`<!-- -->`) are fine and are dropped.',
   'link-missing': 'Add the file beside the document, or correct the path.',
+  'note-open': 'Run `lerp-assist` to resolve it, or delete the `LERP:` tag by hand.',
   'chapters-missing': 'Add `## Title {#id}` headings.',
   'chapter-id-missing': 'Write the heading as `## Title {#id}`.',
   'chapter-id-duplicate': 'Give each chapter its own id.',
