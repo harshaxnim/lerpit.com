@@ -175,7 +175,17 @@ pre > code {
 
 /* Whitespace marks (content.ts markWhitespace), after Shiki's renderWhitespace and VS
    Code's: drawn over the real characters, so widths never change, faint enough to read
-   past, and never part of a copy since generated content isn't. */
+   past, and never part of a copy since generated content isn't. Hidden until the
+   pointer is over the block: a block in prose is read far more than it is copied, and
+   at rest the marks were noise. --ws-mark is their strength, 0 at rest. */
+pre {
+  --ws-mark: 0;
+}
+
+pre:hover {
+  --ws-mark: 0.25;
+}
+
 pre .ws {
   position: relative;
 }
@@ -184,7 +194,8 @@ pre .ws::before {
   position: absolute;
   inset: 0;
   color: currentColor;
-  opacity: 0.25;
+  opacity: var(--ws-mark);
+  transition: opacity 0.15s ease;
   pointer-events: none;
 }
 
@@ -213,7 +224,8 @@ pre .ws--tab::after {
   border-width: 1px 1px 0 0;
   transform: translate(0, -50%) rotate(45deg);
   transform-origin: center;
-  opacity: 0.25;
+  opacity: var(--ws-mark);
+  transition: opacity 0.15s ease;
   pointer-events: none;
 }
 
@@ -1244,6 +1256,20 @@ html .katex {
   white-space: pre-wrap;
   width: 80%;
   max-width: none;
+}
+
+/* A display equation in a caption sits right under its line of text: KaTeX's 1em
+   margins were sized for prose, and in a caption they doubled its height. */
+.lerpette-stage__status .katex-display {
+  margin: 0.15rem 0 0;
+  padding: 0.1rem 0 0;
+}
+
+/* The chapter's own code threw: the same band in the authoring-problem colours, so it
+   reads as not the caption. The tint lies over the band's own paper to stay legible. */
+.lerpette-stage__status.is-fault {
+  background: linear-gradient(var(--warn-soft), var(--warn-soft)), rgba(255, 253, 246, 0.88);
+  border-color: var(--warn-line);
 }
 
 .lerpette-stage__status:empty,

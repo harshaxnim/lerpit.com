@@ -1,5 +1,7 @@
 import type { EditorLayer } from '@lerpit/framework/runtimes/editorLayer';
+import { sourceLocation } from '@lerpit/framework/runtimes/errorLocation';
 import { setCollectionColors } from '@lerpit/framework/theme';
+import { captionHtml } from './player/caption';
 import { createPageChrome } from './player/pageChrome';
 import { createStagePlayer, initialPanelLabel, type ClientStep } from './player/stagePlayer';
 
@@ -86,7 +88,20 @@ function initPlayer(root: HTMLElement, host: HTMLElement, config: PlayerConfig) 
         console.error(`[lerpette] step "${stepId}" failed to activate`, error);
         // The scroll sync already moved on optimistically; let it retry this section.
         page.forget();
-        if (caption) caption.textContent = 'This step failed to load.';
+        if (!caption) return;
+        // Under npm run dev, code that does not parse arrives as a SyntaxError naming the
+        // file and line (chapterSyntaxErrors in astro.config.mjs).
+        const said = captionHtml(error instanceof SyntaxError
+          ? `This chapter's code does not parse:\n\`${error.message}\``
+          : 'This step failed to load.');
+        caption.innerHTML = said;
+        caption.classList.add('is-fault');
+        // Code that threw while loading or mounting gets its message and line, once the
+        // source map is read, unless another chapter has taken the caption since.
+        if (error instanceof SyntaxError || !(error instanceof Error)) return;
+        void sourceLocation(error).then((at) => {
+          if (at && caption.innerHTML === said) caption.innerHTML = captionHtml(`This chapter's code threw:\n\`${at}: ${error.message}\``);
+        });
       });
     return chain;
   };

@@ -77,8 +77,10 @@ export function createStagePlayer(options: StagePlayerOptions): StagePlayer {
   const readings = document.createElement('div');
   readings.className = 'lerpette-panel__readings';
 
-  const writeCaption = (value: string) => {
-    if (options.caption) options.caption.innerHTML = captionHtml(value);
+  const writeCaption = (value: string, fault = false) => {
+    if (!options.caption) return;
+    options.caption.innerHTML = captionHtml(value);
+    options.caption.classList.toggle('is-fault', fault);
   };
   const chrome = createStageChrome({ tray, readings, setCaption: writeCaption });
 
@@ -181,39 +183,75 @@ export function createStagePlayer(options: StagePlayerOptions): StagePlayer {
     host.append(readings, tray);
   };
 
+  /**
+   * Take everything off the stage. A chapter that fails to come up leaves it blank
+   * rather than still showing the chapter before it; the next activation builds anew.
+   */
+  const clearStage = () => {
+    for (const id of mounted) {
+      try {
+        runtimes.get(id)?.dispose?.(ctxFor(id));
+      } catch {
+        // Already failing; one runtime failing to clean up must not stop the rest.
+      }
+      chrome.drop(id);
+    }
+    mounted.clear();
+    if (stack) {
+      preferredTab = stack.active()?.panel.name ?? preferredTab;
+      stack.destroy();
+      stack = null;
+    }
+    host.replaceChildren();
+    stackKey = '';
+    shared = new Map();
+    active = null;
+  };
+
+  const enter = async (owner: string) => {
+    const runtime = await runtimeFor(owner);
+    const names = panelNamesFor(owner, runtime);
+
+    if (active) {
+      const leaving = active;
+      // Nothing is on screen until the next chapter has entered, so an activation
+      // that fails part-way leaves no runtime half-running.
+      active = null;
+      await runtimes.get(leaving)?.exit?.(ctxFor(leaving));
+      chrome.owner(leaving).hide();
+    }
+
+    if (names.join(',') !== stackKey) await swapStack(names);
+
+    const stage = chrome.owner(owner);
+    stage.pin(stepsById.get(owner)?.caption ?? null);
+
+    if (!mounted.has(owner)) {
+      // The boxes have to exist before a runtime can claim them.
+      await editorsReady;
+      await runtime.mount(ctxFor(owner));
+      mounted.add(owner);
+    }
+
+    stage.show();
+    await runtime.enter?.(ctxFor(owner));
+    active = owner;
+    announcePanel(true);
+  };
+
   return {
     async activate(stepId) {
       const owner = ownerOf(stepId);
       if (owner === active || !stepsById.has(owner)) return;
-
-      const runtime = await runtimeFor(owner);
-      const names = panelNamesFor(owner, runtime);
-
-      if (active) {
-        const leaving = active;
-        // Nothing is on screen until the next chapter has entered, so an activation
-        // that fails part-way leaves no runtime half-running.
-        active = null;
-        await runtimes.get(leaving)?.exit?.(ctxFor(leaving));
-        chrome.owner(leaving).hide();
+      try {
+        await enter(owner);
+      } catch (error) {
+        clearStage();
+        chrome.drop(owner);
+        // A chapter that loaded but failed to mount builds afresh next time too.
+        runtimes.delete(owner);
+        throw error;
       }
-
-      if (names.join(',') !== stackKey) await swapStack(names);
-
-      const stage = chrome.owner(owner);
-      stage.pin(stepsById.get(owner)?.caption ?? null);
-
-      if (!mounted.has(owner)) {
-        // The boxes have to exist before a runtime can claim them.
-        await editorsReady;
-        await runtime.mount(ctxFor(owner));
-        mounted.add(owner);
-      }
-
-      stage.show();
-      await runtime.enter?.(ctxFor(owner));
-      active = owner;
-      announcePanel(true);
     },
 
     resize() {
@@ -246,6 +284,7 @@ export function createStagePlayer(options: StagePlayerOptions): StagePlayer {
       stack = null;
     }
   };
+
 }
 
 /** The label the drawer shows before anything has loaded. */

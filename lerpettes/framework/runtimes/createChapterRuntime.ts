@@ -11,6 +11,7 @@ import {
 } from '../panels/contract';
 import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '../types';
 import { loadModule } from '../wasm/loadModule';
+import { sourceLocation } from './errorLocation';
 import { clampDelta } from './frameLoop';
 import { byBuild } from '@lerpit/libs/live-code/js/languages';
 import type { EditorFile, FileEditor } from '@lerpit/libs/live-code/js';
@@ -33,6 +34,9 @@ import type { EditorFile, FileEditor } from '@lerpit/libs/live-code/js';
  * (controls, readings, caption, restart) arrives as ctx.stage. Nothing here decides
  * what fills the column.
  */
+
+/** What the dev step button advances by: one frame at 60 fps. */
+const STEP_DT = 1 / 60;
 
 type Model<S extends SceneState = SceneState> = Pick<ChapterDefinition<S>, 'setup' | 'step' | 'dispose'>;
 
@@ -94,6 +98,8 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
 
   let reporter: FileEditor | null = null;
   let faulted = false;
+  /** Counts faults, so a late line number never lands on a newer one's caption. */
+  let faults = 0;
   let listeners: AbortController | null = null;
   const pointers = new Map<string, PointerState>();
   const idlePointer: PointerState = { x: 0, y: 0, down: false, inside: false };
@@ -107,7 +113,14 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     } else {
       // A module chapter has no editor to report in, so it says so where the reader looks.
       console.error(`[lerpit] ${ctx?.currentStepId ?? 'chapter'}: ${where} threw`, error);
-      ctx?.stage.caption(`This chapter's ${where} threw: ${message}`);
+      const stage = ctx?.stage;
+      const said = `This chapter's ${where} threw:\n\`${message}\``;
+      stage?.caption(said, true);
+      // The line follows once the source map is read, unless something else spoke since.
+      const token = ++faults;
+      void sourceLocation(error).then((at) => {
+        if (at && token === faults && stage === ctx?.stage) stage?.caption(`This chapter's ${where} threw:\n\`${at}: ${message}\``, true);
+      });
     }
   };
 
@@ -242,6 +255,7 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
    */
   const run = async (code: Record<string, unknown>, builtWasm?: WasmExports | null) => {
     const token = ++runToken;
+    faults += 1;
     endRun();
 
     let nextWasm: WasmExports | null = builtWasm ?? null;
@@ -270,7 +284,9 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     state = freshState(code.state);
     time = 0;
     live = true;
-    userPaused = false;
+    // Local only: restarting while paused stays paused on the first frame, so the step
+    // button can walk a run from its very start.
+    if (!import.meta.env.DEV) userPaused = false;
 
     if (model.setup) {
       try {
@@ -296,7 +312,10 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     const hasStep = Boolean(model.step);
     // Registered before restart, so it lands to restart's left: a plain card-head
     // append puts each new button after what is already there.
-    ctx?.stage.pausable(hasStep ? (next) => (userPaused = next) : null);
+    if (!hasStep) userPaused = false;
+    ctx?.stage.pausable(hasStep ? (next) => (userPaused = next) : null, userPaused);
+    // Local only: one fixed-dt frame per press, for checking a step by hand.
+    ctx?.stage.steppable(hasStep && import.meta.env.DEV ? () => tick(STEP_DT) : null);
     const restartable = def.restart ?? hasStep;
     ctx?.stage.restartable(restartable ? () => rerun?.() : null);
     dirty = true;

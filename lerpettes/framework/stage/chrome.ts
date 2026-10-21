@@ -1,4 +1,4 @@
-import { Pause, Play, RotateCcw } from 'lucide-static';
+import { Pause, Play, RotateCcw, StepForward } from 'lucide-static';
 import { Pane } from 'tweakpane';
 import { createReadingsCard, type Readings, type ReadingsCard } from '../readings/readings';
 import type { ReadingsView } from '../readings/view';
@@ -31,8 +31,11 @@ export type StageOwner = {
   controls(options?: ControlsOptions): Pane;
   /** The readings in the top-left card, made on first call. See readings/readings.ts. */
   readings(): Readings;
-  /** The band at the foot of the stage. The last value set stands. */
-  caption(value: string): void;
+  /**
+   * The band at the foot of the stage. The last value set stands. `fault` marks it as
+   * the chapter's own error rather than its caption: shown amber, over any pin.
+   */
+  caption(value: string, fault?: boolean): void;
   /**
    * A caption the author fixed outside the code (control.toml's `[caption]`), shown in
    * place of whatever the code says. null lets the code speak again.
@@ -40,8 +43,13 @@ export type StageOwner = {
   pin(value: string | null): void;
   /** Offer a restart button that calls this, or take it away with null. */
   restartable(run: (() => void) | null): void;
-  /** Offer a pause/resume toggle that calls this with the next paused state, or take it away with null. */
-  pausable(run: ((paused: boolean) => void) | null): void;
+  /**
+   * Offer a pause/resume toggle that calls this with the next paused state, or take it
+   * away with null. `startPaused` shows it as paused already: a run that begins held.
+   */
+  pausable(run: ((paused: boolean) => void) | null, startPaused?: boolean): void;
+  /** Offer a step button that pauses and calls this once per press, or take it away with null. */
+  steppable(run: (() => void) | null): void;
   /** The chapter has finished adding readings: apply the starting view. */
   settle(): void;
   /** Sample the readings that are due. Once per frame, after the frame was drawn. */
@@ -69,7 +77,7 @@ export type StageChromeOptions = {
   tray: HTMLElement;
   /** Top-left corner. */
   readings: HTMLElement;
-  setCaption(value: string): void;
+  setCaption(value: string, fault?: boolean): void;
 };
 
 /** Stage choices are kept under these, one map per owner. */
@@ -89,7 +97,9 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
     /** What the reader chose, kept across a restart and cleared by a fresh start. */
     const choices = new Map<string, unknown>();
     let caption = '';
+    let faulted = false;
     let pinned: string | null = null;
+    const writeCaption = () => options.setCaption(faulted ? caption : pinned ?? caption, faulted);
     let restartRun: (() => void) | null = null;
     let pauseRun: ((paused: boolean) => void) | null = null;
     /** The button's own toggle state: presentation only, the runtime is told on every flip. */
@@ -106,6 +116,8 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
     let head: HTMLElement | null = null;
     let restartButton: HTMLButtonElement | null = null;
     let pauseButton: HTMLButtonElement | null = null;
+    let stepButton: HTMLButtonElement | null = null;
+    let stepRun: (() => void) | null = null;
     let pane: Pane | null = null;
     let readingsCard: ReadingsCard | null = null;
 
@@ -120,15 +132,20 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
       return { card, head };
     };
 
+    /** The card goes once nothing is left in it. */
+    const dropEmptyCard = () => {
+      if (card && !pane && !pauseButton && !stepButton && !restartButton) {
+        card.remove();
+        card = null;
+        head = null;
+      }
+    };
+
     const syncRestart = () => {
       if (!restartRun) {
         restartButton?.remove();
         restartButton = null;
-        if (card && !pane && !pauseButton) {
-          card.remove();
-          card = null;
-          head = null;
-        }
+        dropEmptyCard();
         return;
       }
 
@@ -160,11 +177,7 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
       if (!pauseRun) {
         pauseButton?.remove();
         pauseButton = null;
-        if (card && !pane && !restartButton) {
-          card.remove();
-          card = null;
-          head = null;
-        }
+        dropEmptyCard();
         return;
       }
 
@@ -180,6 +193,36 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
       });
       parts.head.append(pauseButton);
       applyPauseState();
+    };
+
+    // Between pause and restart. Stepping a running chapter pauses it first, so one
+    // press is one step and the button beside it says so.
+    const syncStep = () => {
+      if (!stepRun) {
+        stepButton?.remove();
+        stepButton = null;
+        dropEmptyCard();
+        return;
+      }
+
+      if (stepButton) return;
+      const parts = ensureCard();
+      stepButton = document.createElement('button');
+      stepButton.type = 'button';
+      stepButton.className = 'lerpette-stage__icon';
+      stepButton.setAttribute('aria-label', 'Step');
+      stepButton.title = 'Step one frame';
+      stepButton.innerHTML = StepForward;
+      stepButton.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+      stepButton.addEventListener('click', () => {
+        if (!paused && pauseRun) {
+          paused = true;
+          applyPauseState();
+          pauseRun(true);
+        }
+        stepRun?.();
+      });
+      parts.head.append(stepButton);
     };
 
     const owner: StageOwner & { dispose(): void } = {
@@ -220,14 +263,15 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         return readingsCard.readings;
       },
 
-      caption(value) {
+      caption(value, fault = false) {
         caption = value;
-        if (shown === id) options.setCaption(pinned ?? value);
+        faulted = fault;
+        if (shown === id) writeCaption();
       },
 
       pin(value) {
         pinned = value;
-        if (shown === id) options.setCaption(pinned ?? caption);
+        if (shown === id) writeCaption();
       },
 
       restartable(run) {
@@ -235,9 +279,16 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         syncRestart();
       },
 
-      pausable(run) {
+      pausable(run, startPaused = false) {
         pauseRun = run;
+        paused = startPaused;
         syncPause();
+        applyPauseState();
+      },
+
+      steppable(run) {
+        stepRun = run;
+        syncStep();
       },
 
       settle() {
@@ -264,7 +315,7 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         shown = id;
         options.tray.append(trayItems);
         options.readings.append(readingItems);
-        options.setCaption(pinned ?? caption);
+        writeCaption();
       },
 
       hide() {
@@ -287,12 +338,16 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         head = null;
         restartButton = null;
         pauseButton = null;
+        stepButton = null;
         paused = false;
+        // A fresh run has not failed yet; its own caption, if it sets one, replaces the error.
+        faulted = false;
         trayItems.replaceChildren();
         readingItems.replaceChildren();
         // Pause and restart are offered by the runtime, not by the cards, so they
         // survive them; pause always comes back unpaused, since a fresh run is running.
         syncPause();
+        syncStep();
         syncRestart();
       },
 
@@ -300,7 +355,9 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         owner.reset(false);
         restartRun = null;
         pauseRun = null;
+        stepRun = null;
         caption = '';
+        faulted = false;
         owner.hide();
       }
     };

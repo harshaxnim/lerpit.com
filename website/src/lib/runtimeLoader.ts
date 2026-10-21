@@ -21,6 +21,8 @@ export async function loadLerpetteStepRuntime(importKey: string): Promise<Lerpet
 
     return runtime;
   });
+  // A failed load is not kept, so the next activation tries the module again.
+  pending.catch(() => runtimeCache.delete(importKey));
 
   runtimeCache.set(importKey, pending);
   return pending;

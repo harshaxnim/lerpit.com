@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { transformWithEsbuild } from 'vite';
 
 /*
  * The dev server's own plugins under scripts/. Astro restarts the server when this file
@@ -179,6 +180,35 @@ function lerpitWatcher() {
   };
 }
 
+/*
+ * A lesson's code that does not parse would fail Vite's transform, and Vite answers that
+ * with its full-screen overlay over the whole page. In dev, such a file is served as a
+ * module that throws the parse error instead: the import fails like any other chapter
+ * failure, and the player shows it in the stage caption. A build still fails on it.
+ */
+function chapterSyntaxErrors() {
+  const contentDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'lerpettes/content');
+  return {
+    name: 'lerpit-chapter-syntax-errors',
+    apply: 'serve',
+    enforce: 'pre',
+    async transform(code, id) {
+      const file = id.split('?')[0];
+      const parts = path.relative(contentDir, file).split(path.sep);
+      if (parts[0] === '..' || parts[2] !== 'code' || !/\.(ts|js|mjs)$/.test(file)) return;
+      try {
+        await transformWithEsbuild(code, file);
+        return;
+      } catch (error) {
+        const first = error.errors?.[0];
+        const where = first?.location ? `${path.basename(file)}:${first.location.line}` : path.basename(file);
+        const message = `${where}: ${first?.text ?? error.message}`;
+        return { code: `throw new SyntaxError(${JSON.stringify(message)});\n`, map: null };
+      }
+    }
+  };
+}
+
 const owner = process.env.GITHUB_REPOSITORY_OWNER ?? 'harshaxnim';
 const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'lerpit-wasm-blog';
 const hasCustomDomainFile = fs.existsSync(new URL('./website/public/CNAME', import.meta.url));
@@ -194,6 +224,8 @@ export default defineConfig({
   base: customDomain ? '/' : process.env.GITHUB_ACTIONS === 'true' ? `/${repo}/` : '/',
   // lerpitEditor adds the local editor's file API under `astro dev` only; see the file.
   integrations: [mdx(), lerpitEditor(), restartOnDevPluginChange()],
+  // Astro's own toolbar sat over the prose and the stage; the site has its own edit button.
+  devToolbar: { enabled: false },
   // Dev server only: lets a localtunnel (`lt --port 4321`) reach it from another device.
   server: { allowedHosts: ['.loca.lt'] },
   vite: {
@@ -212,6 +244,6 @@ export default defineConfig({
       // re-optimize and reload every open page; bundled up front, it is just there.
       include: ['ml-matrix']
     },
-    plugins: [crossOriginIsolation(), lerpitWatcher(), devViewToggle({ extraMarkup: editButtonMarkup })]
+    plugins: [crossOriginIsolation(), lerpitWatcher(), chapterSyntaxErrors(), devViewToggle({ extraMarkup: editButtonMarkup })]
   }
 });

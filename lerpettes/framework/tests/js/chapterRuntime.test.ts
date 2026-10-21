@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 /*
  * The chapter runtime without a browser: a fake panel stack, a fake stage, and a frame
@@ -116,6 +116,7 @@ function fakeStage() {
     pausable(run: ((paused: boolean) => void) | null) {
       this.pause = run;
     },
+    steppable: vi.fn(),
     settle() {
       this.settled += 1;
     },
@@ -293,7 +294,36 @@ describe('a module chapter', () => {
     expect(seen).toHaveLength(2);
   });
 
+  it('on the dev server, a restart while paused holds the first frame for the step button', async () => {
+    const dts: number[] = [];
+    const stack = fakeStack([fakePanel('canvas')]);
+    const stage = fakeStage();
+    const runtime = createChapterRuntime({ step: (_s: unknown, dt: number) => dts.push(dt), canvas: { draw: () => undefined } });
+    const ctx = context(stack, stage);
+    await runtime.mount(ctx);
+    runtime.enter?.(ctx);
+
+    stage.pause!(true);
+    stage.restart!();
+    await Promise.resolve();
+    await Promise.resolve();
+    runFrame(16);
+    runFrame(16);
+    expect(dts).toHaveLength(0);
+    expect(stage.steppable).toHaveBeenLastCalledWith(expect.any(Function));
+
+    const step = stage.steppable.mock.lastCall![0] as () => void;
+    step();
+    step();
+    expect(dts).toEqual([1 / 60, 1 / 60]);
+  });
+
   it('a restart always resumes, even if the chapter was paused', async () => {
+    // Readers' behaviour: the hold above is local only.
+    vi.stubEnv('DEV', false);
+    onTestFinished(() => {
+      vi.unstubAllEnvs();
+    });
     const seen: number[] = [];
     const stack = fakeStack([fakePanel('canvas')]);
     const stage = fakeStage();
