@@ -6,29 +6,37 @@ import CassetteCard from './CassetteCard.astro';
  * A band at the foot of a page that points somewhere else in the library: cassette cards
  * for lerpettes, or a row of buttons for collections. One component, so the two shelves
  * a page can carry always match.
+ *
+ * A card shelf ends in a card-shaped tile into the library, where the eye lands after
+ * the last card, rather than a button up in the heading.
  */
 type Props = {
-  eyebrow: string;
+  eyebrow?: string;
   heading: string;
   headingId: string;
 } & ({ mixtapes: LerpetteMixtape[] } | { collections: LerpetteCollection[] });
 
 const props = Astro.props as Props;
 const { eyebrow, heading, headingId } = props;
+const library = `${import.meta.env.BASE_URL}library/`;
 ---
 
 <section class="lerpette-shelf" aria-labelledby={headingId}>
   <div class="section-heading">
     <div>
-      <p class="eyebrow">{eyebrow}</p>
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
       <h2 id={headingId}>{heading}</h2>
     </div>
-    <a class="button button--ghost button--sans" href={`${import.meta.env.BASE_URL}library/`}>Open the library</a>
+    {!('mixtapes' in props) && <a class="lerpette-shelf__action" href={library}>Open the library</a>}
   </div>
 
   {'mixtapes' in props ? (
     <div class="cassette-grid">
       {props.mixtapes.map((entry) => <CassetteCard mixtape={entry} />)}
+      <a class="cassette-more" href={library}>
+        <span class="cassette-more__label">Open the Library</span>
+        <span class="cassette-more__arrow" aria-hidden="true">→</span>
+      </a>
     </div>
   ) : (
     <div class="collections-grid">

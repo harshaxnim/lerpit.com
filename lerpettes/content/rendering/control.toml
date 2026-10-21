@@ -2,4 +2,4 @@
 # the one its name drew before more palettes were added. Ids are in
 # website/src/lib/cardArt/palette.ts.
 palette = "Spectrum drop 1975"
-card_style = "angle"
+card_style = "chevron"

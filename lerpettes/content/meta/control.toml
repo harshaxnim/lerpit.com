@@ -1,4 +1,5 @@
 # The collection's colours: its cards, and the panels of every lesson in it. Pinned to
 # the one its name drew before the palette list changed. Ids are in
 # website/src/lib/cardArt/palette.ts.
-palette = "Spectrum drop 1975"
+palette = "Dusk ramp 1976"
+card_style = "spec"

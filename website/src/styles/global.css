@@ -289,10 +289,6 @@ nav {
   background: rgba(255, 255, 255, 0.56);
 }
 
-.button--sans {
-  font-family: var(--font-sans);
-}
-
 .eyebrow,
 .site-badge,
 .lerpette-head__index {
@@ -552,6 +548,12 @@ nav {
   letter-spacing: -0.03em;
 }
 
+/* Scales like a chapter heading at the narrow end (same floor and slope) but stops
+   short of one, so a shelf never reads as another chapter on a desktop. */
+.lerpette-shelf .section-heading h2 {
+  font-size: clamp(1.35rem, 2.6vw, 1.65rem);
+}
+
 .collection-header p,
 .section-heading p,
 .lerpette-shelf p,
@@ -711,7 +713,10 @@ nav {
   margin-left: auto;
 }
 
-.lerpette-player__action {
+/* The shelf's "Open the library" shares these, so every small link-button on a
+   lesson page is one size. */
+.lerpette-player__action,
+.lerpette-shelf__action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -732,7 +737,9 @@ nav {
 }
 
 .lerpette-player__action:hover,
-.lerpette-player__action:focus-visible {
+.lerpette-player__action:focus-visible,
+.lerpette-shelf__action:hover,
+.lerpette-shelf__action:focus-visible {
   text-decoration: none;
   border-color: var(--accent);
   background: rgba(46, 109, 164, 0.08);
@@ -1331,6 +1338,43 @@ html .katex {
   }
 }
 
+/* The way into the library, as the shelf's last card: same size as a card so it
+   takes a slot in the grid, but drawn as an empty sleeve rather than a cassette. */
+.cassette-more {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 264px;
+  aspect-ratio: 300 / 420;
+  padding: 1rem;
+  border: 1px dashed var(--line-strong);
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.cassette-more:hover,
+.cassette-more:focus-visible {
+  text-decoration: none;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cassette-more__label {
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.cassette-more__arrow {
+  font-size: 1.3rem;
+  color: var(--accent);
+}
+
 .collections-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1701,7 +1745,8 @@ html .katex {
   }
 
   /* The links stand over the spine's bands, so they take a solid face to read on. */
-  .lerpette-player__action {
+  .lerpette-player__action,
+  .lerpette-shelf__action {
     background: var(--paper);
     /* 28px, over the 24px floor for a tap target, with the two of them still
        shorter together than one of the buttons they replace. */
