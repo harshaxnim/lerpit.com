@@ -11,6 +11,9 @@
   --font-serif: "Cardo", "Iowan Old Style", "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --font-sans: "Syne", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* One size for every bit of stage chrome (card titles, controls, readings, folded or
+     not): tools beside the simulation, ranked by colour and weight rather than size. */
+  --stage-ui-size: 0.72rem;
   --paper: #fdfbf4;
   --paper-deep: #f7f3e7;
   --panel: rgba(253, 251, 244, 0.95);
@@ -115,10 +118,12 @@ a:hover {
   text-decoration-color: rgba(46, 109, 164, 0.9);
 }
 
-/* Mono is for code and what code prints. Every other small label is sans. */
+/* Mono is for code and what code prints. Every other small label is sans. Tabs at 4,
+   the width the live editor (CodeMirror's default) already uses, not the browser's 8. */
 code,
 pre {
   font-family: var(--font-mono);
+  tab-size: 4;
 }
 
 .eyebrow,
@@ -146,7 +151,7 @@ code {
 
 pre {
   overflow-x: auto;
-  padding: 1rem;
+  padding: 0.6rem 0.8rem;
   border: 1px solid var(--line-strong);
   background: rgba(255, 255, 255, 0.68);
 }
@@ -155,6 +160,66 @@ pre code {
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+/* A code block takes the code's size itself rather than leaving it on the <code>
+   inside. Tab stops are measured in the block's own spaces, so a <pre> left at body
+   size made a 4-wide tab land 5 code characters in. */
+pre:has(> code) {
+  font-size: 0.8em;
+}
+
+pre > code {
+  font-size: 1em;
+}
+
+/* Whitespace marks (content.ts markWhitespace), after Shiki's renderWhitespace and VS
+   Code's: drawn over the real characters, so widths never change, faint enough to read
+   past, and never part of a copy since generated content isn't. */
+pre .ws {
+  position: relative;
+}
+
+pre .ws::before {
+  position: absolute;
+  inset: 0;
+  color: currentColor;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+pre .ws--space::before {
+  content: "·";
+  text-align: center;
+}
+
+/* A tab is a hairline across its whole width ending in a small head, so it reads as
+   one tab rather than one character. */
+pre .ws--tab::before {
+  content: "";
+  inset: 50% 0.2em auto 0.2em;
+  height: 0;
+  border-top: 1px solid;
+}
+
+pre .ws--tab::after {
+  content: "";
+  position: absolute;
+  right: 0.2em;
+  top: 50%;
+  width: 0.3em;
+  height: 0.3em;
+  border: solid currentColor;
+  border-width: 1px 1px 0 0;
+  transform: translate(0, -50%) rotate(45deg);
+  transform-origin: center;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+pre .ws--eol::before {
+  content: "¬";
+  inset: auto;
 }
 
 img {

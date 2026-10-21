@@ -245,8 +245,55 @@ function createRenderProcessor(docDir: string, report: Report, codeDir: string |
         };
       });
     })
+    .use(() => (tree: any) => {
+      visit(tree, 'element', (node: any, _index: number | undefined, parent: any) => {
+        if (node.tagName !== 'code' || parent?.tagName !== 'pre') return;
+        const mark = (children: any[]): any[] =>
+          children.flatMap((child: any) => {
+            if (child.type === 'text') return markWhitespace(child.value);
+            if (child.children) child.children = mark(child.children);
+            return [child];
+          });
+        node.children = mark(node.children);
+        // The block's closing newline ends no visible line, so it gets no mark.
+        const n = node.children.length;
+        if (node.children[n - 1]?.value === '\n' && node.children[n - 2]?.properties?.className?.includes('ws--eol')) {
+          node.children.splice(n - 2, 1);
+        }
+      });
+    })
     .use(rehypeKatex)
     .use(rehypeStringify);
+}
+
+/**
+ * Every whitespace character in a code block, in its own span so the stylesheet can draw
+ * a faint mark over it: a dot for a space, an arrow for a tab, and a pilcrow at each line
+ * end (an empty span before the newline, so it takes no width). The characters themselves
+ * stay, so widths are unchanged and a copy gets the real whitespace, the way Shiki's
+ * transformerRenderWhitespace does it.
+ */
+function markWhitespace(text: string): any[] {
+  const out: any[] = [];
+  let plain = '';
+  const span = (kind: string, value: string) => ({
+    type: 'element',
+    tagName: 'span',
+    properties: { className: ['ws', `ws--${kind}`] },
+    children: value ? [{ type: 'text', value }] : []
+  });
+  for (const char of text) {
+    if (char !== ' ' && char !== '\t' && char !== '\n') {
+      plain += char;
+      continue;
+    }
+    if (plain) out.push({ type: 'text', value: plain });
+    plain = '';
+    if (char === '\n') out.push(span('eol', ''), { type: 'text', value: '\n' });
+    else out.push(span(char === '\t' ? 'tab' : 'space', char));
+  }
+  if (plain) out.push({ type: 'text', value: plain });
+  return out;
 }
 
 async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
