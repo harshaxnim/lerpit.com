@@ -120,7 +120,7 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
       input: mounted ? pointers.get(mounted.panel.name) ?? idlePointer : idlePointer,
       time,
       controls: (options) => stage.controls(options),
-      monitors: () => stage.monitors(),
+      readings: () => stage.readings(),
       caption: (value) => stage.caption(value)
     };
   };

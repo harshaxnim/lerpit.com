@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { Pane } from 'tweakpane';
-import type { Readings } from '../monitors/readings';
+import type { Readings } from '../readings/readings';
 import type { LerpetteCtx } from '../panels/contract';
 import type { Viewport3dTarget } from '../panels/viewport3d/viewport3dPanel';
 import type { ControlsOptions } from '../stage/chrome';
@@ -21,8 +21,8 @@ export type Setup3DContext = {
   camera: THREE.PerspectiveCamera;
   /** The stage's controls card. Starts folded unless { expanded: true }. */
   controls: (options?: ControlsOptions) => Pane;
-  /** The stage's readings card. See monitors/readings.ts. */
-  monitors: () => Readings;
+  /** The stage's readings card. See readings/readings.ts. */
+  readings: () => Readings;
   /** Every frame, with the frame's `dt` and the run's time, both in seconds. */
   onFrame: (cb: (dt: number, time: number) => void) => void;
   /** When the run ends: restart, a new chapter on another stack, the page going away. */
@@ -73,7 +73,7 @@ export function create3DRuntime(config: Step3DConfig): LerpetteStepRuntime<any> 
           scene: target.scene,
           camera,
           controls: (options) => ctx.controls(options),
-          monitors: () => ctx.monitors(),
+          readings: () => ctx.readings(),
           onFrame: (cb) => s.frames.push(cb),
           onTeardown: (cb) => s.teardowns.push(cb)
         });

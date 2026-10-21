@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatReading, fraction, graphRange, vectorComponents } from '@lerpit/framework/monitors/format';
+import { formatReading, fraction, graphRange, vectorComponents } from '@lerpit/framework/readings/format';
 
 const FIGURE_SPACE = ' ';
 const MINUS = '−';
@@ -25,6 +25,13 @@ describe('formatReading', () => {
   it('switches to exponent form for very large and very small values', () => {
     expect(formatReading(1234567, 1)).toBe(`${FIGURE_SPACE}1.2e6`);
     expect(formatReading(-0.000042)).toBe(`${MINUS}4.20e${MINUS}5`);
+  });
+
+  it('with round, keeps a value near zero fixed and unsigned, so it never changes width', () => {
+    expect(formatReading(-0.000042, 1, { round: true })).toBe(`${FIGURE_SPACE}0.0`);
+    expect(formatReading(0.000042, 1, { round: true })).toBe(`${FIGURE_SPACE}0.0`);
+    expect(formatReading(-0.06, 1, { round: true })).toBe(`${MINUS}0.1`);
+    expect(formatReading(1234567, 1, { round: true })).toBe(`${FIGURE_SPACE}1.2e6`);
   });
 
   it('leaves zero alone', () => {
@@ -60,6 +67,14 @@ describe('graphRange', () => {
     const [low, high] = graphRange([10, 20], 0);
     expect(low).toBe(0);
     expect(high).toBeGreaterThan(20);
+  });
+
+  it('reaches a keepInView value and still grows past it to fit the data', () => {
+    const [low, high] = graphRange([0.096, 0.104], undefined, undefined, [0]);
+    expect(low).toBeLessThanOrEqual(0);
+    expect(high).toBeGreaterThan(0.104);
+    const [below] = graphRange([-5, 3], undefined, undefined, [0]);
+    expect(below).toBeLessThan(-5);
   });
 
   it('gives a constant value a band rather than a flat line on the floor', () => {

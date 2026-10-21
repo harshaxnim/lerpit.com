@@ -37,7 +37,7 @@ export default createStage({
     ctx.controls().addBinding(s, 'maxSpeed', { label: 'Max Speed', min: 1e-6, max: 5, step: .1 });
     ctx.controls().addBinding(s, 'count', { label: 'Particles', min: 1, max: 200, step: 1 }).on('change', spread);
 
-    ctx.monitors().fps();
+    ctx.readings().fps();
   },
   
   step(s, dt, ctx) {

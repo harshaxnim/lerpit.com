@@ -11,7 +11,7 @@ export default create3DPhysicsRuntime<CollisionsWorld>({
   caption: 'Balls colliding and bouncing off each other.',
   factory,
   construct: (m) => new (m.ParticleWorld as new () => CollisionsWorld)(),
-  setup({ world, scene, camera, controls, monitors }) {
+  setup({ world, scene, camera, controls, readings }) {
     camera.position.set(0, 6, 0);
     camera.lookAt(0, 0, 0);
 
@@ -32,6 +32,6 @@ export default create3DPhysicsRuntime<CollisionsWorld>({
       .addBinding(params, 'restitution', { label: 'ball restitution', min: 0, max: 1, step: 0.01 })
       .on('change', (e) => world.native.setballRestitution(e.value));
 
-    monitors().graph('PE + KE', () => totalEnergy(world), { min: 0, max: 250 });
+    readings().graph('PE + KE', () => totalEnergy(world), { min: 0, max: 250 });
   }
 });

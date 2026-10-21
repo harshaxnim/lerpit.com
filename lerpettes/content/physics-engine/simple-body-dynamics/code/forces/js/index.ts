@@ -11,7 +11,7 @@ export default create3DPhysicsRuntime<ForcesWorld>({
   caption: 'A bunch of spheres bouncing around under gravity. The bouncing again is done simply by flipping the velocity when the sphere hits the walls.',
   factory,
   construct: (m) => new (m.ParticleWorld as new () => ForcesWorld)(),
-  setup({ world, scene, camera, controls, monitors }) {
+  setup({ world, scene, camera, controls, readings }) {
     camera.position.set(0, 0, 6);
     camera.lookAt(0, 0, 0);
 
@@ -32,6 +32,6 @@ export default create3DPhysicsRuntime<ForcesWorld>({
       .addBinding(params, 'restitution', { label: 'floor restitution', min: 0, max: 1, step: 0.01 })
       .on('change', (e) => world.native.setFloorRestitution(e.value));
 
-    monitors().graph('PE + KE', () => totalEnergy(world), { min: 0, max: 250 });
+    readings().graph('PE + KE', () => totalEnergy(world), { min: 0, max: 250 });
   }
 });

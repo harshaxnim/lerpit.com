@@ -1,37 +1,39 @@
 import { createStage } from '@lerpit/framework/chapter';
 import { colors } from '@lerpit/framework/theme';
 
-// Shared parameters
 const RADIUS = 10;
-// The ceiling never moves — only the mass does — so it is a constant, not state.
-const ANCHOR_Y = 0.3;
+
+// Visual Parameters
+//  Ground
+const ANCHOR_Y = 0.35;
 const CEILING_HALF_WIDTH = 0.2;
-const HATCH_COUNT = 5;
+const HATCH_COUNT = 10;
 const HATCH_LEN = 0.045;
-// Kept odd, so the zigzag's interior points (SPRING_COILS - 1, even) end on
-// the opposite side from where they started — a mirrored, centred coil
-// rather than one that leans to whichever side it happened to start on.
-const SPRING_COILS = 17;
+
+//  Spring
+const SPRING_COILS = 15;
 const SPRING_AMPLITUDE = 0.045;
-// A short straight run before the first coil and after the last, so the zigzag
-// doesn't run flush into the ceiling or the mass.
 const SPRING_LEAD = 0.035;
 
 export default createStage({
-  caption: 'A mass hanging from a spring:\n$F = k(\\Delta l) - mg$',
+  caption: 'A mass attached to a spring\n$F = -k(l-l_0)$',
 
-  // A shorter rest length than a free-floating spring would use: this one
-  // reads better compact, with the coil doing the work rather than bare wire.
-  state: { mass: 1, k: 20, length: 0.3, gravity: 3, y: ANCHOR_Y - 0.3, v: 0, substeps: 1 },
+  state: { mass: 1, k: 20, restLength: 0.3, y: ANCHOR_Y - 0.2, v: 0, integrationScheme: 'symplectic', substeps: 3 },
 
   setup(s, ctx) {
-    ctx.controls().addBinding(s, 'mass', { label: 'Mass', min: 0.2, max: 4, step: 0.1 });
-    ctx.controls().addBinding(s, 'k', { label: 'Spring k', min: 1, max: 60, step: 1 });
-    ctx.controls().addBinding(s, 'length', { label: 'Rest length', min: 0.1, max: 1, step: 0.02 });
-    ctx.controls().addBinding(s, 'gravity', { label: 'Gravity', min: 0, max: 10, step: 0.1 });
+    ctx.controls().addBinding(s, 'integrationScheme', {
+      label: 'Scheme',
+      options: { 'Symplectic Euler': 'symplectic', 'Explicit Euler': 'explicit' },
+    });
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
 
-    ctx.monitors().graph('y', () => s.y).fps();
+    const energy = () => {
+      const stretch = ANCHOR_Y - s.y - s.restLength;
+      return 0.5 * s.k * stretch * stretch + 0.5 * s.mass * s.v * s.v;
+    };
+    ctx.readings().graph('E', energy, { digits: 2, keepInView: 0 });
+    ctx.readings().graph('y', () => s.y);
+    ctx.readings().fps();
   },
 
   step(s, dt) {
@@ -39,13 +41,19 @@ export default createStage({
       const sdt = dt / s.substeps;
       // Hooke's law pulls the mass back toward the ceiling by however far the
       // spring is stretched past its rest length; gravity pulls it down.
-      const stretch = ANCHOR_Y - s.y - s.length;
-      const a = (s.k * stretch - s.mass * s.gravity) / s.mass;
-      // Semi-implicit Euler: the velocity update comes first, and the new velocity
-      // is what moves the mass. Plain Euler would let a spring's energy grow with
-      // every step rather than oscillate around one value.
-      s.v += a * sdt;
-      s.y += s.v * sdt;
+      const stretch = ANCHOR_Y - s.y - s.restLength;
+      const a = (s.k * stretch) / s.mass;
+      if (s.integrationScheme === 'explicit') {
+        // Explicit Euler: the mass moves with the velocity it had at the start of
+        // the step, so the spring's energy grows a little every step.
+        s.y += s.v * sdt;
+        s.v += a * sdt;
+      } else {
+        // Symplectic Euler: the velocity update comes first, and the new velocity
+        // is what moves the mass, so the energy oscillates around one value.
+        s.v += a * sdt;
+        s.y += s.v * sdt;
+      }
     }
   },
 
@@ -56,20 +64,26 @@ export default createStage({
       sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y, CEILING_HALF_WIDTH, ANCHOR_Y, colors.charcoal, 2.5);
       for (let i = 0; i <= HATCH_COUNT; i += 1) {
         const x = -CEILING_HALF_WIDTH + (i / HATCH_COUNT) * (2 * CEILING_HALF_WIDTH);
-        sketch.line(x, ANCHOR_Y, x - HATCH_LEN, ANCHOR_Y + HATCH_LEN, colors.charcoal, 1.5);
+        sketch.line(x, ANCHOR_Y, x + HATCH_LEN/3, ANCHOR_Y + HATCH_LEN, colors.charcoal, 1.5);
       }
 
       // The spring: a zigzag between the ceiling and the mass, the textbook symbol
-      // for a Hookean spring.
-      const span = Math.max(0, ANCHOR_Y - s.y);
-      const lead = Math.min(SPRING_LEAD, span / 2);
+      // for a Hookean spring. The span is signed, so a mass pushed above the ceiling
+      // still gets a coil, just pointing up, and drawn in cyan to mark the flip.
+      // It hooks onto the edge of the mass facing the ceiling, not its centre: the
+      // radius is in pixels, so it is turned into units first.
+      const radius = RADIUS / (sketch.px(1) - sketch.px(0));
+      const facing = Math.sign(ANCHOR_Y - s.y) || 1;
+      const end = s.y + facing * radius;
+      const span = ANCHOR_Y - end;
+      const lead = Math.sign(span) * Math.min(SPRING_LEAD, Math.abs(span) / 2);
       const points: [number, number][] = [[0, ANCHOR_Y], [0, ANCHOR_Y - lead]];
       for (let i = 1; i < SPRING_COILS; i += 1) {
         const y = ANCHOR_Y - lead - ((span - 2 * lead) * i) / SPRING_COILS;
         points.push([i % 2 === 1 ? SPRING_AMPLITUDE : -SPRING_AMPLITUDE, y]);
       }
-      points.push([0, s.y + lead], [0, s.y]);
-      sketch.path(points, colors.blue, 2);
+      points.push([0, end + lead], [0, end]);
+      sketch.path(points, facing < 0 ? colors.light.cyan : colors.blue, 2);
 
       // The mass.
       sketch.circle(0, s.y, RADIUS, colors.orange);

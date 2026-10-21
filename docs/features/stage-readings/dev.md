@@ -18,20 +18,19 @@ behaviour is in `user-guide.html`.
 
 ## Adding readings to a step
 
-`monitors()` sits beside `controls()` in a 3D step's setup context. Every method takes a
-label and a function returning the current value, and returns the builder, so calls
-chain:
+`readings()` sits beside `controls()` in a 3D step's setup context. Every method takes a
+label and a function returning the current value, and returns that one reading, the
+way the controls card's `addBinding` returns its binding, so the two cards read alike:
 
 ```ts
-function setup({ world, controls, monitors }: Setup3DPhysicsContext) {
-  monitors()
-    .number('t', () => world.time, { unit: 's' })
-    .graph('PE + KE', () => totalEnergy(world), { unit: 'J', min: 0 })
-    .meter('energy kept', () => totalEnergy(world) / startEnergy, { percent: true })
-    .vector('v', () => ball.velocity(), { unit: 'm/s' })
-    .number('floor hits', () => hits, { digits: 0 })
-    .text('state', () => (resting ? 'settling' : 'bouncing'), { tone: (v) => (v === 'settling' ? 'ok' : 'info') })
-    .fps();
+function setup({ world, controls, readings }: Setup3DPhysicsContext) {
+  readings().number('t', () => world.time, { unit: 's' });
+  readings().graph('PE + KE', () => totalEnergy(world), { unit: 'J', min: 0 });
+  readings().meter('energy kept', () => totalEnergy(world) / startEnergy, { percent: true });
+  readings().vector('v', () => ball.velocity(), { unit: 'm/s' });
+  readings().number('floor hits', () => hits, { digits: 0 });
+  readings().text('state', () => (resting ? 'settling' : 'bouncing'), { tone: (v) => (v === 'settling' ? 'ok' : 'info') });
+  readings().fps();
 }
 ```
 
@@ -52,11 +51,10 @@ that wants otherwise says so:
 ```ts
 const pane = controls({ expanded: true }); // controls showing from the start
 
-monitors()
-  .graph('PE + KE', () => totalEnergy(world))
-  .number('t', () => world.time, { unit: 's' })
-  .expand();        // every reading showing
-// or .mini('t')    // shrunk to a reading other than the first
+readings().graph('PE + KE', () => totalEnergy(world));
+readings().number('t', () => world.time, { unit: 's' });
+readings().expand();       // every reading showing
+// or readings().mini('t') // shrunk to a reading other than the first
 ```
 
 The view calls go anywhere in the chain, and the last one wins. `mini()` with a label the
@@ -76,14 +74,14 @@ never needs `onFrame` for one.
 
 | File | What it holds |
 | --- | --- |
-| `lerpettes/framework/monitors/readings.ts` | The Readings card: the `KINDS` table, the builder, sampling, folding and keeping one reading. |
-| `lerpettes/framework/monitors/format.ts` | Number formatting, vector coercion, graph range and bar fraction, with no DOM. |
-| `lerpettes/framework/monitors/view.ts` | `resolveReadingsView`: the start-state rule (restored, then authored, then default) and the fallback for an unknown mini label. |
+| `lerpettes/framework/readings/readings.ts` | The Readings card: the `KINDS` table, the builder, sampling, folding and keeping one reading. |
+| `lerpettes/framework/readings/format.ts` | Number formatting, vector coercion, graph range and bar fraction, with no DOM. |
+| `lerpettes/framework/readings/view.ts` | `resolveReadingsView`: the start-state rule (restored, then authored, then default) and the fallback for an unknown mini label. |
 | `lerpettes/framework/tests/js/readingsFormat.test.ts`, `readingsView.test.ts` | Tests for `format.ts` and `view.ts`. |
 | `website/src/components/LerpettePlayer.astro` | Wraps the byline's crumbs in `.lerpette-brow__crumbs`, so they can take the lesson's track. |
 | `lerpettes/framework/stage/chrome.ts` | The stage chrome, one set of cards per chapter: the Controls card (title toggle, Lucide `rotate-ccw` restart, `controls({ expanded })`) and the Readings card. Settles the readings view after setup, keeps the reader's choices across a restart, hides a chapter's cards when another is shown. (Moved here from `create3DRuntime.ts` by the authoring-platform work, so every chapter has them.) |
-| `website/src/lib/player/stagePlayer.ts` | Owns the two corners, `.lerpette-panel__tray` (top right) and `.lerpette-panel__monitors` (top left), and puts them back into the panel box after every stack swap. |
-| `lerpettes/libs/physics/js/create3DPhysicsRuntime.ts` | Passes `monitors` through to physics steps. |
+| `website/src/lib/player/stagePlayer.ts` | Owns the two corners, `.lerpette-panel__tray` (top right) and `.lerpette-panel__readings` (top left), and puts them back into the panel box after every stack swap. |
+| `lerpettes/libs/physics/js/create3DPhysicsRuntime.ts` | Passes `readings` through to physics steps. |
 | `website/src/styles/global.css` | `--stage-face`, `--chrome-face`, the `--graph-paper` layers and the fixed `body::before`, the folder tabs, the cards and the readings. |
 
 ## How it fits together
@@ -141,7 +139,7 @@ never needs `onFrame` for one.
 | Step with no readings | no Readings card at all | browser, intro chapter |
 | Step with no controls | Controls card is the restart button alone | browser, intro chapter |
 | Default start | Controls folded, Readings showing only the first reading | browser, forces |
-| `controls({ expanded: true })`, `.mini('missing').expand()` | both open; the last view call wins | browser, temporary edit to forces (reverted) |
+| `controls({ expanded: true })`, `readings().mini('missing'); readings().expand()` | both open; the last view call wins | browser, temporary edit to forces (reverted) |
 | Reader's changes, then restart | kept | browser |
 | Reader's changes, then next chapter | reset to that chapter's start | browser, forces then collisions |
 | Unknown `mini()` label | first reading, with a console warning | unit test and code |
@@ -152,7 +150,7 @@ never needs `onFrame` for one.
 
 ## Known limits
 
-- Every chapter reaches the cards through `ctx.monitors()` / `ctx.controls()`; the chapter
+- Every chapter reaches the cards through `ctx.readings()` / `ctx.controls()`; the chapter
   runtime ticks readings after each frame. A hand-written runtime must call
   `ctx.stage.tick(now)` itself.
 - Designed for later but not built: groups of readings, graphs with several series, and

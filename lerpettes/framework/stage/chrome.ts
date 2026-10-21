@@ -1,7 +1,7 @@
 import { Pause, Play, RotateCcw } from 'lucide-static';
 import { Pane } from 'tweakpane';
-import { createReadingsCard, type Readings, type ReadingsCard } from '../monitors/readings';
-import type { ReadingsView } from '../monitors/view';
+import { createReadingsCard, type Readings, type ReadingsCard } from '../readings/readings';
+import type { ReadingsView } from '../readings/view';
 import './chrome.css';
 
 /*
@@ -29,8 +29,8 @@ export type ControlsOptions = {
 export type StageOwner = {
   /** The tweakpane in the top-right card, made on first call. Starts folded. */
   controls(options?: ControlsOptions): Pane;
-  /** The readings in the top-left card, made on first call. See monitors/readings.ts. */
-  monitors(): Readings;
+  /** The readings in the top-left card, made on first call. See readings/readings.ts. */
+  readings(): Readings;
   /** The band at the foot of the stage. The last value set stands. */
   caption(value: string): void;
   /**
@@ -68,7 +68,7 @@ export type StageChromeOptions = {
   /** Top-right corner. */
   tray: HTMLElement;
   /** Top-left corner. */
-  monitors: HTMLElement;
+  readings: HTMLElement;
   setCaption(value: string): void;
 };
 
@@ -99,15 +99,15 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
     // cards lay out exactly as if they were the corner's direct children.
     const trayItems = document.createElement('div');
     trayItems.style.display = 'contents';
-    const monitorItems = document.createElement('div');
-    monitorItems.style.display = 'contents';
+    const readingItems = document.createElement('div');
+    readingItems.style.display = 'contents';
 
     let card: HTMLElement | null = null;
     let head: HTMLElement | null = null;
     let restartButton: HTMLButtonElement | null = null;
     let pauseButton: HTMLButtonElement | null = null;
     let pane: Pane | null = null;
-    let readings: ReadingsCard | null = null;
+    let readingsCard: ReadingsCard | null = null;
 
     const ensureCard = () => {
       if (card && head) return { card, head };
@@ -212,12 +212,12 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         return pane;
       },
 
-      monitors() {
-        if (!readings) {
+      readings() {
+        if (!readingsCard) {
           const restored = (choices.get(KEY.readings) as ReadingsView | undefined) ?? null;
-          readings = createReadingsCard(monitorItems, restored, (view) => choices.set(KEY.readings, view));
+          readingsCard = createReadingsCard(readingItems, restored, (view) => choices.set(KEY.readings, view));
         }
-        return readings.readings;
+        return readingsCard.readings;
       },
 
       caption(value) {
@@ -241,7 +241,7 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
       },
 
       settle() {
-        readings?.settle();
+        readingsCard?.settle();
         // Slider values the reader set before a restart go back on the new pane, which
         // the chapter has rebuilt with its own defaults by now.
         const saved = choices.get(KEY.pane);
@@ -256,20 +256,20 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
       },
 
       tick(now) {
-        readings?.tick(now);
+        readingsCard?.tick(now);
       },
 
       show() {
         if (shown && shown !== id) owners.get(shown)?.hide();
         shown = id;
         options.tray.append(trayItems);
-        options.monitors.append(monitorItems);
+        options.readings.append(readingItems);
         options.setCaption(pinned ?? caption);
       },
 
       hide() {
         trayItems.remove();
-        monitorItems.remove();
+        readingItems.remove();
         if (shown === id) shown = null;
       },
 
@@ -280,8 +280,8 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         if (!keepChoices) choices.clear();
         pane?.dispose();
         pane = null;
-        readings?.remove();
-        readings = null;
+        readingsCard?.remove();
+        readingsCard = null;
         card?.remove();
         card = null;
         head = null;
@@ -289,7 +289,7 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         pauseButton = null;
         paused = false;
         trayItems.replaceChildren();
-        monitorItems.replaceChildren();
+        readingItems.replaceChildren();
         // Pause and restart are offered by the runtime, not by the cards, so they
         // survive them; pause always comes back unpaused, since a fresh run is running.
         syncPause();

@@ -113,7 +113,7 @@ a view shows it and should not change it. Each run starts from a fresh copy of `
 | `ctx.time` | seconds this run has been running; stops while the chapter is off screen |
 | `ctx.wasm` | the chapter's C++ module, or null |
 | `ctx.controls(opts?)` | the stage's controls card: a [tweakpane](https://tweakpane.github.io/docs/). Folded unless `{ expanded: true }` |
-| `ctx.monitors()` | the stage's readings card: `.number`, `.vector`, `.graph`, `.meter`, `.text`, `.fps`, then `.expand()` (every reading) or `.mini(label)` (one reading alone, the default) |
+| `ctx.readings()` | the stage's readings card: `.number`, `.vector`, `.graph` (scale follows the data; `min`/`max` fix an edge, `keepInView: 0` keeps zero in view while still fitting), `.meter`, `.text`, `.fps`, each returning that one reading (no chaining, like `addBinding`), and on the card `.expand()` (every reading) or `.mini(label)` (one reading alone, the default). A reading shown alone keeps its label; `miniLabel: false` hides it |
 | `ctx.caption(text)` | the line under the panel |
 
 Controls, readings, pause and restart are the stage's, so every chapter has them whatever
@@ -136,7 +136,7 @@ export default createStage({
   state: { x: 1, v: 0 },
   setup(s, ctx) {
     ctx.controls().addBinding(s, 'x', { min: -2, max: 2 });
-    ctx.monitors().graph('x', () => s.x);
+    ctx.readings().graph('x', () => s.x);
   },
   step(s, dt) {
     s.v += -8 * s.x * dt;
@@ -151,7 +151,7 @@ export default createStage({
 ```
 
 Helpers beside it: `@lerpit/framework/math` (`clamp`, `lerp`, `wrap`),
-`@lerpit/framework/trail` (`Trail.create(max)` in the state, `Trail.push(t, x, y)`, `Trail.clear(t)`, drawn with `sketch.trail(points, { color, width, fade })`, fading unless `fade: false`), and
+`@lerpit/framework/trail` (`Trail.create(max)` in the state, `Trail.push(t, x, y)`, `Trail.clear(t)`, drawn with `sketch.trail(points, { color, width, fade })`, fading unless `fade: false`, as dots rather than a line with `style: 'dots'`), and
 `@lerpit/framework/linalg` (ml-matrix: `Matrix`, `solve`, `inverse`, `determinant`, and the
 LU, QR, Cholesky, eigenvalue and SVD decompositions; its own import because it is ~150 KB).
 
@@ -230,14 +230,14 @@ For shapes that recur, these build the chapter for you:
 | preset | for |
 | --- | --- |
 | `createCanvasSketchRuntime({ status, draw(g, frame, w, h) })` from `@lerpit/framework/runtimes` | an animation with no state |
-| `create3DRuntime({ caption, setup({ scene, camera, controls, monitors, onFrame, onTeardown }) })` from `@lerpit/framework/runtimes/create3DRuntime` | a three.js scene built by one function |
+| `create3DRuntime({ caption, setup({ scene, camera, controls, readings, onFrame, onTeardown }) })` from `@lerpit/framework/runtimes/create3DRuntime` | a three.js scene built by one function |
 | `create3DPhysicsRuntime({ caption, factory, construct, setup({ world, module, scene, … }) })` from `@lerpit/libs/physics/js` | a physics world advanced in fixed steps, with `addSphere`, `addBoundsBox`, `totalEnergy` |
 
 ### By hand
 
 A chapter that needs the whole lifecycle can default-export a runtime: `{ panels?, mount,
 enter?, exit?, resume?, resize?, dispose? }`, each handed a context with `panels` (the
-stack), `surface` (the first panel's target), `stage` (controls, monitors, caption,
+stack), `surface` (the first panel's target), `stage` (controls, readings, caption,
 restartable), `editors`, `codePath` and `resolveAssetUrl`. One runtime instance serves
 one chapter.
 

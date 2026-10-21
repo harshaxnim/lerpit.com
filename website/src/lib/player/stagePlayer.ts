@@ -74,13 +74,13 @@ export function createStagePlayer(options: StagePlayerOptions): StagePlayer {
   // put back into the box each time a new stack is built in it.
   const tray = document.createElement('div');
   tray.className = 'lerpette-panel__tray';
-  const monitors = document.createElement('div');
-  monitors.className = 'lerpette-panel__monitors';
+  const readings = document.createElement('div');
+  readings.className = 'lerpette-panel__readings';
 
   const writeCaption = (value: string) => {
     if (options.caption) options.caption.innerHTML = captionHtml(value);
   };
-  const chrome = createStageChrome({ tray, monitors, setCaption: writeCaption });
+  const chrome = createStageChrome({ tray, readings, setCaption: writeCaption });
 
   const runtimes = new Map<string, LerpetteStepRuntime<any>>();
   const mounted = new Set<string>();
@@ -178,7 +178,7 @@ export function createStagePlayer(options: StagePlayerOptions): StagePlayer {
       announcePanel(false);
     }, preferredTab);
     stackKey = names.join(',');
-    host.append(monitors, tray);
+    host.append(readings, tray);
   };
 
   return {

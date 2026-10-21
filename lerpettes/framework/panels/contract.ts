@@ -1,5 +1,5 @@
 import type { Pane } from 'tweakpane';
-import type { Readings } from '../monitors/readings';
+import type { Readings } from '../readings/readings';
 import type { ControlsOptions } from '../stage/chrome';
 import type { CanvasTarget } from './canvas/canvasPanel';
 import type { Viewport2dTarget } from './viewport2d/viewport2dPanel';
@@ -80,8 +80,8 @@ export type LerpetteCtx = {
   time: number;
   /** The stage's controls card: a tweakpane, folded unless asked otherwise. */
   controls(options?: ControlsOptions): Pane;
-  /** The stage's readings card. See monitors/readings.ts. */
-  monitors(): Readings;
+  /** The stage's readings card. See readings/readings.ts. */
+  readings(): Readings;
   /** The band at the foot of the stage. */
   caption(value: string): void;
 };

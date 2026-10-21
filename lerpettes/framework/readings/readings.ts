@@ -7,16 +7,18 @@ import { resolveReadingsView, type ReadingsView } from './view';
  *
  * A step adds one in one line, a label and a function returning the current value:
  *
- *   monitors()
- *     .number('t', () => world.time, { unit: 's' })
- *     .graph('PE + KE', () => totalEnergy(world), { unit: 'J', min: 0 })
+ *   readings().number('t', () => world.time, { unit: 's' });
+ *   readings().graph('PE + KE', () => totalEnergy(world), { unit: 'J', min: 0 });
+ *
+ * Each call returns that one reading, as the controls card's addBinding does, rather
+ * than the card, so the two cards read the same way in a setup.
  *
  * The framework calls those functions while the step is on screen and throws the
  * whole card away when the step ends, so no step keeps state just to feed a reading.
  *
  * The card has two modes: every reading (full), or one reading alone (mini). It starts
- * mini, on its first reading. A step that wants it otherwise says so anywhere in the
- * chain: .expand() for the whole card, .mini('label') to start on a reading other than
+ * mini, on its first reading. A step that wants it otherwise says so on the card,
+ * before or after adding readings: .expand() for the whole card, .mini('label') to start on a reading other than
  * the first. The last one said wins. The reader moves between the two by clicking: the
  * title of the full card shrinks it to the reading it was last on, a reading in the full
  * card shrinks it to that reading, and the mini card opens back up.
@@ -27,29 +29,43 @@ import { resolveReadingsView, type ReadingsView } from './view';
 
 export type ReadingTone = 'ok' | 'info' | 'warn';
 
-export type NumberOptions = { unit?: string; digits?: number };
-export type GraphOptions = NumberOptions & { min?: number; max?: number; seconds?: number };
+/** Options every kind takes. A reading shown alone keeps its label unless `miniLabel: false`. */
+export type BaseOptions = { miniLabel?: boolean };
+export type NumberOptions = BaseOptions & { unit?: string; digits?: number };
+/**
+ * `min` / `max` fix an edge of the scale; values past it are cut off. `keepInView` is a value
+ * (or several) the scale always reaches while still fitting the data, e.g. `keepInView: 0`
+ * to read a quantity against zero rather than against its own wobble.
+ */
+export type GraphOptions = NumberOptions & { min?: number; max?: number; keepInView?: number | number[]; seconds?: number };
 export type MeterOptions = NumberOptions & { min?: number; max?: number; percent?: boolean; mark?: number };
-export type TextOptions = { tone?: (value: string) => ReadingTone | null | undefined };
+export type TextOptions = BaseOptions & { tone?: (value: string) => ReadingTone | null | undefined };
 export type VectorLike = ArrayLike<number> | { x: number; y: number; z: number };
+
+/**
+ * One reading, as adding it returns it, the way tweakpane's addBinding returns its
+ * binding. Only the label for now; it is where per-reading calls (update, remove,
+ * tone) go when they are wanted, which a builder returning the card never could.
+ */
+export type Reading = { readonly label: string };
 
 export type Readings = {
   /** A single value: a time, a count, a total. Counts want digits: 0. */
-  number(label: string, read: () => number, options?: NumberOptions): Readings;
+  number(label: string, read: () => number, options?: NumberOptions): Reading;
   /** Three components side by side: a position, a velocity, a force. */
-  vector(label: string, read: () => VectorLike, options?: NumberOptions): Readings;
+  vector(label: string, read: () => VectorLike, options?: NumberOptions): Reading;
   /** A value over the last few seconds, with its current value. Range follows the data unless fixed. */
-  graph(label: string, read: () => number, options?: GraphOptions): Readings;
+  graph(label: string, read: () => number, options?: GraphOptions): Reading;
   /** A value inside known bounds, as a bar. min 0 and max 1 unless given. */
-  meter(label: string, read: () => number, options?: MeterOptions): Readings;
+  meter(label: string, read: () => number, options?: MeterOptions): Reading;
   /** A word or two of state, with an optional coloured dot. */
-  text(label: string, read: () => string, options?: TextOptions): Readings;
+  text(label: string, read: () => string, options?: TextOptions): Reading;
   /** Frames per second, measured here. Turns warm below 30. */
-  fps(label?: string): Readings;
+  fps(label?: string, options?: BaseOptions): Reading;
   /** Start with every reading showing. */
-  expand(): Readings;
+  expand(): void;
   /** Start shrunk to one reading, the first unless a label is given. This is the default. */
-  mini(label?: string): Readings;
+  mini(label?: string): void;
 };
 
 type AnyOptions = NumberOptions & GraphOptions & MeterOptions & TextOptions & { bad?: (value: number) => boolean };
@@ -83,8 +99,8 @@ function headRow(row: HTMLElement, label: string): HTMLElement {
   return value;
 }
 
-function showNumber(cell: HTMLElement, value: unknown, digits: number, unit?: string) {
-  cell.textContent = formatReading(value, digits);
+function showNumber(cell: HTMLElement, value: unknown, digits: number, unit?: string, round = false) {
+  cell.textContent = formatReading(value, digits, { round });
   if (unit) cell.append(element('span', 'lerpette-reading__unit', unit));
 }
 
@@ -159,14 +175,14 @@ const graphKind: Kind<GraphState> = {
     }
   },
   show(state, value, options, now) {
-    showNumber(state.value, value, options.digits ?? 1, options.unit);
+    showNumber(state.value, value, options.digits ?? 1, options.unit, true);
     const finite = state.samples.filter(([, y]) => Number.isFinite(y));
     if (finite.length < 2) {
       state.line.setAttribute('points', '');
       return;
     }
 
-    const [low, high] = graphRange(finite.map(([, y]) => y), options.min, options.max);
+    const [low, high] = graphRange(finite.map(([, y]) => y), options.min, options.max, [options.keepInView ?? []].flat());
     const window = (options.seconds ?? 6) * 1000;
     const start = now - window;
     const points = finite.map(([t, y]) => [((t - start) / window) * 100, 27 - fraction(y, low, high) * 25]);
@@ -324,8 +340,9 @@ export function createReadingsCard(
     show(resolveReadingsView(restored, authored, labels()));
   };
 
-  const add = (name: KindName, label: string, read: () => unknown, options: AnyOptions = {}, everyFrame = false): Readings => {
+  const add = (name: KindName, label: string, read: () => unknown, options: AnyOptions = {}, everyFrame = false): Reading => {
     const node = element('div', 'lerpette-reading');
+    node.classList.toggle('has-mini-label', options.miniLabel !== false);
     node.title = label;
     node.tabIndex = 0;
     node.setAttribute('role', 'button');
@@ -347,7 +364,7 @@ export function createReadingsCard(
     // A reading added after setup (from a frame callback, say) joins the view the card
     // is already in, which may be the one it was waiting for.
     if (settled) show(resolveReadingsView(view, null, labels()));
-    return readings;
+    return { label };
   };
 
   const readings: Readings = {
@@ -356,7 +373,7 @@ export function createReadingsCard(
     graph: (label, read, options) => add('graph', label, read, options),
     meter: (label, read, options) => add('meter', label, read, options),
     text: (label, read, options) => add('text', label, read, options as AnyOptions),
-    fps(label = 'fps') {
+    fps(label = 'fps', options = {}) {
       let frames = 0;
       let since = performance.now();
       let fps = NaN;
@@ -370,15 +387,13 @@ export function createReadingsCard(
         }
         return fps;
       };
-      return add('number', label, read, { digits: 0, bad: (v) => v < 30 }, true);
+      return add('number', label, read, { ...options, digits: 0, bad: (v) => v < 30 }, true);
     },
     expand() {
       authored = { mode: 'expanded', mini: null };
-      return readings;
     },
     mini(label) {
       authored = { mode: 'mini', mini: label ?? null };
-      return readings;
     }
   };
 

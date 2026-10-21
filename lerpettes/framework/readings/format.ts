@@ -12,15 +12,20 @@ const MINUS = '−';
  * shifts sideways, and a sign slot that is always there, for the same reason. Values
  * too large or too small for that switch to exponent form. Anything that is not a
  * finite number is a dash, never "NaN".
+ *
+ * `round: true` keeps small values in fixed form, rounded to zero, for a value that
+ * swings through zero (a graph's): exponent form there would flick in and out, and
+ * change width, on every crossing.
  */
-export function formatReading(value: unknown, digits = 2): string {
+export function formatReading(value: unknown, digits = 2, { round = false } = {}): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return '—';
   }
 
   const magnitude = Math.abs(value);
-  const sign = value < 0 ? MINUS : FIGURE_SPACE;
-  if (magnitude !== 0 && (magnitude >= 1e5 || magnitude < 10 ** -Math.max(digits, 3))) {
+  // A value that shows as zero gets no minus sign: "−0.0" reads as a different number.
+  const sign = value < 0 && !(round && Number(magnitude.toFixed(digits)) === 0) ? MINUS : FIGURE_SPACE;
+  if (magnitude !== 0 && (magnitude >= 1e5 || (!round && magnitude < 10 ** -Math.max(digits, 3)))) {
     return sign + magnitude.toExponential(Math.max(digits, 1)).replace('e+', 'e').replace('e-', `e${MINUS}`);
   }
 
@@ -48,12 +53,14 @@ export function vectorComponents(value: unknown): [number, number, number] {
  * constant value gets a band around it rather than collapsing to a flat line on the
  * floor.
  */
-export function graphRange(values: number[], min?: number, max?: number): [number, number] {
+export function graphRange(values: number[], min?: number, max?: number, keepInView: number[] = []): [number, number] {
   if (min != null && max != null) {
     return [min, max];
   }
 
-  const finite = values.filter(Number.isFinite);
+  // `keepInView` values count as data: the range always reaches them but still grows to
+  // fit, unlike `min` and `max`, which are hard edges that cut off what lies beyond.
+  const finite = [...values, ...keepInView].filter(Number.isFinite);
   if (finite.length === 0) {
     return [min ?? 0, max ?? 1];
   }

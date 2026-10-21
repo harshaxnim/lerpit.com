@@ -105,7 +105,7 @@ function fakeStage() {
     settled: 0,
     ticks: 0,
     controls: vi.fn(() => ({ pane: true })),
-    monitors: vi.fn(() => ({ readings: true })),
+    readings: vi.fn(() => ({ readings: true })),
     caption(value: string) {
       this.captions.push(value);
     },

@@ -31,7 +31,7 @@ lerpettes/
     panels/             the panel registry: canvas, viewport2d, viewport3d, table, readout
     runtimes/           the chapter runtime and presets (sketch, 3D)
     stage/              the stage chrome: controls, readings, caption, restart
-    monitors/           reading kinds
+    readings/           reading kinds
     three/              the shared three.js bundle
     wasm/               loadModule, for prebuilt C++
     theme.ts            the palette, for code that draws
@@ -68,7 +68,7 @@ Prose, maths, figures.
 - Each `##` is a chapter; `{#id}` is its anchor and its folder, `code/<id>/`.
 - `+name` in a heading adds a panel; the `#` title's panels are inherited by every chapter.
 - A chapter's code is `state`, `setup`, `step`, and one view per panel (`viewport2d: { draw(g, s, ctx) }`), written as a module (`code/<id>/js/index.ts` with `createStage`) or in the files a `lerpit` fence shows.
-- `ctx.controls()`, `ctx.monitors()` and `ctx.caption()` reach the stage from any chapter.
+- `ctx.controls()`, `ctx.readings()` and `ctx.caption()` reach the stage from any chapter.
 - Mistakes never break the build: they are listed at the top of the page with a fix.
 
 ## Local development

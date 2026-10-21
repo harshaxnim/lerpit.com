@@ -76,7 +76,7 @@ lerpettes/framework
 | To add | Do |
 | --- | --- |
 | a panel | a folder under `framework/panels/` with a `LerpettePanel`; one line in `registry.ts` `LOADERS` and `PANEL_LABELS`; its CSS beside it, imported by it. `panelRegistry.test.ts` checks the label. Give it `scope` if it holds a scene. |
-| a reading kind | an entry in `KINDS` and a method on `Readings` (`monitors/readings.ts`), styles in `stage/chrome.css`. |
+| a reading kind | an entry in `KINDS` and a method on `Readings` (`readings/readings.ts`), styles in `stage/chrome.css`. |
 | a language | an entry in `libs/live-code/js/languages.ts` (extension, build kind, editor mode, comment); the editor, the chapter runtime and the fence checks read it. |
 | a `control.toml` key | one entry in `FIELDS` in `lib/control.ts` and a field on `LerpetteControl`. |
 | an authoring problem | an id in `lib/problems.ts`, `report('<id>', …)` in content.ts, then `node scripts/problems-doc.mjs`. |

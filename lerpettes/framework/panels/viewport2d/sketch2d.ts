@@ -69,10 +69,12 @@ export type Draw2D = {
    * A path that fades in from the paper at its first point to `color` at its last:
    * the history a moving thing leaves behind, oldest first. See `Trail` in
    * `@lerpit/framework/trail` for keeping one. `fade: false` draws it solid, as `path`.
+   * `style: 'dots'` draws a dot at each point instead of joining them (dot radius 1.5×
+   * `width`), for showing the samples themselves rather than the curve through them.
    *
    *   sketch.trail(points, { color: colors.orange, width: 1, fade: false });
    */
-  trail(points: Points | Trail, options?: { color?: Paint; width?: number; fade?: boolean }): void;
+  trail(points: Points | Trail, options?: { color?: Paint; width?: number; fade?: boolean; style?: 'line' | 'dots' }): void;
   /** A line of text, size in pixels. `x` is where it starts; the line is centred on `y`. */
   text(value: string, x: number, y: number, color?: Paint, size?: number): void;
 };
@@ -286,9 +288,19 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
       const c = colorOf(color);
       pairs(points, toX, toY, (_i, _n, ax, ay, bx, by) => segment(ax, ay, bx, by, c, lineWidth));
     },
-    trail(source, { color = 0x2e6da4, width: lineWidth = 1.5, fade = true } = {}) {
+    trail(source, { color = 0x2e6da4, width: lineWidth = 1.5, fade = true, style = 'line' } = {}) {
       const c = colorOf(color);
       const points = 'points' in source ? source.points : source;
+      if (style === 'dots') {
+        // One dot per sample, so the gaps between them show how far each step jumped.
+        const flat = points.length > 0 && typeof points[0] === 'number';
+        const n = flat ? points.length / 2 : points.length;
+        for (let i = 0; i < n; i += 1) {
+          const [x, y] = flat ? [(points as readonly number[])[2 * i], (points as readonly number[])[2 * i + 1]] : (points as ReadonlyArray<readonly [number, number]>)[i];
+          pixelCircle(toX(x), toY(y), lineWidth * 1.5, fade ? faded.lerpColors(paper, c, (i + 1) / n) : c);
+        }
+        return;
+      }
       pairs(points, toX, toY, (i, n, ax, ay, bx, by) => {
         segment(ax, ay, bx, by, fade ? faded.lerpColors(paper, c, (i + 1) / n) : c, lineWidth);
       });

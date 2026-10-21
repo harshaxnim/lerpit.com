@@ -9,7 +9,7 @@
    reader sets on the right (controls, restart), what the step reports on the left
    (readings). The right one is on top, should they ever meet. */
 .lerpette-panel__tray,
-.lerpette-panel__monitors {
+.lerpette-panel__readings {
   position: absolute;
   top: 1rem;
   max-width: calc(100% - 2rem);
@@ -23,7 +23,7 @@
   align-items: flex-end;
 }
 
-.lerpette-panel__monitors {
+.lerpette-panel__readings {
   left: 1rem;
   z-index: 1;
 }
@@ -33,7 +33,7 @@
    tweakpane row, so each control's label goes above its slider. */
 @container (width < 34rem) {
   .lerpette-panel__tray,
-.lerpette-panel__monitors {
+.lerpette-panel__readings {
     max-width: calc(50% - 1.5rem);
   }
 
@@ -85,7 +85,7 @@
   background: transparent;
   color: var(--muted);
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: var(--stage-ui-size);
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -151,7 +151,7 @@
   gap: 0.1rem;
   padding: 0.35rem 0.6rem 0.45rem;
   font-family: var(--font-sans);
-  font-size: 0.7rem;
+  font-size: var(--stage-ui-size);
   cursor: pointer;
 }
 
@@ -255,7 +255,7 @@
 .lerpette-reading__dot[data-tone='info'] { background: var(--accent); }
 .lerpette-reading__dot[data-tone='warn'] { background: var(--accent-warm); }
 
-/* A mini card: shrunk to one reading, no head and no label. A graph
+/* A mini card: shrunk to one reading, no head. A graph
    stays a small graph and a meter a small bar, each with its number after it.
    Clicking it brings the whole card back. */
 .lerpette-stage__card.is-mini .lerpette-stage__card-head,
@@ -272,7 +272,6 @@
   align-items: baseline;
   gap: 0.5rem;
   padding: 0.3rem 0.55rem;
-  font-size: 0.8rem;
 }
 
 .lerpette-reading.is-mini:hover {
@@ -281,6 +280,17 @@
 
 .lerpette-reading.is-mini .lerpette-reading__label {
   display: none;
+}
+
+/* A reading keeps its label when shown alone (unless made with miniLabel: false),
+   leading the line: label, then the small graph or bar, then the number. */
+.lerpette-reading.is-mini.has-mini-label .lerpette-reading__row {
+  display: contents;
+}
+
+.lerpette-reading.is-mini.has-mini-label .lerpette-reading__label {
+  display: inline;
+  order: -2;
 }
 
 .lerpette-reading.is-mini .lerpette-reading__graph {
@@ -338,7 +348,7 @@
 .lerpette-stage__controls .tp-txtv_i,
 .lerpette-stage__controls .tp-sldtxtv_t {
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: var(--stage-ui-size);
   letter-spacing: 0.04em;
 }
 

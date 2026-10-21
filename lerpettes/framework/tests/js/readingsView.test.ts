@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_VIEW, resolveReadingsView } from '@lerpit/framework/monitors/view';
+import { DEFAULT_VIEW, resolveReadingsView } from '@lerpit/framework/readings/view';
 
 const labels = ['PE + KE', 't', 'fps'];
 

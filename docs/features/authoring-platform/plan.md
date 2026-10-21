@@ -38,7 +38,7 @@ heading {#id +viewport2d +table}          code/<id>/js/index.ts            lerpi
         ▼
    chapter runtime: one clock (dt, seconds), model {state, setup, step, dispose},
    views {<panel>: {build, draw}}, merged from module and editor builds
-        │ ctx: wasm, view, input, time, controls(), monitors(), caption()
+        │ ctx: wasm, view, input, time, controls(), readings(), caption()
         ▼
    stage chrome (player slot): controls + restart (right), readings (left), caption (foot)
    kept under `stage:` keys; cleared on chapter change, kept across restart
@@ -72,7 +72,7 @@ when every invariant holds and every reported difference is one the phase meant 
 
 1. One panel registry. `canvas` registered beside viewport2d, viewport3d, table and readout.
    The legacy `LerpettePanelKind` and the `__key` bridge go. Every chapter gets a panel stack.
-2. Stage chrome in the player slot: `ctx.controls()`, `ctx.monitors()`, `ctx.caption()` and
+2. Stage chrome in the player slot: `ctx.controls()`, `ctx.readings()`, `ctx.caption()` and
    restart for every runtime, state kept under `stage:` keys.
 3. One chapter contract: module source (`code/<id>/js/index.ts` default-exporting
    `createStage({...})`) and editor source (a `lerpit` fence) are the same shape and merge.
