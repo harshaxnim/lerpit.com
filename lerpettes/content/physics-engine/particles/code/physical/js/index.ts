@@ -1,92 +1,97 @@
 import { createStage } from '@lerpit/framework/chapter';
 import { colors } from '@lerpit/framework/theme';
+import { Trail } from '@lerpit/framework/trail';
 
-const RADIUS = 10;
+type Particle = { x: number; y: number; vx: number; vy: number; fx: number, fy: number; r: number; m: number; c: string; trail: Trail };
 
-// Visual Parameters
-//  Ground
-const ANCHOR_Y = 0.35;
-const CEILING_HALF_WIDTH = 0.2;
-const HATCH_COUNT = 10;
-const HATCH_LEN = 0.045;
+const TRAIL_COUNT = 1000;
 
-//  Spring
-const SPRING_COILS = 15;
-const SPRING_AMPLITUDE = 0.045;
-const SPRING_LEAD = 0.035;
+const STAR_MASS = 110;
+const STAR_GAP = 0.12;
+const PLANET_MASS = 2;
+const PLANET_DISTANCE = 0.45;
+
+const SOFTENING = 0.01;
+
+
+function start(s: { particles: Particle[]; G: number }) {
+  function orbitSpeed(G: number, mass: number, distance: number) {
+    return Math.sqrt((G * mass) / distance);
+  }
+  const starSpeed = 0.5 * orbitSpeed(s.G, 2 * STAR_MASS, STAR_GAP);
+  const planetSpeed = orbitSpeed(s.G, 2 * STAR_MASS, PLANET_DISTANCE);
+  const drift = (PLANET_MASS * planetSpeed) / (2 * STAR_MASS);
+
+  s.particles = [
+    { x: STAR_GAP / 1.5, y: 0, vx: drift, vy: -starSpeed, fx: 0, fy: 0, r: 12, m: STAR_MASS, c: colors.orange, trail: Trail.create(TRAIL_COUNT) },
+    { x: -STAR_GAP / 1.5, y: 0, vx: drift, vy: starSpeed, fx: 0, fy: 0, r: 12, m: STAR_MASS, c: colors.orange, trail: Trail.create(TRAIL_COUNT) },
+    { x: 0, y: PLANET_DISTANCE, vx: -planetSpeed, vy: 0, fx: 0, fy: 0, r: 7, m: PLANET_MASS, c: colors.blue, trail: Trail.create(TRAIL_COUNT) },
+  ];
+}
 
 export default createStage({
-  caption: 'A mass attached to a spring\n$F = -k(l-l_0)$',
+  caption: 'Three body problem. Particles under gravity\n$$\\frac{G\\,m_1\\,m_2}{r^2}$$',
 
-  state: { mass: 1, k: 20, restLength: 0.3, y: ANCHOR_Y - 0.2, v: 0, integrationScheme: 'symplectic', substeps: 3 },
+  state: { particles: [] as Particle[], substeps: 4, G: 0.001 },
 
   setup(s, ctx) {
-    ctx.controls().addBinding(s, 'integrationScheme', {
-      label: 'Scheme',
-      options: { 'Symplectic Euler': 'symplectic', 'Explicit Euler': 'explicit' },
-    });
+    start(s);
+
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
 
-    const energy = () => {
-      const stretch = ANCHOR_Y - s.y - s.restLength;
-      return 0.5 * s.k * stretch * stretch + 0.5 * s.mass * s.v * s.v;
-    };
-    ctx.readings().graph('E', energy, { digits: 2, keepInView: 0 });
-    ctx.readings().graph('y', () => s.y);
     ctx.readings().fps();
+    const f = (v: number) => v.toFixed(2);
+    for (let i = 0; i < s.particles.length; i++) {
+      ctx.readings().text(`p${i + 1}`, () => {
+        const p = s.particles[i];
+        return `r ${p.r} | m ${p.m} x ${f(p.x)}  y ${f(p.y)}  |v| ${f(Math.hypot(p.vx, p.vy))}`;
+      });
+    }
   },
 
   step(s, dt) {
+    const sdt = dt / s.substeps;
+
     for (let i = 0; i < s.substeps; i += 1) {
-      const sdt = dt / s.substeps;
-      // Hooke's law pulls the mass back toward the ceiling by however far the
-      // spring is stretched past its rest length; gravity pulls it down.
-      const stretch = ANCHOR_Y - s.y - s.restLength;
-      const a = (s.k * stretch) / s.mass;
-      if (s.integrationScheme === 'explicit') {
-        // Explicit Euler: the mass moves with the velocity it had at the start of
-        // the step, so the spring's energy grows a little every step.
-        s.y += s.v * sdt;
-        s.v += a * sdt;
-      } else {
-        // Symplectic Euler: the velocity update comes first, and the new velocity
-        // is what moves the mass, so the energy oscillates around one value.
-        s.v += a * sdt;
-        s.y += s.v * sdt;
+      // Accumulate forces on every body from the current state
+      for (let pi = 0; pi < s.particles.length; pi += 1) {
+        const p = s.particles[pi];
+        p.fx = 0, p.fy=0;
+        for (let qi = 0; qi < s.particles.length; qi += 1) {
+          if (qi === pi) continue;
+          const q = s.particles[qi];
+          const dx = q.x - p.x;
+          const dy = q.y - p.y;
+          const r2 = dx * dx + dy * dy + SOFTENING * SOFTENING;
+          const r = Math.sqrt(r2);
+          const f = (s.G * q.m * p.m) / r2;
+          p.fx += f * (dx / r);
+          p.fy += f * (dy / r);
+        }
+      }
+
+      // Symplectic Euler: velocity first, then position with the new velocity.
+      for (let pi = 0; pi < s.particles.length; pi += 1) {
+        const p = s.particles[pi];
+        
+        const ax = p.fx/p.m;
+        const ay = p.fy/p.m;
+        
+        p.vx += ax * sdt;
+        p.vy += ay * sdt;
+        
+        p.x += p.vx * sdt;
+        p.y += p.vy * sdt;
       }
     }
+
+    for (const p of s.particles) Trail.push(p.trail, p.x, p.y);
   },
 
   viewport2d: {
     draw(sketch, s) {
-      // The ceiling: a solid bar with hatching above it (the solid side), the
-      // textbook symbol for a fixed support — hatching below would read as ground.
-      sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y, CEILING_HALF_WIDTH, ANCHOR_Y, colors.charcoal, 2.5);
-      for (let i = 0; i <= HATCH_COUNT; i += 1) {
-        const x = -CEILING_HALF_WIDTH + (i / HATCH_COUNT) * (2 * CEILING_HALF_WIDTH);
-        sketch.line(x, ANCHOR_Y, x + HATCH_LEN/3, ANCHOR_Y + HATCH_LEN, colors.charcoal, 1.5);
-      }
-
-      // The spring: a zigzag between the ceiling and the mass, the textbook symbol
-      // for a Hookean spring. The span is signed, so a mass pushed above the ceiling
-      // still gets a coil, just pointing up, and drawn in cyan to mark the flip.
-      // It hooks onto the edge of the mass facing the ceiling, not its centre: the
-      // radius is in pixels, so it is turned into units first.
-      const radius = RADIUS / (sketch.px(1) - sketch.px(0));
-      const facing = Math.sign(ANCHOR_Y - s.y) || 1;
-      const end = s.y + facing * radius;
-      const span = ANCHOR_Y - end;
-      const lead = Math.sign(span) * Math.min(SPRING_LEAD, Math.abs(span) / 2);
-      const points: [number, number][] = [[0, ANCHOR_Y], [0, ANCHOR_Y - lead]];
-      for (let i = 1; i < SPRING_COILS; i += 1) {
-        const y = ANCHOR_Y - lead - ((span - 2 * lead) * i) / SPRING_COILS;
-        points.push([i % 2 === 1 ? SPRING_AMPLITUDE : -SPRING_AMPLITUDE, y]);
-      }
-      points.push([0, end + lead], [0, end]);
-      sketch.path(points, facing < 0 ? colors.light.cyan : colors.blue, 2);
-
-      // The mass.
-      sketch.circle(0, s.y, RADIUS, colors.orange);
+      for (const p of s.particles) sketch.trail(p.trail, { color: p.c, width: 2 });
+      for (const p of s.particles) sketch.circle(p.x, p.y, p.r, p.c);
     },
   },
 });

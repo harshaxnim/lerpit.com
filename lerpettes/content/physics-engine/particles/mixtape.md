@@ -107,6 +107,11 @@ $$
 
 This integration scheme is called symplectic Euler, and we will learn more about it and a few other methods in an upcoming chapter. For now, notice how we're using $v_{n+1}$ in calcualting $x_{n+1}$.
 
+Let's put it to work by simulating the notorious 3-body problem. It's been proven that it's impossible to get a general closed form analytical solution to the problem. However, we can definitely simulate it using numerical methods. And it's almost trivial to do so. Just initialize the three bodies in three different places, and follow our playbook of accumulating forces (using $\frac{G\,m_1\,m_2}{{r_{12}}^2}$) to finding the next position for each body, and that's it, _voila_!
+
+
+## _Spring_ to life {#spring}
+
 Let's now take a look at an isolated case of a single particle of mass $m$ attached to a spring with spring-constant $k$. On the right, we see such a setup with the spring attached to a wall on one side, and mass on the other. Let's start with the spring compressed by ~33%. First we'll use the swanky new integration scheme we just learnt, but I added a control to switch it to explicit Euler, the integration scheme we learnt in the previous section.
 
 > Compare both the integration schemes in `Controls > Scheme` and try observing the differences between them. Notice how the system blows up using explicit Euler with low sub-step count. Contrast it with symplectic Euler's stability. Observe the tracked _Total Mechanical Energy_ of the system. Note the slight wobbles in the energy with symplectic Euler, and the blow up with explicit Euler methods.
