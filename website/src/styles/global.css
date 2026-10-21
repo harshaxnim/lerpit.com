@@ -792,33 +792,24 @@ nav {
   }
 }
 
-/* iOS 26 Safari draws the page behind the status bar, above the top of the viewport,
-   and fills that strip with solid colour only when a full-width fixed element touches
-   the top edge. The byline spans the column, not the screen, so it never qualified
-   and prose showed through; the mobile drawer does qualify, which is why opening it
-   once used to clear the strip for the rest of the visit.
+/* iOS 26 Safari draws the page behind the status bar, above the top of the viewport.
+   It fills that strip with solid colour only when what sits 4px below the middle of
+   the top edge is fixed or sticky and at least 90% of the viewport wide (WebKit's
+   LocalFrameView::fixedContainerEdges); otherwise the page shows through. That is the
+   stuck byline, and on a phone it spans the column, 88-89.5% of the screen, so prose
+   showed above it. Tablets already cleared 90%.
 
-   So a stuck byline brings a band of paper that does qualify: fixed, edge to edge,
-   stacked just above the viewport with its shadows carrying the paper further up.
-   It sits above the top edge rather than across it because the strip it is for is
-   the one above the top edge. Sitting across it made the band paint over the player's
-   own ruled border for its full height, edge to edge, which is the wrong width for
-   anything the reader can actually see; the byline's own opaque background already
-   covers the column, which is all that prose needs to scroll under. */
+   So the byline's box reaches the screen edges while its paper stays in the column:
+   background-clip leaves the padding that carries it out unpainted, and Safari takes
+   the colour from the style, not the pixels, so the player's ruled border still runs
+   unbroken past it. The vertical padding moves into the line height, or the clip
+   would open a gap of page above and below the crumbs. Same height either way. */
 @media (max-width: 1180px) {
-  .lerpette-brow--pinned.is-stuck::before {
-    content: '';
-    position: fixed;
-    top: calc(-1 * var(--byline-h));
-    left: 0;
-    right: 0;
-    height: var(--byline-h);
-    z-index: -1;
-    background: var(--paper);
-    box-shadow:
-      0 calc(-1 * var(--byline-h)) 0 var(--paper),
-      0 calc(-2 * var(--byline-h)) 0 var(--paper);
-    pointer-events: none;
+  .lerpette-brow--pinned {
+    margin-inline: calc(50% - 50vw);
+    padding: 0 calc(50vw - 50%);
+    line-height: var(--byline-h);
+    background-clip: content-box;
   }
 }
 

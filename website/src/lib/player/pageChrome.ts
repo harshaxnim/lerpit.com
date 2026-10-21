@@ -38,7 +38,6 @@ export function createPageChrome(options: PageChromeOptions): PageChrome {
   const stageToggle = root.querySelector<HTMLButtonElement>('[data-stage-toggle]');
   const panelLabels = Array.from(root.querySelectorAll<HTMLElement>('[data-panel-label]'));
   const toggleArrows = Array.from(root.querySelectorAll<HTMLElement>('[data-stage-toggle-arrow]'));
-  const bylineEl = root.querySelector<HTMLElement>('.lerpette-brow--pinned');
   const bylineTitle = root.querySelector<HTMLElement>('[data-byline-title]');
   const bylineSection = root.querySelector<HTMLElement>('[data-byline-section]');
   const bylineNow = root.querySelector<HTMLElement>('[data-byline-now]');
@@ -163,9 +162,6 @@ export function createPageChrome(options: PageChromeOptions): PageChrome {
   };
 
   const sync = () => {
-    // Only a stuck byline may paint above itself; at rest the same band would cover
-    // the site header.
-    if (bylineEl) bylineEl.classList.toggle('is-stuck', window.scrollY > 0 && bylineEl.getBoundingClientRect().top <= 0);
     const sectionId = sectionUnderByline();
     setActive(sectionId);
     if (sectionId === reportedSection) return;
