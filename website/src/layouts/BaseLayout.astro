@@ -102,6 +102,15 @@ const {
           });
       })();
     </script>
+    {/* TEMPORARY: the iOS status-bar lab, website/public/lab/ios-strip.js. Inert unless
+        the URL carries ?lab=. Delete both once the strip is fixed. */}
+    <script is:inline define:vars={{ labSrc: `${base}lab/ios-strip.js` }}>
+      if (new URLSearchParams(location.search).has('lab')) {
+        const lab = document.createElement('script');
+        lab.src = labSrc;
+        document.head.append(lab);
+      }
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     <!-- Ignored by Safari 26, which samples CSS instead, but still honoured by older
