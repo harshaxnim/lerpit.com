@@ -20,7 +20,7 @@ Unfortunately we might not have neat closed form solutions like this most of the
 
 An intermediate step before moving onto $F = ma$ is driving particles by directly using velocities. Let's create a grid of velocity vectors and make the particle follow the velocity on the grid at the particle's position.
 
-> A grid of vectors is called a _vector field_. Similarly, a grid of scalar values on a surface is a scalar field. Do note that this need not be a grid in a flat square sense, it could be warped on a surface.
+A grid of vectors is called a _vector field_. Similarly, a grid of scalar values on a surface is a scalar field. Do note that this need not be a grid in a flat square sense, it could be warped on a surface.
 
 Let's use an interesting yet simple formula for the vector field:
 
@@ -66,12 +66,49 @@ $$
 p(t + \Delta t) = p(t) + \Delta t \, v(p(t))
 $$
 
-We're using an integration scheme to find a particle's position in the next timestep given the current position, velocity and step size. Intuitively you may observe that the smaller the timestep, the more accurate the output is in following the circle. If you look into the panel you should see how our paritcles aren't actually following a circle, but are rather spiraling out. This is because we are using the velocity at timestep $t$ and using the same velocity over $\Delta{t}$.
+We're using an integration scheme to find a particle's position in the next timestep given the current position, velocity and step size. This particular scheme is called explicit Euler. Intuitively you may observe that the smaller the timestep, the more accurate the output is in following the circle. If you look into the panel you should see how our paritcles aren't actually following a circle, but are rather spiraling out. This is because we are using the velocity at timestep $t$ and using the same velocity over $\Delta{t}$. The velocity, being tangential at curves, will put the particle slightly outside the curved path in that timestep, and it keeps accumulating over time resulting in this spiraling out behavior.
 
-> Check out the `Controls -> Sub-steps`, and observe how changing the number of sub-steps impacts the particle's trajectory.
+> Check out the `Controls > Sub-steps`, and observe how changing the number of sub-steps impacts the particle's trajectory. Contrast with the previous solution where we had a closed form solution for particle positions, where the step size doesn't throw the particle out of trajectory path.
 
-Contrast with the previous solution where we had a closed form solution for particle positions, where the step size doesn't really matter.
+We shall later look at other kinds of integration schemes with higher accuracy in a future lerpette where we will explore the math and the numerical methods that are applicable and relevant for various types of simulations.
+
 
 ## Let's get _Physical_ {#physical}
 
-Now we will drive particles based on Newton's law $F=ma$. To introduce forces like gravity and springs, we will need to introduce a measure of inertia for these particles, i.e., mass.
+Now we graduate to the next level! We will drive particles based on Newton's law $F=ma$. To introduce forces like gravity and springs, we will need to introduce a measure of inertia for these particles, i.e., mass.
+
+We now have acceleration which is a second order differential of position with respect to time.
+
+$$
+\ddot{x}_p = \dot{v}_p = a_p
+$$
+
+where the dot implies a time differentiation of a variable, e.g., $\dot{v} = \frac{dv}{dt}$. Scene designers usually setup forces, like gravity, attractors, springs, constraints, etc., and the simulator's job is to move the particles to new positions every timestep pertaining to these forces. How do we do that? We need to find positions starting from forces.
+
+```
+for every timestep:
+	accumulate all the forces on the particle p;
+	calculate effective acceleration due to forces;
+	calculate velocity due to acceleration;
+	calcualte new position;
+```
+
+$$
+a_{n+1} = \frac{f(x_n,\,t)}{m}
+$$
+
+$$
+v_{n+1} = v_n + \Delta{t}\,a_{n+1}
+$$
+
+$$
+x_{n+1} = x_n + \Delta{t}\,v_{n+1}
+$$
+
+This integration scheme is called symplectic Euler, and we will learn more about it and a few other methods in an upcoming chapter. For now, notice how we're using $v_{n+1}$ in calcualting $x_{n+1}$.
+
+Let's now take a look at an isolated case of a single particle of mass $m$ attached to a spring with spring-constant $k$. On the right, we see such a setup with the spring attached to a wall on one side, and mass on the other. Let's start with the spring compressed by ~33%. First we'll use the swanky new integration scheme we just learnt, but I added a control to switch it to explicit Euler, the integration scheme we learnt in the previous section.
+
+> Compare both the integration schemes in `Controls > Scheme` and try observing the differences between them. Notice how the system blows up using explicit Euler with low sub-step count. Contrast it with symplectic Euler's stability. Observe the tracked _Total Mechanical Energy_ of the system. Note the slight wobbles in the energy with symplectic Euler, and the blow up with explicit Euler methods.
+
+Now that we know how to affect mass with force, we have unlocked a nifty ability to model quite a few relatively complex behaviors. Let's now look at what happens if we connect a bunch of these points with springs.
