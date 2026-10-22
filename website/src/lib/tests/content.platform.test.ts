@@ -265,13 +265,3 @@ describe('formatted titles', () => {
     expect((await loadLibrary()).mixtapes[0].titleHtml).toBe('A b');
   });
 });
-
-describe('code blocks', () => {
-  it('marks every space, tab and line end, and keeps the real whitespace inside the marks', async () => {
-    await lesson('a', '# A\n\nS.\n\n## One {#one +viewport2d}\n\n```\nfor x:\n\tdo a\n  two\n```\n');
-    const html = (await loadLibrary()).mixtapes[0].steps[0].bodyHtml;
-    const space = '<span class="ws ws--space"> </span>';
-    const eol = '<span class="ws ws--eol"></span>\n';
-    expect(html).toContain(`for${space}x:${eol}<span class="ws ws--tab">\t</span>do${space}a${eol}${space}${space}two\n</code>`);
-  });
-});

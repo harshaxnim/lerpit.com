@@ -22,12 +22,14 @@ function start(s: { particles: Particle[]; G: number }) {
 export default createStage({
   caption: 'A solution to the three body problem\n\nThree particles with carefully crafted initial conditions under gravity\n$$\\frac{G\\,m_1\\,m_2}{r^2}$$',
 
-  state: { particles: [] as Particle[], substeps: 4, G: 0.001 },
+  state: { particles: [] as Particle[], substeps: 50, G: 0.001, trail: true, field: false },
 
   setup(s, ctx) {
     start(s);
 
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
+    ctx.controls().addBinding(s, 'trail', { label: 'Trail'});
+    ctx.controls().addBinding(s, 'field', { label: 'Acceleration field' });
 
     ctx.readings().fps();
     const f = (v: number) => v.toFixed(2);
@@ -79,8 +81,34 @@ export default createStage({
   },
 
   viewport2d: {
-    draw(sketch, s) {
-      for (const p of s.particles) sketch.trail(p.trail, { color: p.c, width: 2 });
+    draw(sketch, s, ctx) {
+      // Acceleration field: the pull a test mass would feel at each grid point
+      if (s.field) {
+        const SPACING = 0.05;
+        // Gravity runs from near zero to huge close to a body, so lengths saturate at half the spacing.
+        const A0 = (s.G * MASS) / 0.25;
+        const { halfWidth, halfHeight } = ctx.view;
+        for (let x = -halfWidth + SPACING / 2; x < halfWidth; x += SPACING) {
+          for (let y = -halfHeight + SPACING / 2; y < halfHeight; y += SPACING) {
+            let ax = 0, ay = 0;
+            for (const q of s.particles) {
+              const dx = q.x - x;
+              const dy = q.y - y;
+              const r2 = dx * dx + dy * dy + SOFTENING * SOFTENING;
+              const r = Math.sqrt(r2);
+              const a = (s.G * q.m) / r2;
+              ax += a * (dx / r);
+              ay += a * (dy / r);
+            }
+            const a = Math.hypot(ax, ay);
+            const reach = (0.5 * SPACING) / (a + A0);
+            sketch.arrow(x - ax * reach, y - ay * reach, x + ax * reach, y + ay * reach, colors.gray, 1);
+            sketch.circle(x - ax * reach, y - ay * reach, .5, colors.orange);
+          }
+        }
+      }
+
+      if (s.trail) for (const p of s.particles) sketch.trail(p.trail, { color: p.c, width: 2 });
       for (const p of s.particles) sketch.circle(p.x, p.y, p.r, p.c);
     },
   },

@@ -127,7 +127,6 @@ pre {
 }
 
 .eyebrow,
-.site-badge,
 .lerpette-head__index,
 .cassette-card__meta {
   font-family: var(--font-sans);
@@ -152,8 +151,8 @@ code {
 pre {
   overflow-x: auto;
   padding: 0.6rem 0.8rem;
-  border: 1px solid var(--line-strong);
-  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(46, 109, 164, 0.35);
+  background: rgba(46, 109, 164, 0.04);
 }
 
 pre code {
@@ -171,67 +170,6 @@ pre:has(> code) {
 
 pre > code {
   font-size: 1em;
-}
-
-/* Whitespace marks (content.ts markWhitespace), after Shiki's renderWhitespace and VS
-   Code's: drawn over the real characters, so widths never change, faint enough to read
-   past, and never part of a copy since generated content isn't. Hidden until the
-   pointer is over the block: a block in prose is read far more than it is copied, and
-   at rest the marks were noise. --ws-mark is their strength, 0 at rest. */
-pre {
-  --ws-mark: 0;
-}
-
-pre:hover {
-  --ws-mark: 0.25;
-}
-
-pre .ws {
-  position: relative;
-}
-
-pre .ws::before {
-  position: absolute;
-  inset: 0;
-  color: currentColor;
-  opacity: var(--ws-mark);
-  transition: opacity 0.15s ease;
-  pointer-events: none;
-}
-
-pre .ws--space::before {
-  content: "·";
-  text-align: center;
-}
-
-/* A tab is a hairline across its whole width ending in a small head, so it reads as
-   one tab rather than one character. */
-pre .ws--tab::before {
-  content: "";
-  inset: 50% 0.2em auto 0.2em;
-  height: 0;
-  border-top: 1px solid;
-}
-
-pre .ws--tab::after {
-  content: "";
-  position: absolute;
-  right: 0.2em;
-  top: 50%;
-  width: 0.3em;
-  height: 0.3em;
-  border: solid currentColor;
-  border-width: 1px 1px 0 0;
-  transform: translate(0, -50%) rotate(45deg);
-  transform-origin: center;
-  opacity: var(--ws-mark);
-  transition: opacity 0.15s ease;
-  pointer-events: none;
-}
-
-pre .ws--eol::before {
-  content: "¬";
-  inset: auto;
 }
 
 img {
@@ -367,7 +305,6 @@ nav {
 }
 
 .eyebrow,
-.site-badge,
 .lerpette-head__index {
   font-size: 0.76rem;
   text-transform: uppercase;
@@ -573,7 +510,6 @@ nav {
 .collection-header,
 .lerpette-shelf,
 .archive-collection,
-.collection-page,
 .lerpette-player,
 .sheet {
   border: 1px solid var(--line-strong);
@@ -584,7 +520,6 @@ nav {
 .collection-header,
 .lerpette-shelf,
 .archive-collection,
-.collection-page,
 .lerpette-player,
 .sheet {
   /* The brow line: one text row, padded when it has to pin itself. --byline-h is
@@ -635,10 +570,8 @@ nav {
 .section-heading p,
 .lerpette-shelf p,
 .archive-collection p,
-.collection-page p,
 .prose-block p,
-.prose-block li,
-.lerpette-intro__summary {
+.prose-block li {
   margin: 0;
   font-size: 1.1rem;
   color: var(--muted);
@@ -647,8 +580,7 @@ nav {
 
 .collection-header,
 .lerpette-shelf,
-.archive-collection,
-.collection-page {
+.archive-collection {
   margin-top: 1.6rem;
 }
 
@@ -944,11 +876,6 @@ nav {
   font-size: clamp(1.6rem, 2.8vw, 2.35rem);
   font-weight: 500;
   color: var(--ink);
-}
-
-.lerpette-intro__summary {
-  margin-top: 0.5rem;
-  font-size: 1.02rem;
 }
 
 .lerpette-step {

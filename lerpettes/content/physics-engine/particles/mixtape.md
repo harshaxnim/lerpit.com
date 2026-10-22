@@ -72,6 +72,8 @@ We're using an integration scheme to find a particle's position in the next time
 
 We shall later look at other kinds of integration schemes with higher accuracy in a future lerpette where we will explore the math and the numerical methods that are applicable and relevant for various types of simulations.
 
+I would like to end this section by noting that the velocity field itself need not be static like we have it here. It can be a function of time, or an output of another simulation entirely that might simulate water surface or wind for instance.
+
 
 ## Let's get _Physical_ {#physical}
 
@@ -80,10 +82,10 @@ Now we graduate to the next level! We will drive particles based on Newton's law
 We now have acceleration which is a second order differential of position with respect to time.
 
 $$
-\ddot{x}_p = \dot{v}_p = a_p
+\ddot{x}_p = \dot{v}_p = a_p = \frac{F_p}{m_p}
 $$
 
-where the dot implies a time differentiation of a variable, e.g., $\dot{v} = \frac{dv}{dt}$. Scene designers usually setup forces, like gravity, attractors, springs, constraints, etc., and the simulator's job is to move the particles to new positions every timestep pertaining to these forces. How do we do that? We need to find positions starting from forces.
+where the dot implies a time differentiation of a variable, e.g., $\dot{v} = \frac{dv}{dt}$, and $F_p$ is the total force on particle $p$. Scene designers usually setup forces, like gravity, attractors, springs, constraints, etc., and the simulator's job is to move the particles to new positions every timestep pertaining to these forces. How do we do that? We need to find positions starting from forces.
 
 ```
 for every timestep:
@@ -107,7 +109,7 @@ $$
 
 This integration scheme is called symplectic Euler, and we will learn more about it and a few other methods in an upcoming chapter. For now, notice how we're using $v_{n+1}$ in calcualting $x_{n+1}$.
 
-Let's put it to work by simulating the notorious 3-body problem. It's been proven that it's impossible to get a general closed form analytical solution to this problem. However, we can definitely simulate it using numerical methods. And it's almost trivial to do so. Just initialize the three bodies with three different initial states (I selected a stable state just for the aesthetics, but note that the stabe states are special initial conditions cases), and follow our playbook of accumulating forces (using $\frac{G\,m_1\,m_2}{{r_{12}}^2}$) to finding the next position for each body, and that's it, _voila_!
+Let's put it to work by simulating the notorious 3-body problem. It's been proven that it's impossible to get a general closed form analytical solution to this problem. However, we can definitely simulate it using numerical methods. And it's almost trivial to do so. Just initialize the three bodies with three different initial states (I selected a stable state just for the aesthetics, but note that the stabe states are carefully crafted initial conditions), and follow our playbook of accumulating forces (using $\frac{G\,m_1\,m_2}{{r_{12}}^2}$) to finding the next position for each body, and that's it, _voila_!
 
 
 ## _Spring_ to life {#spring}
@@ -116,4 +118,6 @@ Let's now take a look at an isolated case of a single particle of mass $m$ attac
 
 > Compare both the integration schemes in `Controls > Scheme` and try observing the differences between them. Notice how the system blows up using explicit Euler with low sub-step count. Contrast it with symplectic Euler's stability. Observe the tracked _Total Mechanical Energy_ of the system. Note the slight wobbles in the energy with symplectic Euler, and the blow up with explicit Euler methods.
 
-Now that we know how to affect mass with force, we have unlocked a nifty ability to model quite a few relatively complex behaviors. Let's now look at what happens if we connect a bunch of these points with springs.
+Now that we know how to affect mass with spring forces, we have unlocked a nifty ability to model quite a few relatively complex behaviors. Let's now look at what happens if we connect a bunch of these points with springs!
+
+## 
