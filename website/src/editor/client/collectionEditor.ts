@@ -151,7 +151,7 @@ export async function startLibrary() {
     // Beside "Open collection", in the same button: the same page, already in edit mode.
     const open = showcase.querySelector<HTMLAnchorElement>('.section-heading a.button');
     const href = `/${c}/`;
-    const edit = h('a.button.button--ghost.ed-edit-collection', {
+    const edit = h('a.button.ed-edit-collection', {
       href,
       onclick: (event: Event) => {
         event.preventDefault();

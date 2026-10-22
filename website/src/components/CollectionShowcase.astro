@@ -17,7 +17,7 @@ const { collection, showLink = false } = Astro.props as Props;
       <p class="eyebrow">Collection</p>
       <h2 id={`collection-${collection.slug}`}>{collection.title}</h2>
     </div>
-    {showLink && <a class="button button--ghost" href={collection.href}>Open collection</a>}
+    {showLink && <a class="button" href={collection.href}>Open collection</a>}
   </div>
 
   <ContentProblems problems={collection.problems} title="This collection is unfinished" />

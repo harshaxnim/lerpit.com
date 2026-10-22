@@ -13,16 +13,28 @@
   --font-sans: "Syne", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   /* One size for every bit of stage chrome (card titles, controls, readings, folded or
      not): tools beside the simulation, ranked by colour and weight rather than size. */
-  --stage-ui-size: 0.72rem;
+  --stage-ui-size: 0.76rem;
   --paper: #fdfbf4;
   --paper-deep: #f7f3e7;
-  --panel: rgba(253, 251, 244, 0.95);
+  --panel: var(--paper);
+  /* The paper at 80%, the one see-through face: anything laid over a drawing or the
+     graph paper (chapter boxes, the stage, the floating cards, the caption). Solid
+     paper (--paper) is for everything else: panels and fields. */
+  --paper-veil: rgba(253, 251, 244, 0.8);
   --ink: #20313f;
   --muted: #506270;
   --line: rgba(81, 131, 173, 0.42);
   --line-strong: rgba(81, 131, 173, 0.72);
+  /* The quietest line: dividers inside a card, table rows, an empty meter or groove. */
+  --line-faint: rgba(81, 131, 173, 0.16);
   --accent: #2e6da4;
+  /* The accent at four strengths, and only these: faint for a resting fill (code block,
+     quote, controls), soft for a light fill or a hover, strong for a stronger hover
+     or a pressed state, line for borders, underlines and selections. */
+  --accent-faint: rgba(46, 109, 164, 0.04);
   --accent-soft: rgba(46, 109, 164, 0.08);
+  --accent-strong: rgba(46, 109, 164, 0.14);
+  --accent-line: rgba(46, 109, 164, 0.35);
   --accent-warm: #d17041;
   /* Status: a build that ran, a reading in range. Its counterpart is --warn below. */
   --ok: #2f6b46;
@@ -35,10 +47,10 @@
      of face there, a tint or a lighter paper, was read as the wrong emphasis. What
      marks it is a 2px accent rule down the left edge of its header (see
      .lerpette-step.is-active). */
-  --step-face: rgba(253, 251, 244, 0.9);
-  /* The stage's face: mostly paper, with no texture of its own. The page's graph paper
-     shows through it at the strength this alpha leaves (see .lerpette-stage__panel). */
-  --stage-face-alpha: 0.75;
+  --step-face: var(--paper-veil);
+  /* The stage's face: the paper veil, kept as an alpha because the graph paper drawn
+     through it fades by the strength it leaves (see .lerpette-stage__panel). */
+  --stage-face-alpha: 0.8;
   --stage-face: rgb(253 251 244 / var(--stage-face-alpha));
   /* The cassette spine, the site's mark (docs/brand/identity.md, BrandSpine.astro):
      five bands of the 90min videocassette label (website/src/lib/cardArt/palette.ts),
@@ -55,19 +67,16 @@
      it over their colour in overlay, so both are printed on the same paper. */
   --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   /* What floats over a drawing: the controls and readings cards, the caption. */
-  --chrome-face: rgba(255, 253, 246, 0.92);
+  --chrome-face: var(--paper-veil);
   /* The page's graph paper, as layers. Anything that covers the page edge to edge and
      must still look like the same sheet (the stage drawer on a phone) draws these. */
   --graph-paper:
-    radial-gradient(circle at 22% 18%, rgba(168, 142, 82, 0.035) 0 1px, transparent 1px 100%),
-    radial-gradient(circle at 76% 64%, rgba(168, 142, 82, 0.028) 0 1px, transparent 1px 100%),
-    linear-gradient(180deg, rgba(232, 206, 142, 0.035), rgba(232, 206, 142, 0.02)),
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px),
     linear-gradient(var(--line-strong) 1px, transparent 1px),
     linear-gradient(90deg, var(--line-strong) 1px, transparent 1px);
-  --graph-paper-size: 180px 180px, 220px 220px, auto, 24px 24px, 24px 24px, 120px 120px, 120px 120px;
-  --graph-paper-position: 0 0, 80px 40px, 0 0, -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+  --graph-paper-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  --graph-paper-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
 }
 
 * {
@@ -110,12 +119,12 @@ body::before {
 a {
   color: var(--accent);
   text-decoration: underline;
-  text-decoration-color: rgba(46, 109, 164, 0.4);
+  text-decoration-color: var(--accent-line);
   text-underline-offset: 0.16em;
 }
 
 a:hover {
-  text-decoration-color: rgba(46, 109, 164, 0.9);
+  text-decoration-color: var(--accent);
 }
 
 /* Mono is for code and what code prints. Every other small label is sans. Tabs at 4,
@@ -144,15 +153,15 @@ h6 {
 code {
   padding: 0.12rem 0.35rem;
   font-size: 0.8em;
-  background: rgba(46, 109, 164, 0.08);
-  border: 1px solid rgba(46, 109, 164, 0.18);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-strong);
 }
 
 pre {
   overflow-x: auto;
   padding: 0.6rem 0.8rem;
-  border: 1px solid rgba(46, 109, 164, 0.35);
-  background: rgba(46, 109, 164, 0.04);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-faint);
 }
 
 pre code {
@@ -191,10 +200,6 @@ nav {
   width: min(1440px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 1rem 0 1rem;
-}
-
-.site-shell--lesson {
-  width: min(1440px, calc(100% - 2rem));
 }
 
 .site-footer {
@@ -285,25 +290,6 @@ nav {
   font-style: italic;
 }
 
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.8rem;
-  padding: 0.7rem 0.95rem;
-  border: 1px solid var(--line-strong);
-  background: transparent;
-  color: var(--ink);
-  font-size: 1.1rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-decoration: none;
-}
-
-.button--ghost {
-  background: rgba(255, 255, 255, 0.56);
-}
-
 .eyebrow,
 .lerpette-head__index {
   font-size: 0.76rem;
@@ -335,10 +321,10 @@ nav {
   width: var(--tooltip-w, auto);
   white-space: var(--tooltip-wrap, nowrap);
   padding: 0.4rem 0.6rem;
-  background: #20313f;
-  color: #fff;
+  background: var(--ink);
+  color: var(--paper);
   font-family: var(--font-sans, system-ui);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 400;
   line-height: 1.45;
   letter-spacing: 0;
@@ -362,19 +348,22 @@ nav {
   }
 }
 
-.lerpette-step__missing-runtime {
+/* The problem badge, one everywhere: a chapter header, the problems panel, a library
+   card. Opaque paper, because a card's own ground is whatever its generator picked. */
+.lerpette-step__missing-runtime,
+.content-problems__mark,
+.cassette-card__problems {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.15rem;
+  height: 1.15rem;
   border: 1px solid var(--warn-line);
-  border-radius: 50%;
   font-family: var(--font-sans);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: var(--warn);
-  background: var(--warn-soft);
+  background: var(--paper-deep);
 }
 
 /* The same fact at document scale: what is wrong with an authored document, shown
@@ -438,20 +427,6 @@ nav {
   content: none;
 }
 
-.content-problems__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  border: 1px solid var(--warn-line);
-  border-radius: 50%;
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--warn);
-}
-
 .content-problems__list {
   display: grid;
   gap: 0.7rem;
@@ -462,7 +437,7 @@ nav {
 
 .content-problems__item {
   padding-top: 0.7rem;
-  border-top: 1px solid rgba(192, 138, 42, 0.38);
+  border-top: 1px solid var(--warn-line);
 }
 
 .content-problems__item:first-child {
@@ -472,7 +447,7 @@ nav {
 
 .content-problems__message {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   line-height: 1.5;
   color: var(--ink);
 }
@@ -494,7 +469,7 @@ nav {
   display: block;
   margin-top: 0.3rem;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   letter-spacing: 0.06em;
   color: var(--muted);
 }
@@ -502,16 +477,17 @@ nav {
 /* Inline code is tinted with the accent blue, which reads cold on the amber. */
 .content-problems code {
   color: var(--ink);
-  border-color: rgba(192, 138, 42, 0.42);
-  background: rgba(192, 138, 42, 0.13);
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
 }
 
-.section-heading,
-.collection-header,
+/* The panels: the sheet, the lesson player and the shelf, whose heading is a panel of
+   its own. Library sections and collection headers sit on the sheet without one. */
 .lerpette-shelf,
-.archive-collection,
+.lerpette-shelf .section-heading,
 .lerpette-player,
 .sheet {
+  padding: 1.1rem;
   border: 1px solid var(--line-strong);
   background: var(--panel);
 }
@@ -534,9 +510,6 @@ nav {
   /* Lesson and stage. The pinned byline uses the same tracks, so its crumbs end where
      the lesson does and the stage's tabs can stand beside them. */
   --player-columns: minmax(0, 1.1fr) minmax(360px, 0.92fr);
-  /* The drawer toggle's width below 1180px, and so how much room anything
-     interactive has to leave clear of it. */
-  padding: 1.1rem;
 }
 
 .section-heading {
@@ -573,7 +546,6 @@ nav {
 .prose-block p,
 .prose-block li {
   margin: 0;
-  font-size: 1.1rem;
   color: var(--muted);
   line-height: 1.72;
 }
@@ -586,9 +558,6 @@ nav {
 
 .site-shell > .sheet > .archive-collection {
   margin-top: 1rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
 }
 
 .site-shell > .sheet > .archive-collection:first-of-type {
@@ -601,21 +570,15 @@ nav {
 
 .site-shell > .sheet > .archive-collection > .section-heading {
   margin-bottom: 1rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
 }
 
 .site-shell > .sheet > .archive-collection > .section-heading h2 {
-  font-size: clamp(1.6rem, 3.1vw, 2.2rem);
+  font-size: clamp(1.45rem, 2.8vw, 2rem);
   font-weight: 500;
 }
 
 .site-shell > .sheet > .collection-header {
   margin-top: 1rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
 }
 
 .site-shell > .sheet > .collection-header h2 {
@@ -633,11 +596,6 @@ nav {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--line-strong);
-}
-
-.lerpette-player__lesson .prose-block p,
-.lerpette-player__lesson .prose-block li {
-  font-size: 1.1rem;
 }
 
 .collection-header h1 {
@@ -672,7 +630,7 @@ nav {
 
 .lerpette-player__bar h1 {
   margin-top: 0;
-  font-size: clamp(2.5rem, 5vw, 4.2rem);
+  font-size: clamp(2.25rem, 4.5vw, 3.8rem);
   font-weight: 500;
   max-width: none;
 }
@@ -722,10 +680,11 @@ nav {
   margin-left: auto;
 }
 
-/* The shelf's "Open the library" shares these, so every small link-button on a
-   lesson page is one size. */
+/* The shelf's "Open the library" and the collection links (.button) share these, so
+   every small link-button on the site is one style. */
 .lerpette-player__action,
-.lerpette-shelf__action {
+.lerpette-shelf__action,
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -737,7 +696,7 @@ nav {
   /* The sans the site's other small labels use, at every size; the phone block only
      makes it smaller. */
   font-family: var(--font-sans);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   line-height: 1;
@@ -748,10 +707,12 @@ nav {
 .lerpette-player__action:hover,
 .lerpette-player__action:focus-visible,
 .lerpette-shelf__action:hover,
-.lerpette-shelf__action:focus-visible {
+.lerpette-shelf__action:focus-visible,
+.button:hover,
+.button:focus-visible {
   text-decoration: none;
   border-color: var(--accent);
-  background: rgba(46, 109, 164, 0.08);
+  background: var(--accent-soft);
 }
 
 .lerpette-player__grid {
@@ -859,15 +820,7 @@ nav {
 .lerpette-step {
   padding: 1rem 1.05rem;
   border: 1px solid var(--line);
-  /* Colour and texture are set apart rather than through the `background`
-     shorthand, so .is-active can tint the face without resetting the texture. */
   background-color: var(--step-face);
-  background-image:
-    radial-gradient(circle at 18% 22%, rgba(168, 142, 82, 0.022) 0 1px, transparent 1px 100%),
-    radial-gradient(circle at 72% 66%, rgba(168, 142, 82, 0.018) 0 1px, transparent 1px 100%),
-    linear-gradient(180deg, rgba(232, 206, 142, 0.03), rgba(232, 206, 142, 0.015));
-  background-size: 180px 180px, 220px 220px, auto;
-  background-position: 0 0, 60px 40px, 0 0;
   scroll-margin-top: calc(var(--byline-h) + 0.5rem);
 }
 
@@ -886,10 +839,6 @@ nav {
   margin-bottom: calc(75dvh - 8rem);
 }
 
-/* Colour and border only. Writing this as the `background` shorthand also reset
-   background-image to none, which took the paper with it: an active chapter was a
-   2% tint over nothing, so the page's ruled grid showed straight through it and
-   every chapter appeared to fade as the reader scrolled past. */
 .lerpette-step.is-active {
   border-color: var(--line-strong);
 }
@@ -1010,7 +959,7 @@ nav {
 .prose-block blockquote {
   padding: 0.8rem 1rem;
   border-left: 3px solid var(--line-strong);
-  background: rgba(46, 109, 164, 0.06);
+  background: var(--accent-faint);
 }
 
 .prose-block hr {
@@ -1023,7 +972,7 @@ nav {
   margin-top: 0.6rem;
   padding-top: 0.8rem;
   border-top: 1px solid var(--line);
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .prose-block .footnotes h1,
@@ -1065,7 +1014,7 @@ nav {
 }
 
 .prose-block .footnotes .is-footnote-target {
-  background: rgba(255, 221, 87, 0.3);
+  background: var(--warn-soft);
 }
 
 /* ---- The live code editor ------------------------------------------------
@@ -1114,7 +1063,7 @@ nav {
   background: var(--warn-soft);
   color: var(--warn);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
 }
 
 /* Below the drawer breakpoint the panel is not beside the prose any more, so a
@@ -1173,10 +1122,10 @@ html .katex {
   margin: 0;
   padding: 0.3rem 0.55rem;
   font-family: var(--font-sans);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: var(--ink);
   text-align: center;
-  background: rgba(255, 253, 246, 0.88);
+  background: var(--chrome-face);
   border: 1px solid var(--line);
   backdrop-filter: blur(3px);
   pointer-events: none;
@@ -1195,7 +1144,7 @@ html .katex {
 /* The chapter's own code threw: the same band in the authoring-problem colours, so it
    reads as not the caption. The tint lies over the band's own paper to stay legible. */
 .lerpette-stage__status.is-fault {
-  background: linear-gradient(var(--warn-soft), var(--warn-soft)), rgba(255, 253, 246, 0.88);
+  background: linear-gradient(var(--warn-soft), var(--warn-soft)), var(--chrome-face);
   border-color: var(--warn-line);
 }
 
@@ -1209,7 +1158,7 @@ html .katex {
 }
 
 .lerpette-stage__toggle-arrow {
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   line-height: 1;
   color: var(--muted);
 }
@@ -1591,7 +1540,7 @@ html .katex {
   padding: 0 0.32rem;
   border: 1px solid var(--line-strong);
   font-family: var(--font-sans);
-  font-size: 0.58rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--line-strong);
@@ -1601,21 +1550,6 @@ html .katex {
 .cassette-card__status[data-status='draft'] {
   border-color: var(--warn-line);
   color: var(--warn);
-}
-
-.cassette-card__problems {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.15rem;
-  height: 1.15rem;
-  border: 1px solid var(--warn-line);
-  font-family: var(--font-sans);
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--warn);
-  /* opaque, because the card's own ground is whatever the generator picked */
-  background: var(--paper-deep);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1717,7 +1651,6 @@ html .katex {
 
 @media (max-width: 900px) {
   .site-shell,
-  .site-shell--lesson,
   .site-footer {
     width: min(100%, calc(100% - 1rem));
   }
@@ -1753,7 +1686,7 @@ html .katex {
   }
 
   .lerpette-player__bar h1 {
-    font-size: 2.1rem;
+    font-size: 1.9rem;
   }
 
   .lerpette-player__actions {
@@ -1764,14 +1697,15 @@ html .katex {
 
   /* The links stand over the spine's bands, so they take a solid face to read on. */
   .lerpette-player__action,
-  .lerpette-shelf__action {
+  .lerpette-shelf__action,
+  .button {
     background: var(--paper);
     /* 28px, over the 24px floor for a tap target, with the two of them still
        shorter together than one of the buttons they replace. */
     min-height: 1.75rem;
     padding: 0.25rem 0.55rem;
     border-color: var(--line);
-    font-size: 0.7rem;
+    font-size: 0.76rem;
   }
 }
 
@@ -1850,7 +1784,7 @@ html .katex {
   background: var(--paper-deep);
   color: var(--muted);
   font-family: var(--font-sans);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   cursor: pointer;
 }
 

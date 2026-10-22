@@ -14,7 +14,7 @@
   flex-direction: column;
   height: 100%;
   background:
-    linear-gradient(180deg, rgba(46, 109, 164, 0.05), rgba(46, 109, 164, 0.02)),
+    linear-gradient(var(--accent-faint), var(--accent-faint)),
     var(--paper-deep);
 }
 
@@ -45,7 +45,7 @@
   background: transparent;
   color: var(--muted);
   font-family: var(--font-sans);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   letter-spacing: 0.04em;
   cursor: pointer;
 }
@@ -98,7 +98,7 @@
   padding: 0.45rem 0.6rem;
   border-bottom: 1px solid var(--line);
   font-family: var(--font-sans);
-  font-size: 0.7rem;
+  font-size: 0.76rem;
   line-height: 1.55;
   white-space: pre-wrap;
 }
@@ -112,7 +112,7 @@
    whose code is on screen. */
 .live-code.is-solution {
   background:
-    linear-gradient(180deg, rgba(255, 200, 80, 0.16), rgba(255, 200, 80, 0.07)),
+    linear-gradient(var(--warn-soft), var(--warn-soft)),
     var(--paper-deep);
 }
 
@@ -123,7 +123,7 @@
   background: transparent;
   color: var(--muted);
   font-family: var(--font-sans);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   cursor: pointer;
   /* The open tab is marked by a rule inside its own box, so the strip never
      changes height as tabs change. */
@@ -166,7 +166,7 @@
   background: transparent;
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.76rem;
 }
 
 /* No focus ring on the editor. CodeMirror draws one of its own too, so both are
@@ -203,7 +203,7 @@
 
 .live-code__editor .cm-selectionBackground,
 .live-code__editor .cm-content ::selection {
-  background: rgba(46, 109, 164, 0.22);
+  background: var(--accent-line);
 }
 
 .live-code__editor .cm-cursor {
@@ -240,7 +240,7 @@
   gap: 0.35rem;
   padding: 0.4rem 0.6rem;
   font-family: var(--font-sans);
-  font-size: 0.7rem;
+  font-size: 0.76rem;
 }
 
 .live-code__editor .cm-panel.cm-search label {
@@ -248,7 +248,7 @@
   align-items: center;
   gap: 0.25rem;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
 }
 
 .live-code__editor .cm-panel.cm-search input:not([type='checkbox']) {
@@ -257,7 +257,7 @@
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.76rem;
 }
 
 .live-code__editor .cm-panel.cm-search input:not([type='checkbox']):focus-visible {
@@ -273,7 +273,7 @@
   background-image: none;
   color: var(--muted);
   font-family: var(--font-sans);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   cursor: pointer;
 }
 
@@ -291,7 +291,7 @@
 
 /* Where a match sits, and where the selected symbol appears again. */
 .live-code__editor .cm-searchMatch {
-  background: rgba(255, 200, 80, 0.32);
+  background: var(--warn-soft);
 }
 
 .live-code__editor .cm-searchMatch-selected {
@@ -300,13 +300,13 @@
 
 /* Other uses of the symbol under the cursor. */
 .live-code__editor .cm-selectionMatch {
-  background: rgba(46, 109, 164, 0.16);
+  background: var(--accent-strong);
 }
 
 /* The one the cursor is actually in, marked a shade stronger so the reader can tell
    where they are from the highlight alone rather than hunting for the caret. */
 .live-code__editor .cm-selectionMatch-main {
-  background: rgba(46, 109, 164, 0.26);
+  background: var(--accent-line);
 }
 
 /* Fold arrows sit in the gutter beside the line numbers. */
@@ -326,7 +326,7 @@
   color: var(--muted);
   padding: 0 0.3rem;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.76rem;
 }
 
 /* ---- Region marks -------------------------------------------------------
@@ -353,10 +353,10 @@
   padding: 0.3rem 0.6rem;
   border: 0;
   border-block: 1px dashed var(--line);
-  background: rgba(81, 131, 173, 0.07);
+  background: var(--line-faint);
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   letter-spacing: 0.04em;
   font-style: italic;
   text-align: left;
@@ -402,7 +402,7 @@
 }
 
 .live-code__editor .tok-type {
-  color: #8a5a00;
+  color: var(--warn);
 }
 
 .live-code__editor .tok-function {
@@ -414,7 +414,7 @@
 }
 
 .live-code__editor .tok-meta {
-  color: #8a5a00;
+  color: var(--warn);
 }
 
 .live-code__editor .tok-operator {
@@ -440,7 +440,7 @@
   border: 1px solid var(--line-strong);
   background: var(--paper);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
 }
 
 /* The popup is a real <ul><li>, so `.prose-block li` sets its size directly and an
@@ -491,7 +491,7 @@
   background: rgba(255, 255, 255, 0.72);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
@@ -519,7 +519,7 @@
 .prose-block .live-code .live-code__status {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   letter-spacing: 0.04em;
   color: var(--muted);
   /* Reserved so a status change never moves anything below it. */
@@ -546,7 +546,7 @@
   border-top: 1px solid var(--warn-line);
   background: var(--warn-soft);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.76rem;
   line-height: 1.5;
   white-space: pre-wrap;
 }

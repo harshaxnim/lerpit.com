@@ -40,7 +40,7 @@ const library = `${import.meta.env.BASE_URL}library/`;
     </div>
   ) : (
     <div class="collections-grid">
-      {props.collections.map((collection) => <a class="button button--ghost" href={collection.href}>{collection.title}</a>)}
+      {props.collections.map((collection) => <a class="button" href={collection.href}>{collection.title}</a>)}
     </div>
   )}
 </section>

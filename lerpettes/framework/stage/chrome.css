@@ -156,7 +156,7 @@
 }
 
 .lerpette-reading + .lerpette-reading {
-  border-top: 1px dashed rgba(81, 131, 173, 0.25);
+  border-top: 1px dashed var(--line-faint);
 }
 
 .lerpette-stage__card:not(.is-mini) .lerpette-reading:hover {
@@ -224,7 +224,7 @@
   position: relative;
   height: 6px;
   margin-top: 0.15rem;
-  background: rgba(81, 131, 173, 0.16);
+  background: var(--line-faint);
 }
 
 .lerpette-reading__fill {
@@ -323,24 +323,24 @@
   --tp-base-font-family: var(--font-sans);
   --tp-base-shadow-color: rgba(32, 49, 63, 0.08);
   --tp-blade-border-radius: 0px;
-  --tp-button-background-color: rgba(46, 109, 164, 0.12);
-  --tp-button-background-color-active: rgba(46, 109, 164, 0.32);
-  --tp-button-background-color-focus: rgba(46, 109, 164, 0.24);
-  --tp-button-background-color-hover: rgba(46, 109, 164, 0.18);
+  --tp-button-background-color: var(--accent-soft);
+  --tp-button-background-color-active: var(--accent-line);
+  --tp-button-background-color-focus: var(--accent-strong);
+  --tp-button-background-color-hover: var(--accent-strong);
   --tp-button-foreground-color: var(--ink);
-  --tp-container-background-color: rgba(46, 109, 164, 0.06);
-  --tp-container-background-color-active: rgba(46, 109, 164, 0.18);
-  --tp-container-background-color-focus: rgba(46, 109, 164, 0.14);
-  --tp-container-background-color-hover: rgba(46, 109, 164, 0.10);
+  --tp-container-background-color: var(--accent-faint);
+  --tp-container-background-color-active: var(--accent-strong);
+  --tp-container-background-color-focus: var(--accent-strong);
+  --tp-container-background-color-hover: var(--accent-soft);
   --tp-container-foreground-color: var(--ink);
-  --tp-groove-foreground-color: rgba(81, 131, 173, 0.28);
-  --tp-input-background-color: rgba(255, 253, 246, 0.95);
-  --tp-input-background-color-active: rgba(46, 109, 164, 0.16);
-  --tp-input-background-color-focus: rgba(46, 109, 164, 0.10);
-  --tp-input-background-color-hover: rgba(46, 109, 164, 0.06);
+  --tp-groove-foreground-color: var(--line-faint);
+  --tp-input-background-color: var(--paper);
+  --tp-input-background-color-active: var(--accent-strong);
+  --tp-input-background-color-focus: var(--accent-soft);
+  --tp-input-background-color-hover: var(--accent-faint);
   --tp-input-foreground-color: var(--ink);
   --tp-label-foreground-color: var(--muted);
-  --tp-monitor-background-color: rgba(255, 253, 246, 0.95);
+  --tp-monitor-background-color: var(--paper);
   --tp-monitor-foreground-color: var(--ink);
 }
 
