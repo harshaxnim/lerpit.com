@@ -2,19 +2,19 @@
 import type { LerpetteMixtape } from '@lerpit/framework/types';
 import { cardArt } from '../lib/cardArt';
 import { statusTag } from '../lib/control';
-import { showsAuthoringProblems } from '../lib/content';
+import { isLocalView } from '@lerpit/framework/runtimes/localView';
 
 interface Props {
   mixtape: LerpetteMixtape;
 }
 
 const { mixtape } = Astro.props as Props;
-// The `!` is for the author: local view only (see showsAuthoringProblems).
-const problemCount = showsAuthoringProblems() ? mixtape.problems.length : 0;
+// The `!` and the status tag are for the author: local view only.
+const local = isLocalView();
+const problemCount = local ? mixtape.problems.length : 0;
 const collection = mixtape.collectionTitle ?? 'Lerpette';
 const chapters = mixtape.steps.length;
-// Only ever set on a local build, where unlisted and draft lerpettes are listed.
-const tag = statusTag(mixtape.status);
+const tag = local ? statusTag(mixtape.status) : null;
 
 /**
  * Generated at build time from the document's own text, so no two lerpettes

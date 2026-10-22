@@ -1,5 +1,5 @@
 ---
-import { showsAuthoringProblems } from '../lib/content';
+import { isLocalView } from '@lerpit/framework/runtimes/localView';
 
 interface Props {
   /** The section's id: `intro` for the opening, the chapter id otherwise. */
@@ -15,8 +15,8 @@ interface Props {
 }
 
 const { id, index, titleHtml, html, intro = false, hasOwnRuntime = true } = Astro.props as Props;
-// The missing-code mark is an authoring problem: local view only (see showsAuthoringProblems).
-const markMissing = !hasOwnRuntime && showsAuthoringProblems();
+// The missing-code mark is an authoring problem: local view only.
+const markMissing = !hasOwnRuntime && isLocalView();
 ---
 
 {/* One chapter: a frozen header with its number and title, then its prose. A `lerpit`

@@ -22,6 +22,7 @@ import type {
   LerpetteStep
 } from '@lerpit/framework/types';
 import { isPanelName, PANEL_NAMES } from '@lerpit/framework/panels/registry';
+import { isLocalView } from '@lerpit/framework/runtimes/localView';
 import { HEADING_SPEC_TAIL, parseHeading, resolvePanels } from './headingSpec';
 import { defaultControl, isLandingCandidate, isListed, isRoutable, parseCollectionControl, parseControl, type LerpetteControl } from './control';
 import type { ProblemId } from './problems';
@@ -71,28 +72,13 @@ const LANDING_COLLECTION_SLUG = site.landingCollection;
 /** Optional, one per lerpette folder, beside mixtape.md. See lib/control.ts. */
 const CONTROL_FILE = 'control.toml';
 
-/**
- * Hiding only happens in a production build. Locally every lerpette is listed and
- * routed, each card tagged with its status, so an author can see their drafts
- * without having to remember what they hid.
- *
- * The dev server's view toggle (scripts/dev-view-toggle.mjs) can ask for the public
- * view instead, which hides exactly what production hides. Read per build, since
- * the toggle flips it between requests.
+/*
+ * What is hidden, and what is spelled out, follows isLocalView (framework/runtimes/
+ * localView.ts). In local view every lerpette is listed and routed, each card tagged
+ * with its status, so an author can see their drafts without having to remember what
+ * they hid; public view hides exactly what production hides. Asked per build of the
+ * library, since the L/P switch flips it between requests.
  */
-function hidesLikeProduction(): boolean {
-  return process.env.NODE_ENV === 'production' || process.env.LERPIT_VIEW === 'public';
-}
-
-/**
- * Whether a page spells out its authoring problems: the problems box's list (message,
- * fix, path), and the `!` marks on a card and a chapter. Those are for the author, so
- * only in local view. Public view and a production build still say a page is unfinished,
- * but not why (ContentProblems.astro). The build lists them all in its log.
- */
-export function showsAuthoringProblems(): boolean {
-  return !hidesLikeProduction();
-}
 const DOC_BASENAMES = new Set(['collection', 'mixtape']);
 const CODE_EXTENSIONS = new Set(['.js', '.ts', '.jsx', '.tsx', '.mts', '.cts']);
 const DOCUMENT_EXTENSIONS = new Set(['.md', '.mdx']);
@@ -112,7 +98,8 @@ const MIME_TYPES: Record<string, string> = {
 let cachedLibrary: Promise<LerpetteLibrary> | null = null;
 
 export async function getLerpetteLibrary(): Promise<LerpetteLibrary> {
-  if (process.env.NODE_ENV !== 'production') {
+  // On the dev server files change and the L/P switch flips, so each request builds anew.
+  if (import.meta.env.DEV) {
     return buildLerpetteLibrary();
   }
 
@@ -298,7 +285,7 @@ function markWhitespace(text: string): any[] {
 
 async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   const { problems, report } = createProblemLog(LERPETTE_ROOT);
-  const isProduction = hidesLikeProduction();
+  const publicView = !isLocalView();
 
   if (!fs.existsSync(LERPETTE_ROOT)) {
     report(
@@ -342,7 +329,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   // link works for whoever has it, and nothing else points there.
   const routable = collections
     .flatMap((collection) => collection.mixtapes)
-    .filter((mixtape) => isRoutable(mixtape.status, isProduction))
+    .filter((mixtape) => isRoutable(mixtape.status, publicView))
     .sort(newestFirst);
 
   // Narrowed in place, so every shelf and collection page that reads
@@ -350,7 +337,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
   for (const collection of collections) {
     collection.allMixtapes = collection.mixtapes;
     collection.mixtapes = collection.mixtapes.filter(
-      (mixtape) => isRoutable(mixtape.status, isProduction) && isListed(mixtape.status, isProduction)
+      (mixtape) => isRoutable(mixtape.status, publicView) && isListed(mixtape.status, publicView)
     );
   }
 
@@ -400,7 +387,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
     : emptyMixtape(problems);
   const unpublished = collections
     .flatMap((collection) => collection.allMixtapes)
-    .filter((mixtape) => !isRoutable(mixtape.status, isProduction))
+    .filter((mixtape) => !isRoutable(mixtape.status, publicView))
     .map((mixtape) => path.join(LERPETTE_ROOT, mixtape.collectionSlug ?? '', mixtape.slug));
   const assetEntries = await collectAssetEntries(LERPETTE_ROOT, unpublished);
   for (const collection of collections) delete (collection as { allMixtapes?: unknown }).allMixtapes;
@@ -1249,7 +1236,7 @@ function describeError(error: unknown): string {
  * production build is read from a terminal, so it says the same thing there.
  */
 function logProblems(library: LerpetteLibrary) {
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.DEV) {
     return;
   }
 

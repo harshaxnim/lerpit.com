@@ -1,6 +1,6 @@
 ---
 import type { LerpetteProblem } from '@lerpit/framework/types';
-import { showsAuthoringProblems } from '../lib/content';
+import { isLocalView } from '@lerpit/framework/runtimes/localView';
 
 interface Props {
   problems: LerpetteProblem[];
@@ -10,7 +10,8 @@ interface Props {
 const { problems, title } = Astro.props as Props;
 // Every view says the page is unfinished. Only local view says why: the messages, fixes
 // and paths are for the author; public view and a production build show the notice alone.
-const detailed = showsAuthoringProblems();
+// The build lists them all in its log.
+const detailed = isLocalView();
 
 // Problem text is written in content.ts, where paths and headings read better as
 // code. Escape first, then turn the backticks into the site's inline code.

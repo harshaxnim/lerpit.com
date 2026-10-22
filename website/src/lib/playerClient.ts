@@ -1,5 +1,6 @@
 import type { EditorLayer } from '@lerpit/framework/runtimes/editorLayer';
 import { sourceLocation } from '@lerpit/framework/runtimes/errorLocation';
+import { isLocalView } from '@lerpit/framework/runtimes/localView';
 import { setCollectionColors } from '@lerpit/framework/theme';
 import { captionHtml } from './player/caption';
 import { createPageChrome } from './player/pageChrome';
@@ -90,8 +91,9 @@ function initPlayer(root: HTMLElement, host: HTMLElement, config: PlayerConfig) 
         page.forget();
         if (!caption) return;
         // Under npm run dev, code that does not parse arrives as a SyntaxError naming the
-        // file and line (chapterSyntaxErrors in astro.config.mjs).
-        const said = captionHtml(error instanceof SyntaxError
+        // file and line (chapterSyntaxErrors in astro.config.mjs). That is for the
+        // author, so local view only; public view says what a reader would be told.
+        const said = captionHtml(error instanceof SyntaxError && isLocalView()
           ? `This chapter's code does not parse:\n\`${error.message}\``
           : 'This step failed to load.');
         caption.innerHTML = said;

@@ -75,7 +75,7 @@ We shall later look at other kinds of integration schemes with higher accuracy i
 
 ## Let's get _Physical_ {#physical}
 
-Now we graduate to the next level! We will drive particles based on Newton's law $F=ma$. To introduce forces like gravity and springs, we will need to introduce a measure of inertia for these particles, i.e., mass.
+Now we graduate to the next level! We will drive particles based on Newton's law $F=ma$. We will see an emergence of really complex phenomenon at this stage with relatively simple rules. To introduce forces like gravity and springs, we will need to introduce a measure of inertia for these particles, i.e., mass.
 
 We now have acceleration which is a second order differential of position with respect to time.
 
@@ -107,7 +107,7 @@ $$
 
 This integration scheme is called symplectic Euler, and we will learn more about it and a few other methods in an upcoming chapter. For now, notice how we're using $v_{n+1}$ in calcualting $x_{n+1}$.
 
-Let's put it to work by simulating the notorious 3-body problem. It's been proven that it's impossible to get a general closed form analytical solution to the problem. However, we can definitely simulate it using numerical methods. And it's almost trivial to do so. Just initialize the three bodies in three different places, and follow our playbook of accumulating forces (using $\frac{G\,m_1\,m_2}{{r_{12}}^2}$) to finding the next position for each body, and that's it, _voila_!
+Let's put it to work by simulating the notorious 3-body problem. It's been proven that it's impossible to get a general closed form analytical solution to this problem. However, we can definitely simulate it using numerical methods. And it's almost trivial to do so. Just initialize the three bodies with three different initial states (I selected a stable state just for the aesthetics, but note that the stabe states are special initial conditions cases), and follow our playbook of accumulating forces (using $\frac{G\,m_1\,m_2}{{r_{12}}^2}$) to finding the next position for each body, and that's it, _voila_!
 
 
 ## _Spring_ to life {#spring}

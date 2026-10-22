@@ -66,7 +66,7 @@ export type Draw2D = {
   /** A run of connected segments. */
   path(points: Points, color?: Paint, width?: number): void;
   /**
-   * A path that fades in from the paper at its first point to `color` at its last:
+   * A path that fades in from transparent at its first point to `color` at its last:
    * the history a moving thing leaves behind, oldest first. See `Trail` in
    * `@lerpit/framework/trail` for keeping one. `fade: false` draws it solid, as `path`.
    * `style: 'dots'` draws a dot at each point instead of joining them (dot radius 1.5×
@@ -112,8 +112,11 @@ const CIRCLE_SEGMENTS = 32;
 const CIRCLE_COS = Float32Array.from({ length: CIRCLE_SEGMENTS + 1 }, (_, i) => Math.cos((i / CIRCLE_SEGMENTS) * Math.PI * 2));
 const CIRCLE_SIN = Float32Array.from({ length: CIRCLE_SEGMENTS + 1 }, (_, i) => Math.sin((i / CIRCLE_SEGMENTS) * Math.PI * 2));
 
-/** Floats per vertex: x, y, z, r, g, b, u, v. Interleaved, so a frame is one upload. */
-const STRIDE = 8;
+/**
+ * Floats per vertex: x, y, z, r, g, b, a, u, v. Interleaved, so a frame is one upload.
+ * The colour has four components, so three.js blends by the vertex's alpha.
+ */
+const STRIDE = 9;
 
 /** Parsed colours, so a CSS string is not parsed again for every shape of every frame. */
 const COLOR_CACHE_LIMIT = 512;
@@ -131,8 +134,8 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
   const geometry = new THREE.BufferGeometry();
   const bind = () => {
     geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(buffer, 3, 0));
-    geometry.setAttribute('color', new THREE.InterleavedBufferAttribute(buffer, 3, 3));
-    geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(buffer, 2, 6));
+    geometry.setAttribute('color', new THREE.InterleavedBufferAttribute(buffer, 4, 3));
+    geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(buffer, 2, 7));
   };
   bind();
 
@@ -144,7 +147,8 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
       // Depth is meaningless in a flat sketch; order is the order of the calls.
       depthTest: false,
       depthWrite: false,
-      // For the glyphs' edges, and anything a chapter adds to the scene to sort against.
+      // For the glyphs' edges, a trail's fade, and anything a chapter adds to the scene
+      // to sort against.
       transparent: true,
       // A rect with a negative width faces away; drawn either way, in one pass.
       side: THREE.DoubleSide,
@@ -159,8 +163,8 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
   atlas.onGrow = (factor) => {
     for (let i = 0; i < count; i += 1) {
       const at = i * STRIDE;
-      data[at + 6] *= factor;
-      data[at + 7] = 1 - (1 - data[at + 7]) * factor;
+      data[at + 7] *= factor;
+      data[at + 8] = 1 - (1 - data[at + 8]) * factor;
     }
   };
 
@@ -190,7 +194,7 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     bind();
   };
 
-  const vertex = (x: number, y: number, color: THREE.Color, u: number, v: number) => {
+  const vertex = (x: number, y: number, color: THREE.Color, u: number, v: number, alpha = 1) => {
     const i = count * STRIDE;
     data[i] = x;
     data[i + 1] = y;
@@ -198,27 +202,28 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     data[i + 3] = color.r;
     data[i + 4] = color.g;
     data[i + 5] = color.b;
-    data[i + 6] = u;
-    data[i + 7] = v;
+    data[i + 6] = alpha;
+    data[i + 7] = u;
+    data[i + 8] = v;
     count += 1;
   };
 
   /** Two triangles over four corners in world space, in order around the quad, solid. */
-  const quad = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number, color: THREE.Color) => {
+  const quad = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number, color: THREE.Color, alpha = 1) => {
     reserve(6);
     const { u, v } = atlas.solid;
-    vertex(ax, ay, color, u, v);
-    vertex(bx, by, color, u, v);
-    vertex(cx, cy, color, u, v);
-    vertex(ax, ay, color, u, v);
-    vertex(cx, cy, color, u, v);
-    vertex(dx, dy, color, u, v);
+    vertex(ax, ay, color, u, v, alpha);
+    vertex(bx, by, color, u, v, alpha);
+    vertex(cx, cy, color, u, v, alpha);
+    vertex(ax, ay, color, u, v, alpha);
+    vertex(cx, cy, color, u, v, alpha);
+    vertex(dx, dy, color, u, v, alpha);
   };
 
   /** Reader y counts down from the top; the camera counts up from the bottom. */
   const worldY = (y: number) => height - y;
 
-  const segment = (x1: number, y1: number, x2: number, y2: number, color: THREE.Color, lineWidth: number) => {
+  const segment = (x1: number, y1: number, x2: number, y2: number, color: THREE.Color, lineWidth: number, alpha = 1) => {
     const ay = worldY(y1);
     const by = worldY(y2);
     const dx = x2 - x1;
@@ -231,7 +236,7 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     // Half the width, perpendicular to the segment.
     const nx = (-dy / length) * (lineWidth / 2);
     const ny = (dx / length) * (lineWidth / 2);
-    quad(x1 + nx, ay + ny, x2 + nx, by + ny, x2 - nx, by - ny, x1 - nx, ay - ny, color);
+    quad(x1 + nx, ay + ny, x2 + nx, by + ny, x2 - nx, by - ny, x1 - nx, ay - ny, color, alpha);
   };
 
   /** Arrowhead strokes swept back from `x2, y2`, in pixels; never more than 40% of the arrow. */
@@ -241,9 +246,6 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     segment(x2, y2, x2 - size * Math.cos(a - 0.45), y2 - size * Math.sin(a - 0.45), color, lineWidth);
     segment(x2, y2, x2 - size * Math.cos(a + 0.45), y2 - size * Math.sin(a + 0.45), color, lineWidth);
   };
-
-  const paper = new THREE.Color(theme.paper);
-  const faded = new THREE.Color();
 
   /** Calls `fn` for each consecutive pair of points, in pixels after `map`. */
   const pairs = (points: Points, toX: (x: number) => number, toY: (y: number) => number, fn: (i: number, n: number, x1: number, y1: number, x2: number, y2: number) => void) => {
@@ -291,18 +293,20 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     trail(source, { color = 0x2e6da4, width: lineWidth = 1.5, fade = true, style = 'line' } = {}) {
       const c = colorOf(color);
       const points = 'points' in source ? source.points : source;
+      // The fade is transparency, not a mix toward the paper: an old stretch lets
+      // whatever is under it show through, another trail included, on any background.
       if (style === 'dots') {
         // One dot per sample, so the gaps between them show how far each step jumped.
         const flat = points.length > 0 && typeof points[0] === 'number';
         const n = flat ? points.length / 2 : points.length;
         for (let i = 0; i < n; i += 1) {
           const [x, y] = flat ? [(points as readonly number[])[2 * i], (points as readonly number[])[2 * i + 1]] : (points as ReadonlyArray<readonly [number, number]>)[i];
-          pixelCircle(toX(x), toY(y), lineWidth * 1.5, fade ? faded.lerpColors(paper, c, (i + 1) / n) : c);
+          pixelCircle(toX(x), toY(y), lineWidth * 1.5, c, fade ? (i + 1) / n : 1);
         }
         return;
       }
       pairs(points, toX, toY, (i, n, ax, ay, bx, by) => {
-        segment(ax, ay, bx, by, fade ? faded.lerpColors(paper, c, (i + 1) / n) : c, lineWidth);
+        segment(ax, ay, bx, by, c, lineWidth, fade ? (i + 1) / n : 1);
       });
     },
     text(value, x, y, color = 0x506270, size = 12) {
@@ -310,14 +314,14 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     }
   });
 
-  const pixelCircle = (x: number, y: number, radius: number, c: THREE.Color) => {
+  const pixelCircle = (x: number, y: number, radius: number, c: THREE.Color, alpha = 1) => {
     const cy = worldY(y);
     reserve(CIRCLE_SEGMENTS * 3);
     const { u, v } = atlas.solid;
     for (let i = 0; i < CIRCLE_SEGMENTS; i += 1) {
-      vertex(x, cy, c, u, v);
-      vertex(x + CIRCLE_COS[i] * radius, cy + CIRCLE_SIN[i] * radius, c, u, v);
-      vertex(x + CIRCLE_COS[i + 1] * radius, cy + CIRCLE_SIN[i + 1] * radius, c, u, v);
+      vertex(x, cy, c, u, v, alpha);
+      vertex(x + CIRCLE_COS[i] * radius, cy + CIRCLE_SIN[i] * radius, c, u, v, alpha);
+      vertex(x + CIRCLE_COS[i + 1] * radius, cy + CIRCLE_SIN[i + 1] * radius, c, u, v, alpha);
     }
   };
 

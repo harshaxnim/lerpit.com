@@ -5,11 +5,13 @@
  * at the module Vite served: TypeScript with its types stripped, whose lines no longer
  * match the file the author is looking at. Under npm run dev that module carries an
  * inline source map, so the first stack frame inside lerpettes/content is mapped back
- * through it. Anything else (a built site, a frame outside lesson code, no map) is null,
- * and the caller says what it can without a place.
+ * through it. Anything else (public view or a built site, a frame outside lesson code,
+ * no map) is null, and the caller says what it can without a place.
  */
 
-const FRAME = /(https?:\/\/[^\s()]*\/lerpettes\/content\/[^\s()]*?\.(?:ts|js|mjs)(?:\?[^\s():]*)?):(\d+):(\d+)/;
+import { isLocalView } from './localView';
+
+const FRAME =/(https?:\/\/[^\s()]*\/lerpettes\/content\/[^\s()]*?\.(?:ts|js|mjs)(?:\?[^\s():]*)?):(\d+):(\d+)/;
 const INLINE_MAP = /\/\/# sourceMappingURL=data:application\/json;(?:charset=utf-8;)?base64,(\S+)/;
 
 type SourceMap = { sources: string[]; mappings: string };
@@ -79,6 +81,8 @@ const mapFor = (url: string) => {
 };
 
 export async function sourceLocation(error: unknown): Promise<string | null> {
+  // A line in the author's file is for the author: public view reads like the built site.
+  if (!isLocalView()) return null;
   const frame = error instanceof Error ? error.stack?.match(FRAME) : null;
   if (!frame) return null;
   const [, url, line, column] = frame;

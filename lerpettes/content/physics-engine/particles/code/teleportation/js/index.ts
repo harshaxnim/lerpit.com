@@ -14,13 +14,13 @@ export default createStage({
       }
       previous = s.skip;
     };
-    ctx.controls().addBinding(s, 'skip', { label: 'Skip steps', min: 0, max: 10, step: 1 }).on('change', clearMaybe);
+    ctx.controls().addBinding(s, 'skip', { label: 'Step Size', min: 1, max: 10, step: 1 }).on('change', clearMaybe);
     ctx.readings().text('pos', ()=>`(${s.x.toFixed(1)}, ${s.y.toFixed(1)})`);
     ctx.readings().fps();
   },
   step(s, dt) {
     s.t += dt;
-    if (s.count < s.skip) {
+    if (s.count < (s.skip-1)) {
       s.count += 1;
       return;
     }

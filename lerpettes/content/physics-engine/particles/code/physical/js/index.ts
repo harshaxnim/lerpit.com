@@ -6,31 +6,21 @@ type Particle = { x: number; y: number; vx: number; vy: number; fx: number, fy: 
 
 const TRAIL_COUNT = 1000;
 
-const STAR_MASS = 110;
-const STAR_GAP = 0.12;
-const PLANET_MASS = 2;
-const PLANET_DISTANCE = 0.45;
+const MASS = 652.794;
 
 const SOFTENING = 0.01;
 
 
 function start(s: { particles: Particle[]; G: number }) {
-  function orbitSpeed(G: number, mass: number, distance: number) {
-    return Math.sqrt((G * mass) / distance);
-  }
-  const starSpeed = 0.5 * orbitSpeed(s.G, 2 * STAR_MASS, STAR_GAP);
-  const planetSpeed = orbitSpeed(s.G, 2 * STAR_MASS, PLANET_DISTANCE);
-  const drift = (PLANET_MASS * planetSpeed) / (2 * STAR_MASS);
-
   s.particles = [
-    { x: STAR_GAP / 1.5, y: 0, vx: drift, vy: -starSpeed, fx: 0, fy: 0, r: 12, m: STAR_MASS, c: colors.orange, trail: Trail.create(TRAIL_COUNT) },
-    { x: -STAR_GAP / 1.5, y: 0, vx: drift, vy: starSpeed, fx: 0, fy: 0, r: 12, m: STAR_MASS, c: colors.orange, trail: Trail.create(TRAIL_COUNT) },
-    { x: 0, y: PLANET_DISTANCE, vx: -planetSpeed, vy: 0, fx: 0, fy: 0, r: 7, m: PLANET_MASS, c: colors.blue, trail: Trail.create(TRAIL_COUNT) },
+    { x: -0.193661, y: 0, vx: -1.129754, vy: 1.489734, fx: 0, fy: 0, r: 7, m: MASS, c: colors.orange, trail: Trail.create(TRAIL_COUNT) },
+    { x: 0.598131, y: 0, vx: 0.079315, vy: -0.438826, fx: 0, fy: 0, r: 7, m: MASS, c: colors.blue, trail: Trail.create(TRAIL_COUNT) },
+    { x: -0.40447, y: 0, vx: 1.050439, vy: -1.050907, fx: 0, fy: 0, r: 7, m: MASS, c: colors.teal, trail: Trail.create(TRAIL_COUNT) },
   ];
 }
 
 export default createStage({
-  caption: 'Three body problem. Particles under gravity\n$$\\frac{G\\,m_1\\,m_2}{r^2}$$',
+  caption: 'A solution to the three body problem\n\nThree particles with carefully crafted initial conditions under gravity\n$$\\frac{G\\,m_1\\,m_2}{r^2}$$',
 
   state: { particles: [] as Particle[], substeps: 4, G: 0.001 },
 

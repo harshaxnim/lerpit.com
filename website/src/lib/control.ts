@@ -259,20 +259,20 @@ export function parseCollectionControl(source: string): { control: CollectionCon
   return { control, problems };
 }
 
-/** Whether this status gets a page built for it. Drafts get one only in dev. */
-export function isRoutable(status: LerpetteStatus, isProduction: boolean): boolean {
-  return status !== DRAFT || !isProduction;
+/** Whether this status gets a page built for it. Drafts get one only in local view. */
+export function isRoutable(status: LerpetteStatus, publicView: boolean): boolean {
+  return status !== DRAFT || !publicView;
 }
 
 /**
  * Whether this status appears in shelves and collection listings.
  *
- * A local build lists everything, so an author can see what they are working on
- * without remembering what they hid; the card wears a tag saying which. Only a
- * production build actually hides anything.
+ * Local view lists everything, so an author can see what they are working on without
+ * remembering what they hid; the card wears a tag saying which. Only public view (and
+ * so a production build) actually hides anything.
  */
-export function isListed(status: LerpetteStatus, isProduction: boolean): boolean {
-  return status === PUBLISHED || !isProduction;
+export function isListed(status: LerpetteStatus, publicView: boolean): boolean {
+  return status === PUBLISHED || !publicView;
 }
 
 /** Whether the landing page may choose this lerpette. Published only, everywhere,

@@ -13,6 +13,7 @@ import type { LerpetteRuntimeContext, LerpetteStepRuntime } from '../types';
 import { loadModule } from '../wasm/loadModule';
 import { sourceLocation } from './errorLocation';
 import { clampDelta } from './frameLoop';
+import { isLocalView } from './localView';
 import { byBuild } from '@lerpit/libs/live-code/js/languages';
 import type { EditorFile, FileEditor } from '@lerpit/libs/live-code/js';
 
@@ -284,9 +285,9 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     state = freshState(code.state);
     time = 0;
     live = true;
-    // Local only: restarting while paused stays paused on the first frame, so the step
-    // button can walk a run from its very start.
-    if (!import.meta.env.DEV) userPaused = false;
+    // Local view only: restarting while paused stays paused on the first frame, so the
+    // step button can walk a run from its very start.
+    if (!isLocalView()) userPaused = false;
 
     if (model.setup) {
       try {
@@ -314,8 +315,8 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     // append puts each new button after what is already there.
     if (!hasStep) userPaused = false;
     ctx?.stage.pausable(hasStep ? (next) => (userPaused = next) : null, userPaused);
-    // Local only: one fixed-dt frame per press, for checking a step by hand.
-    ctx?.stage.steppable(hasStep && import.meta.env.DEV ? () => tick(STEP_DT) : null);
+    // Local view only: one fixed-dt frame per press, for checking a step by hand.
+    ctx?.stage.steppable(hasStep && isLocalView() ? () => tick(STEP_DT) : null);
     const restartable = def.restart ?? hasStep;
     ctx?.stage.restartable(restartable ? () => rerun?.() : null);
     dirty = true;

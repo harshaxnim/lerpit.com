@@ -5,12 +5,14 @@
  * included, so an author can see what they are working on. That makes it hard to
  * see what a reader will actually get. This puts a floating button on every page
  * the dev server sends: public view hides exactly what a production build hides,
- * because content.ts runs the same rules (see hidesLikeProduction there), not a
- * stylesheet imitating them. A draft is a 404 in public view, as it is once deployed.
+ * because every check on the site asks the same function, isLocalView
+ * (lerpettes/framework/runtimes/localView.ts), not a stylesheet imitating it. A draft
+ * is a 404 in public view, as it is once deployed.
  *
  * The choice is a cookie, so it holds across pages, tabs and server restarts.
- * Each request copies it into process.env.LERPIT_VIEW, which content.ts reads
- * when it builds the library for that request.
+ * Each request copies it into process.env.LERPIT_VIEW, which isLocalView reads on the
+ * server; in the browser it reads the cookie itself. The cookie's name is spelled out
+ * again there (VIEW_COOKIE), since this file imports nothing local.
  *
  * The switch is injected into the HTML here rather than rendered by a layout, so
  * it is on every page including Astro's own 404 (where switching to public view

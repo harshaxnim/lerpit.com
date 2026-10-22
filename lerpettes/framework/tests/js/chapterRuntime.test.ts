@@ -349,6 +349,29 @@ describe('a module chapter', () => {
     expect(seen).toHaveLength(2);
   });
 
+  it('public view on the dev server is the reader\'s page: no step button, a restart resumes', async () => {
+    vi.stubGlobal('document', { cookie: 'theme=dark; lerpit-view=public' });
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    const seen: number[] = [];
+    const stack = fakeStack([fakePanel('canvas')]);
+    const stage = fakeStage();
+    const runtime = createChapterRuntime({ step: () => seen.push(1), canvas: { draw: () => undefined } });
+    const ctx = context(stack, stage);
+    await runtime.mount(ctx);
+    runtime.enter?.(ctx);
+    expect(stage.steppable).toHaveBeenLastCalledWith(null);
+
+    stage.pause!(true);
+    stage.restart!();
+    await Promise.resolve();
+    await Promise.resolve();
+    runFrame(16);
+    runFrame(16);
+    expect(seen).toHaveLength(1);
+  });
+
   it('draws only the panel on screen, and a change panel only when the state moved', async () => {
     const draws: string[] = [];
     const view = fakePanel('viewport2d');

@@ -44,6 +44,13 @@ describe('sourceLocation', () => {
     expect(await sourceLocation(thrownAt(code, 'ctx.speed'))).toBe('index.ts:9');
   });
 
+  it('is null in public view, where the page reads like the built site', async () => {
+    const code = await served();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(code)));
+    vi.stubGlobal('document', { cookie: 'lerpit-view=public' });
+    expect(await sourceLocation(thrownAt(code, 'ctx.speed'))).toBeNull();
+  });
+
   it('is null for an error with no frame in lesson code', async () => {
     const error = new Error('x');
     error.stack = 'Error: x\n    at tick (http://localhost:4321/lerpettes/framework/runtimes/createChapterRuntime.ts:160:17)';
