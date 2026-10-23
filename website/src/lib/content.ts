@@ -68,6 +68,9 @@ const ASSET_ROUTE_PREFIX = '/assets/lerpettes';
 // The collection whose newest lerpette is served at '/', unless a control.toml says
 // `landing = true`. Set in site.config.ts.
 const LANDING_COLLECTION_SLUG = site.landingCollection;
+// Collections that list after every other one (Meta). Every list on the site reads
+// the orders made here, so this is the one place that puts them last. -1 for the rest.
+const lastRank = (collectionSlug?: string) => site.lastCollections.indexOf(collectionSlug ?? '');
 
 /** Optional, one per lerpette folder, beside mixtape.md. See lib/control.ts. */
 const CONTROL_FILE = 'control.toml';
@@ -255,7 +258,7 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
 
   const collections = await Promise.all(
     directories
-      .sort((left, right) => left.localeCompare(right))
+      .sort((left, right) => lastRank(left) - lastRank(right) || left.localeCompare(right))
       .map((directory) => parseCollectionDirectory(path.join(LERPETTE_ROOT, directory)))
   );
 
@@ -274,7 +277,9 @@ async function buildLerpetteLibrary(): Promise<LerpetteLibrary> {
     }
   }
 
+  // Newest first, with the last collections' lerpettes after all the others.
   const newestFirst = (left: LerpetteMixtape, right: LerpetteMixtape) =>
+    lastRank(left.collectionSlug) - lastRank(right.collectionSlug) ||
     right.publishedOn.localeCompare(left.publishedOn);
 
   // Routing and listing are separate questions, so they get separate answers.

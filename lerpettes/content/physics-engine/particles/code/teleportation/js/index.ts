@@ -41,7 +41,7 @@ export default createStage({
         sketch.trail(s.h.points.map(([x, y]) => [k * x, k * y] as [number, number]), { color: colors.orange, width: 2, fade: true, style: 'dots'});
       }
 
-      sketch.circle(k * s.x, k * s.y, 12, colors.orange);
+      sketch.circle(k * s.x, k * s.y, 12, { color: colors.orange });
     }
   }
 });

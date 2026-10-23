@@ -23,8 +23,10 @@ describe('the panel registry', () => {
   });
 
   it('gives a scene panel a scope and leaves repainting panels without one', async () => {
-    expect(typeof (await loadPanel('viewport3d'))?.scope).toBe('function');
-    for (const name of ['canvas', 'viewport2d', 'table', 'readout']) {
+    for (const name of ['viewport2d', 'viewport3d']) {
+      expect(typeof (await loadPanel(name))?.scope).toBe('function');
+    }
+    for (const name of ['canvas', 'table', 'readout']) {
       expect((await loadPanel(name))?.scope).toBeUndefined();
     }
   });

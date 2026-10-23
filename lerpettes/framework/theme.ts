@@ -50,10 +50,10 @@ export const CSS_TOKENS: { readonly [K in PaletteName]: string } = {
  *
  *   import { colors, randomColor } from '@lerpit/framework/theme';
  *
- *   sketch.circle(x, y, 12, colors.orange);
- *   sketch.path(trail, colors.light.orange);   // the same hue, toward the paper
- *   sketch.line(0, 0, vx, vy, colors.dark.blue);
- *   sketch.circle(x, y, 12, colors.collection[0]); // the collection's palette, as a list
+ *   sketch.circle(x, y, 12, { color: colors.orange });
+ *   sketch.path(trail, { color: colors.light.orange });   // the same hue, toward the paper
+ *   sketch.line(0, 0, vx, vy, { color: colors.dark.blue });
+ *   sketch.circle(x, y, 12, { color: colors.collection[0] }); // the collection's palette, as a list
  *   ball.color = randomColor(i, { from: 'warm' });
  *
  * Every common colour name is here, but none of them is the CSS keyword: each is toned

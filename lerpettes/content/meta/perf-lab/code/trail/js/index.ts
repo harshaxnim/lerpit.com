@@ -16,8 +16,8 @@ export default createStage({
       const scale = Math.min(w, h) / 3;
       const px = (x: number) => w / 2 + scale * x;
       const py = (y: number) => h / 2 + scale * y;
-      sketch.pixels.path(s.h.map(([x, y]) => [px(x), py(y)] as [number, number]), 0xd17041);
-      sketch.pixels.circle(px(s.x), py(s.y), 12, 0xd17041);
+      sketch.pixels.path(s.h.map(([x, y]) => [px(x), py(y)] as [number, number]), { color: 0xd17041 });
+      sketch.pixels.circle(px(s.x), py(s.y), 12, { color: 0xd17041 });
     }
   }
 });

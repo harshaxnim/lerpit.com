@@ -37,11 +37,25 @@ import type { Trail } from '../../trail';
  *   - Positions are in units, the way the maths is written: the origin in the middle,
  *     x from -1 at the left edge to 1 at the right, y up to `ctx.view.halfHeight`.
  *     `sketch.circle(s.x, s.y, 8)` puts a particle where the state says it is.
- *   - Sizes are in pixels: a radius, a line's width, text, an arrowhead. A dot should
- *     stay a dot and a label stay legible whatever size the panel is.
+ *   - Sizes are in pixels as drawn on a 600px-wide panel (about a desktop's): a radius,
+ *     a line's width, an arrowhead. They scale with the panel, so a phone's narrower
+ *     panel shows the same picture smaller rather than the same dots on a smaller
+ *     picture; the positions shrink with it, and the sizes have to as well. Text does
+ *     not scale: a label stays legible whatever size the panel is.
  *
  * `sketch.pixels` is the same set of calls in plain pixels (origin top left, y down),
- * for anything laid out against the panel's edges rather than the maths.
+ * for anything laid out against the panel's edges rather than the maths. Its sizes are
+ * plain pixels too, unscaled.
+ *
+ * Every call takes where and how big as arguments, and everything else (colour, width,
+ * dotted, ...) in an options object, all of it optional:
+ *
+ *   sketch.line(-1, rest, 1, rest, { color: colors.gray, width: 1, dotted: true });
+ *
+ * `dotted: true` draws a row of round dots instead: a guide, a rest length, a path not
+ * taken. Lines, paths and trails become dots along them; a circle or a rect becomes a
+ * dotted outline; an arrow keeps a solid head so it still points. The dots are spread
+ * evenly so both ends of an open line land on one.
  *
  * The camera underneath is an ordinary y-up orthographic one in pixels, because a
  * y-flipped frustum reverses winding order and silently culls every face.
@@ -53,30 +67,38 @@ export type Paint = number | string;
 /** Points as `[[x, y], ...]` or a flat `[x, y, x, y, ...]`. */
 export type Points = ReadonlyArray<readonly [number, number]> | readonly number[];
 
+/**
+ * How a stroke or a shape is drawn. `width` is in pixels (1.5 unless given); `dotted`
+ * draws it as a row of dots, or a filled shape as a dotted outline whose dots `width`
+ * sizes.
+ */
+export type StrokeOptions = { color?: Paint; width?: number; dotted?: boolean };
+
 /** The drawing calls, in whichever coordinates the object they hang off uses. */
 export type Draw2D = {
   /** A filled rectangle from corner `x1, y1` to the opposite corner `x2, y2`. */
-  rect(x1: number, y1: number, x2: number, y2: number, color?: Paint): void;
+  rect(x1: number, y1: number, x2: number, y2: number, options?: StrokeOptions): void;
   /** A filled circle centred on `x, y`. The radius is in pixels. */
-  circle(x: number, y: number, radius: number, color?: Paint): void;
-  /** A straight line of real width (pixels), unlike WebGL's own, which ignores it. */
-  line(x1: number, y1: number, x2: number, y2: number, color?: Paint, width?: number): void;
+  circle(x: number, y: number, radius: number, options?: StrokeOptions): void;
+  /** A straight line of real width, unlike WebGL's own, which ignores it. */
+  line(x1: number, y1: number, x2: number, y2: number, options?: StrokeOptions): void;
   /** A line from `x1, y1` with an arrowhead at `x2, y2`. The head grows with the width. */
-  arrow(x1: number, y1: number, x2: number, y2: number, color?: Paint, width?: number): void;
+  arrow(x1: number, y1: number, x2: number, y2: number, options?: StrokeOptions): void;
   /** A run of connected segments. */
-  path(points: Points, color?: Paint, width?: number): void;
+  path(points: Points, options?: StrokeOptions): void;
   /**
    * A path that fades in from transparent at its first point to `color` at its last:
    * the history a moving thing leaves behind, oldest first. See `Trail` in
    * `@lerpit/framework/trail` for keeping one. `fade: false` draws it solid, as `path`.
    * `style: 'dots'` draws a dot at each point instead of joining them (dot radius 1.5×
-   * `width`), for showing the samples themselves rather than the curve through them.
+   * `width`), for showing the samples themselves rather than the curve through them;
+   * `dotted: true` spaces dots evenly along it instead, whatever the samples.
    *
    *   sketch.trail(points, { color: colors.orange, width: 1, fade: false });
    */
-  trail(points: Points | Trail, options?: { color?: Paint; width?: number; fade?: boolean; style?: 'line' | 'dots' }): void;
-  /** A line of text, size in pixels. `x` is where it starts; the line is centred on `y`. */
-  text(value: string, x: number, y: number, color?: Paint, size?: number): void;
+  trail(points: Points | Trail, options?: StrokeOptions & { fade?: boolean; style?: 'line' | 'dots' }): void;
+  /** A line of text. `x` is where it starts; the line is centred on `y`. `size` in pixels, 12 unless given. */
+  text(value: string, x: number, y: number, options?: { color?: Paint; size?: number }): void;
 };
 
 export type Sketch2D = Draw2D & {
@@ -93,6 +115,11 @@ export type Sketch2D = Draw2D & {
   /** Pixels per unit: half the panel's width. */
   unit: number;
   /**
+   * What a size is multiplied by on this panel: its width over 600. A size in units, for
+   * placing something against a drawn shape: `radius * sketch.scale / sketch.unit`.
+   */
+  scale: number;
+  /**
    * The band under the tabs, for a sentence about what the panel is showing.
    *
    * Unlike everything else here it is not redrawn each frame: the last value set is
@@ -100,7 +127,10 @@ export type Sketch2D = Draw2D & {
    * frame is also fine. Text, not pixels, so it is selectable and readable aloud.
    */
   caption(value: string): void;
-  /** The scene itself, for a chapter that wants three.js rather than this. */
+  /**
+   * The scene itself, for a chapter that wants three.js rather than this. It is the
+   * chapter's own: what it adds in `build` is emptied when the chapter runs again.
+   */
   scene: THREE.Scene;
   /** The panel box in pixels. */
   width: number;
@@ -111,6 +141,12 @@ export type Sketch2D = Draw2D & {
 const CIRCLE_SEGMENTS = 32;
 const CIRCLE_COS = Float32Array.from({ length: CIRCLE_SEGMENTS + 1 }, (_, i) => Math.cos((i / CIRCLE_SEGMENTS) * Math.PI * 2));
 const CIRCLE_SIN = Float32Array.from({ length: CIRCLE_SEGMENTS + 1 }, (_, i) => Math.sin((i / CIRCLE_SEGMENTS) * Math.PI * 2));
+/** Segments in one dot of a dotted stroke. */
+const DOT_SEGMENTS = 8;
+/** What a shape is drawn in when no colour is given. */
+const ACCENT = 0x2e6da4;
+/** The panel width at which a size is drawn at its own number of pixels. */
+const REFERENCE_WIDTH = 600;
 
 /**
  * Floats per vertex: x, y, z, r, g, b, a, u, v. Interleaved, so a frame is one upload.
@@ -239,10 +275,13 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     quad(x1 + nx, ay + ny, x2 + nx, by + ny, x2 - nx, by - ny, x1 - nx, ay - ny, color, alpha);
   };
 
-  /** Arrowhead strokes swept back from `x2, y2`, in pixels; never more than 40% of the arrow. */
-  const head = (x1: number, y1: number, x2: number, y2: number, color: THREE.Color, lineWidth: number) => {
+  /**
+   * Arrowhead strokes swept back from `x2, y2`, in pixels; never more than 40% of the
+   * arrow. `lineWidth` arrives scaled, and `k` scales the rest of the head with it.
+   */
+  const head = (x1: number, y1: number, x2: number, y2: number, color: THREE.Color, lineWidth: number, k = 1) => {
     const a = Math.atan2(y2 - y1, x2 - x1);
-    const size = Math.min(4 + 2 * lineWidth, 0.4 * Math.hypot(x2 - x1, y2 - y1));
+    const size = Math.min(4 * k + 2 * lineWidth, 0.4 * Math.hypot(x2 - x1, y2 - y1));
     segment(x2, y2, x2 - size * Math.cos(a - 0.45), y2 - size * Math.sin(a - 0.45), color, lineWidth);
     segment(x2, y2, x2 - size * Math.cos(a + 0.45), y2 - size * Math.sin(a + 0.45), color, lineWidth);
   };
@@ -268,29 +307,110 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
   const px = (x: number) => width / 2 + (width / 2) * x;
   const py = (y: number) => height / 2 - (width / 2) * y;
 
-  /** The drawing calls, with positions mapped to pixels by `toX` and `toY`. */
-  const drawIn = (toX: (x: number) => number, toY: (y: number) => number): Draw2D => ({
-    rect(x1, y1, x2, y2, color = 0x2e6da4) {
+  /**
+   * Dots along a run of pixel points (reader y, down), spaced evenly over its whole
+   * length so an open run starts and ends on a dot. A closed run leaves out the dot
+   * that would land back on its start. `fade` gives each dot the alpha of how far
+   * along it is, as a trail's line does.
+   */
+  const dots = (xs: number[], ys: number[], c: THREE.Color, lineWidth: number, closed = false, fade = false) => {
+    let total = 0;
+    for (let i = 1; i < xs.length; i += 1) total += Math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]);
+    const radius = Math.max(0.75, lineWidth * 0.75);
+    if (total === 0) {
+      if (xs.length) pixelCircle(xs[0], ys[0], radius, c, 1, DOT_SEGMENTS);
+      return;
+    }
+    // Centre to centre: the gap between two dots is a little wider than a dot.
+    const gaps = Math.max(1, Math.round(total / (radius * 5)));
+    const step = total / gaps;
+    const last = closed ? gaps - 1 : gaps;
+    let k = 0, walked = 0;
+    for (let i = 1; i < xs.length && k <= last; i += 1) {
+      const dx = xs[i] - xs[i - 1], dy = ys[i] - ys[i - 1];
+      const length = Math.hypot(dx, dy);
+      // The last dot is placed by the loop's end, not by rounding that falls short of it.
+      while (k <= last && (k * step <= walked + length + 1e-6 || i === xs.length - 1)) {
+        const t = length === 0 ? 0 : Math.min(1, (k * step - walked) / length);
+        pixelCircle(xs[i - 1] + dx * t, ys[i - 1] + dy * t, radius, c, fade ? (k + 1) / (last + 1) : 1, DOT_SEGMENTS);
+        k += 1;
+      }
+      walked += length;
+    }
+  };
+
+  /** Pixel points from a reader's `Points`, mapped by `toX` and `toY`. */
+  const mapped = (points: Points, toX: (x: number) => number, toY: (y: number) => number) => {
+    const xs: number[] = [], ys: number[] = [];
+    const flat = points.length > 0 && typeof points[0] === 'number';
+    const n = flat ? points.length / 2 : points.length;
+    for (let i = 0; i < n; i += 1) {
+      const [x, y] = flat ? [(points as readonly number[])[2 * i], (points as readonly number[])[2 * i + 1]] : (points as ReadonlyArray<readonly [number, number]>)[i];
+      xs.push(toX(x));
+      ys.push(toY(y));
+    }
+    return { xs, ys };
+  };
+
+  /** What sizes are multiplied by on this panel. */
+  const scale = () => width / REFERENCE_WIDTH;
+
+  /**
+   * The drawing calls, with positions mapped to pixels by `toX` and `toY`. `scaled`
+   * multiplies every size but text by the panel's scale; the pixel face leaves them be.
+   */
+  const drawIn = (toX: (x: number) => number, toY: (y: number) => number, scaled: boolean): Draw2D => ({
+    rect(x1, y1, x2, y2, { color = ACCENT, width = 1.5, dotted = false } = {}) {
+      if (dotted) {
+        const ax = toX(x1), ay = toY(y1), bx = toX(x2), by = toY(y2);
+        dots([ax, bx, bx, ax, ax], [ay, ay, by, by, ay], colorOf(color), width * (scaled ? scale() : 1), true);
+        return;
+      }
       const ax = toX(x1), ay = worldY(toY(y1)), bx = toX(x2), by = worldY(toY(y2));
       quad(ax, ay, bx, ay, bx, by, ax, by, colorOf(color));
     },
-    circle(x, y, radius, color = 0x2e6da4) {
-      pixelCircle(toX(x), toY(y), radius, colorOf(color));
+    circle(x, y, radius, { color = ACCENT, width = 1.5, dotted = false } = {}) {
+      const k = scaled ? scale() : 1;
+      if (dotted) {
+        const cx = toX(x), cy = toY(y), xs: number[] = [], ys: number[] = [];
+        for (let i = 0; i <= CIRCLE_SEGMENTS * 2; i += 1) {
+          const a = (i / (CIRCLE_SEGMENTS * 2)) * Math.PI * 2;
+          xs.push(cx + Math.cos(a) * radius * k);
+          ys.push(cy + Math.sin(a) * radius * k);
+        }
+        dots(xs, ys, colorOf(color), width * k, true);
+        return;
+      }
+      pixelCircle(toX(x), toY(y), radius * k, colorOf(color));
     },
-    line(x1, y1, x2, y2, color = 0x2e6da4, lineWidth = 1.5) {
+    line(x1, y1, x2, y2, { color = ACCENT, width = 1.5, dotted = false } = {}) {
+      const lineWidth = width * (scaled ? scale() : 1);
+      if (dotted) {
+        dots([toX(x1), toX(x2)], [toY(y1), toY(y2)], colorOf(color), lineWidth);
+        return;
+      }
       segment(toX(x1), toY(y1), toX(x2), toY(y2), colorOf(color), lineWidth);
     },
-    arrow(x1, y1, x2, y2, color = 0x2e6da4, lineWidth = 1.5) {
+    arrow(x1, y1, x2, y2, { color = ACCENT, width = 1.5, dotted = false } = {}) {
+      const k = scaled ? scale() : 1;
       const c = colorOf(color);
       const ax = toX(x1), ay = toY(y1), bx = toX(x2), by = toY(y2);
-      segment(ax, ay, bx, by, c, lineWidth);
-      head(ax, ay, bx, by, c, lineWidth);
+      if (dotted) dots([ax, bx], [ay, by], c, width * k);
+      else segment(ax, ay, bx, by, c, width * k);
+      head(ax, ay, bx, by, c, width * k, k);
     },
-    path(points, color = 0x2e6da4, lineWidth = 1.5) {
+    path(points, { color = ACCENT, width = 1.5, dotted = false } = {}) {
+      const lineWidth = width * (scaled ? scale() : 1);
       const c = colorOf(color);
+      if (dotted) {
+        const { xs, ys } = mapped(points, toX, toY);
+        dots(xs, ys, c, lineWidth);
+        return;
+      }
       pairs(points, toX, toY, (_i, _n, ax, ay, bx, by) => segment(ax, ay, bx, by, c, lineWidth));
     },
-    trail(source, { color = 0x2e6da4, width: lineWidth = 1.5, fade = true, style = 'line' } = {}) {
+    trail(source, { color = ACCENT, width = 1.5, fade = true, style = 'line', dotted = false } = {}) {
+      const lineWidth = width * (scaled ? scale() : 1);
       const c = colorOf(color);
       const points = 'points' in source ? source.points : source;
       // The fade is transparency, not a mix toward the paper: an old stretch lets
@@ -305,23 +425,30 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
         }
         return;
       }
+      if (dotted) {
+        const { xs, ys } = mapped(points, toX, toY);
+        dots(xs, ys, c, lineWidth, false, fade);
+        return;
+      }
       pairs(points, toX, toY, (i, n, ax, ay, bx, by) => {
         segment(ax, ay, bx, by, c, lineWidth, fade ? (i + 1) / n : 1);
       });
     },
-    text(value, x, y, color = 0x506270, size = 12) {
+    text(value, x, y, { color = 0x506270, size = 12 } = {}) {
       pixelText(value, toX(x), toY(y), colorOf(color), size);
     }
   });
 
-  const pixelCircle = (x: number, y: number, radius: number, c: THREE.Color, alpha = 1) => {
+  /** `segments` divides 32: a dot a pixel or two across needs only a few of them. */
+  const pixelCircle = (x: number, y: number, radius: number, c: THREE.Color, alpha = 1, segments = CIRCLE_SEGMENTS) => {
     const cy = worldY(y);
-    reserve(CIRCLE_SEGMENTS * 3);
+    const stride = CIRCLE_SEGMENTS / segments;
+    reserve(segments * 3);
     const { u, v } = atlas.solid;
-    for (let i = 0; i < CIRCLE_SEGMENTS; i += 1) {
+    for (let i = 0; i < CIRCLE_SEGMENTS; i += stride) {
       vertex(x, cy, c, u, v, alpha);
       vertex(x + CIRCLE_COS[i] * radius, cy + CIRCLE_SIN[i] * radius, c, u, v, alpha);
-      vertex(x + CIRCLE_COS[i + 1] * radius, cy + CIRCLE_SIN[i + 1] * radius, c, u, v, alpha);
+      vertex(x + CIRCLE_COS[i + stride] * radius, cy + CIRCLE_SIN[i + stride] * radius, c, u, v, alpha);
     }
   };
 
@@ -354,8 +481,8 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
   const tickLabel = (v: number) => String(Math.round(v * 1000) / 1000);
 
   const api: Sketch2D = {
-    ...drawIn(px, py),
-    pixels: drawIn(same, same),
+    ...drawIn(px, py, true),
+    pixels: drawIn(same, same, false),
     scene,
     get width() {
       return width;
@@ -366,6 +493,9 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
     get unit() {
       return width / 2;
     },
+    get scale() {
+      return scale();
+    },
     px,
     py,
 
@@ -373,15 +503,17 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
       const ox = px(0), oy = py(0);
       const xColor = colorOf(theme.red);
       const yColor = colorOf(theme.green);
-      segment(0, oy, width, oy, xColor, 1.5);
-      head(0, oy, width, oy, xColor, 1.5);
-      segment(ox, height, ox, 0, yColor, 1.5);
-      head(ox, height, ox, 0, yColor, 1.5);
+      // Lines scale like any shape; the labels, being text, do not.
+      const s = scale();
+      segment(0, oy, width, oy, xColor, 1.5 * s);
+      head(0, oy, width, oy, xColor, 1.5 * s, s);
+      segment(ox, height, ox, 0, yColor, 1.5 * s);
+      head(ox, height, ox, 0, yColor, 1.5 * s, s);
       pixelText('x', width - 12, oy + 14, xColor, 12);
       pixelText('y', ox + 10, 10, yColor, 12);
       if (!(ticks > 0)) return;
 
-      const tick = 4;
+      const tick = 4 * s;
       const label = colorOf(theme.muted);
       const reachX = 1, reachY = height / width;
       // From the origin outwards, so a tick lands on 0 whatever the step; the last
@@ -389,14 +521,14 @@ export function createSketch2D(scene: THREE.Scene, setCaption: (value: string) =
       for (let k = 1; k * ticks < reachX - ticks / 2; k += 1) {
         for (const v of [k * ticks, -k * ticks]) {
           const x = px(v);
-          segment(x, oy - tick, x, oy + tick, xColor, 1);
+          segment(x, oy - tick, x, oy + tick, xColor, s);
           pixelText(tickLabel(v), x - 6, oy + 14, label, 10);
         }
       }
       for (let k = 1; k * ticks < reachY - ticks / 2; k += 1) {
         for (const v of [k * ticks, -k * ticks]) {
           const y = py(v);
-          segment(ox - tick, y, ox + tick, y, yColor, 1);
+          segment(ox - tick, y, ox + tick, y, yColor, s);
           pixelText(tickLabel(v), ox + 8, y, label, 10);
         }
       }

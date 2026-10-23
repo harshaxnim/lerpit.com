@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { LerpettePanel } from '../panel';
+import type { LerpettePanel, PanelScope } from '../panel';
 import type { ViewSize } from '../contract';
 import type { LerpettePanelSlot } from '../types';
-import { createThreeBundle, type ThreeBundle } from '../../three/bundle';
+import { createThreeBundle, disposeTree, type ThreeBundle } from '../../three/bundle';
 import { createSketch2D, type Sketch2D } from './sketch2d';
 
 /**
@@ -18,21 +18,39 @@ import { createSketch2D, type Sketch2D } from './sketch2d';
  * to match screen coordinates. A y-flipped orthographic frustum has a negative
  * determinant, which reverses winding order, which makes front-face culling quietly eat
  * everything in the scene with no error anywhere.
+ *
+ * Every chapter gets its own scene and sketch on the panel's one GL context (see
+ * `scope`), so what a chapter adds to `sketch.scene` (a textured mesh, say) never shows
+ * through in the next chapter on the same panels.
  */
 
 export type Viewport2dTarget = Sketch2D;
 
-type Bundle = {
+/** The canvas and its GL context, shared by every chapter's scope on this panel. */
+type Surface = {
   canvas: HTMLCanvasElement;
   three: ThreeBundle;
-  scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
-  sketch: ReturnType<typeof createSketch2D>;
+  slot: LerpettePanelSlot;
   /** The canvas shows nothing: the last frame rendered drew nothing. */
   blank: boolean;
 };
 
+type Bundle = {
+  surface: Surface;
+  scene: THREE.Scene;
+  sketch: ReturnType<typeof createSketch2D>;
+};
+
 const bundles = new WeakMap<Sketch2D, Bundle>();
+
+function makeBundle(surface: Surface): Bundle {
+  const scene = new THREE.Scene();
+  const sketch = createSketch2D(scene, surface.slot.setCaption);
+  const bundle = { surface, scene, sketch };
+  bundles.set(sketch.api, bundle);
+  return bundle;
+}
 
 export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
   name: 'viewport2d',
@@ -46,14 +64,44 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
     canvas.setAttribute('aria-label', `Live drawing for ${slot.lessonTitle}`);
     slot.host.append(canvas);
 
-    const three = createThreeBundle(canvas, size);
+    const surface: Surface = {
+      canvas,
+      three: createThreeBundle(canvas, size),
+      camera: new THREE.OrthographicCamera(0, Math.max(size.width, 1), Math.max(size.height, 1), 0, -1, 1),
+      slot,
+      blank: false
+    };
+    return makeBundle(surface).sketch.api;
+  },
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(0, Math.max(size.width, 1), Math.max(size.height, 1), 0, -1, 1);
+  scope(root): PanelScope<Viewport2dTarget> {
+    const bundle = makeBundle(bundles.get(root)!.surface);
+    // What the sketch put in the scene itself; anything else is the chapter's.
+    const own = new Set(bundle.scene.children);
 
-    const sketch = createSketch2D(scene, slot.setCaption);
-    bundles.set(sketch.api, { canvas, three, scene, camera, sketch, blank: false });
-    return sketch.api;
+    const empty = () => {
+      for (const child of [...bundle.scene.children]) {
+        if (own.has(child)) continue;
+        bundle.scene.remove(child);
+        disposeTree(child);
+      }
+    };
+
+    return {
+      target: bundle.sketch.api,
+      focus() {
+        // The canvas still shows the last chapter's frame, so this one's first frame is
+        // rendered even if it draws nothing.
+        bundle.surface.blank = false;
+      },
+      blur() {},
+      clear: empty,
+      release() {
+        empty();
+        bundle.sketch.dispose();
+        bundles.delete(bundle.sketch.api);
+      }
+    };
   },
 
   begin(target, size) {
@@ -75,14 +123,15 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
     // it anyway still hands the compositor a new canvas frame sixty times a second, so a
     // chapter that has not drawn yet costs real CPU. A chapter that adds its own objects
     // to the scene is never skipped: what it draws is not visible from here.
+    const { surface } = bundle;
     const drew = bundle.sketch.end();
     const ownObjectsOnly = bundle.scene.children.length === bundle.sketch.objectCount();
-    if (!drew && bundle.blank && ownObjectsOnly) {
+    if (!drew && surface.blank && ownObjectsOnly) {
       return;
     }
 
-    bundle.blank = !drew && ownObjectsOnly;
-    bundle.three.render(bundle.scene, bundle.camera);
+    surface.blank = !drew && ownObjectsOnly;
+    surface.three.render(bundle.scene, surface.camera);
   },
 
   resize(target, size) {
@@ -91,11 +140,12 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
       return;
     }
 
-    bundle.three.resize(size);
+    const { surface } = bundle;
+    surface.three.resize(size);
 
-    bundle.camera.right = Math.max(size.width, 1);
-    bundle.camera.top = Math.max(size.height, 1);
-    bundle.camera.updateProjectionMatrix();
+    surface.camera.right = Math.max(size.width, 1);
+    surface.camera.top = Math.max(size.height, 1);
+    surface.camera.updateProjectionMatrix();
   },
 
   locate(target, clientX, clientY) {
@@ -104,7 +154,7 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
       return { x: 0, y: 0 };
     }
 
-    const box = bundle.canvas.getBoundingClientRect();
+    const box = bundle.surface.canvas.getBoundingClientRect();
     return { x: clientX - box.left, y: clientY - box.top };
   },
 
@@ -117,7 +167,7 @@ export const viewport2dPanel: LerpettePanel<Viewport2dTarget> = {
     bundle.sketch.dispose();
     // A browser hands out only a handful of live WebGL contexts, and a reader moving
     // between chapters builds a panel each time, so this has to be given back.
-    bundle.three.dispose();
+    bundle.surface.three.dispose();
     bundles.delete(target);
   }
 };

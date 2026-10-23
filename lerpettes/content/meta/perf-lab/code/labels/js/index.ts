@@ -9,12 +9,12 @@ export default createStage({
   },
   viewport2d: {
     draw(sketch, s) {
-      sketch.pixels.rect(10, 60, 270, 100, 0xf2d3bf);
+      sketch.pixels.rect(10, 60, 270, 100, { color: 0xf2d3bf });
       for (let i = 0; i < 20; i += 1) {
-        sketch.pixels.text(`x${i} = ${Math.sin(s.t + i).toFixed(3)}`, 20, 30 + i * 22, 0x20313f, 14);
+        sketch.pixels.text(`x${i} = ${Math.sin(s.t + i).toFixed(3)}`, 20, 30 + i * 22, { color: 0x20313f, size: 14 });
       }
-      sketch.pixels.rect(150, 0, 156, 480, 0x2e6da4);
-      sketch.pixels.text('Large, 28px: Ågjy ✓', 20, 520, 0xd17041, 28);
+      sketch.pixels.rect(150, 0, 156, 480, { color: 0x2e6da4 });
+      sketch.pixels.text('Large, 28px: Ågjy ✓', 20, 520, { color: 0xd17041, size: 28 });
     }
   }
 });

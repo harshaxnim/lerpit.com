@@ -1,0 +1,34 @@
+---
+import type { LerpetteCollection } from '@lerpit/framework/types';
+import { paletteBands } from '../lib/paletteBands';
+import CassetteCard from './CassetteCard.astro';
+import ContentProblems from './ContentProblems.astro';
+
+interface Props {
+  collection: LerpetteCollection;
+}
+
+const { collection } = Astro.props as Props;
+const count = collection.mixtapes.length;
+---
+
+<section class="archive-collection collection-row" aria-labelledby={`collection-${collection.slug}`} data-collection={collection.slug}>
+  <div class="collection-row__label">
+    <span class="collection-row__bands" style={`background: ${paletteBands(collection.colors)}`}></span>
+    <h2 id={`collection-${collection.slug}`}>{collection.title}</h2>
+    {collection.summary && <p class="collection-row__summary">{collection.summary}</p>}
+    <p class="collection-row__count">{count} {count === 1 ? 'lerpette' : 'lerpettes'}</p>
+    <div class="collection-row__actions">
+      <a class="button collection-open" href={collection.href}>Open collection</a>
+    </div>
+  </div>
+
+  <div class="collection-row__cards">
+    <ContentProblems problems={collection.problems} title="This collection is unfinished" />
+    <div class="cassette-grid">
+      {collection.mixtapes.map((mixtape) => (
+        <CassetteCard mixtape={mixtape} />
+      ))}
+    </div>
+  </div>
+</section>

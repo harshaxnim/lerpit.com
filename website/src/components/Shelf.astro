@@ -1,10 +1,11 @@
 ---
 import type { LerpetteCollection, LerpetteMixtape } from '@lerpit/framework/types';
+import { paletteBands } from '../lib/paletteBands';
 import CassetteCard from './CassetteCard.astro';
 
 /**
  * A band at the foot of a page that points somewhere else in the library: cassette cards
- * for lerpettes, or a row of buttons for collections. One component, so the two shelves
+ * for lerpettes, or the collections' library labels. One component, so the two shelves
  * a page can carry always match.
  *
  * A card shelf ends in a card-shaped tile into the library, where the eye lands after
@@ -39,8 +40,21 @@ const library = `${import.meta.env.BASE_URL}library/`;
       </a>
     </div>
   ) : (
-    <div class="collections-grid">
-      {props.collections.map((collection) => <a class="button" href={collection.href}>{collection.title}</a>)}
+    <div class="collection-labels">
+      {props.collections.map((collection) => {
+        const count = collection.mixtapes.length;
+        const latest = collection.mixtapes.map((mixtape) => mixtape.publishedOn.slice(0, 10)).sort().at(-1);
+        return (
+          <a class="collection-row__label" href={collection.href}>
+            <span class="collection-row__bands" style={`background: ${paletteBands(collection.colors)}`}></span>
+            <h3>{collection.title}</h3>
+            {collection.summary && <p class="collection-row__summary">{collection.summary}</p>}
+            <p class="collection-row__count">
+              {count} {count === 1 ? 'lerpette' : 'lerpettes'}{latest && ` · latest ${latest}`}
+            </p>
+          </a>
+        );
+      })}
     </div>
   )}
 </section>

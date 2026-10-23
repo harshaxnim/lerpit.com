@@ -102,14 +102,14 @@ export default createStage({
             }
             const a = Math.hypot(ax, ay);
             const reach = (0.5 * SPACING) / (a + A0);
-            sketch.arrow(x - ax * reach, y - ay * reach, x + ax * reach, y + ay * reach, colors.gray, 1);
-            sketch.circle(x - ax * reach, y - ay * reach, .5, colors.orange);
+            sketch.arrow(x - ax * reach, y - ay * reach, x + ax * reach, y + ay * reach, { color: colors.gray, width: 1 });
+            sketch.circle(x - ax * reach, y - ay * reach, .5, { color: colors.orange });
           }
         }
       }
 
       if (s.trail) for (const p of s.particles) sketch.trail(p.trail, { color: p.c, width: 2 });
-      for (const p of s.particles) sketch.circle(p.x, p.y, p.r, p.c);
+      for (const p of s.particles) sketch.circle(p.x, p.y, p.r, { color: p.c });
     },
   },
 });

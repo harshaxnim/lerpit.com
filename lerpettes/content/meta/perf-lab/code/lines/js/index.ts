@@ -16,7 +16,7 @@ export default createStage({
       for (let i = 0; i < N; i += 1) {
         const a = (i / N) * Math.PI * 2 + s.t * 0.3;
         const k = 0.3 + 0.7 * ((i * 37) % 100) / 100;
-        sketch.pixels.line(cx, cy, cx + Math.cos(a) * r * k, cy + Math.sin(a) * r * k, COLORS[i % 100], 1);
+        sketch.pixels.line(cx, cy, cx + Math.cos(a) * r * k, cy + Math.sin(a) * r * k, { color: COLORS[i % 100], width: 1 });
       }
     }
   }

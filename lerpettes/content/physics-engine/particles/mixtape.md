@@ -114,10 +114,61 @@ Let's put it to work by simulating the notorious 3-body problem. It's been prove
 
 ## _Spring_ to life {#spring}
 
-Let's now take a look at an isolated case of a single particle of mass $m$ attached to a spring with spring-constant $k$. On the right, we see such a setup with the spring attached to a wall on one side, and mass on the other. Let's start with the spring compressed by ~33%. First we'll use the swanky new integration scheme we just learnt, but I added a control to switch it to explicit Euler, the integration scheme we learnt in the previous section.
+Let's now take a look at an isolated case of a single particle of mass $m$ attached to a spring with spring-constant $k$. On the right, we see such a setup with the spring attached to a wall on one side, and mass on the other. Let's start with the spring compressed by ~33%. The force the particle is going to experience due to the spring is:
+
+$$
+F_p = -kx^2
+$$
+
+Like before, we use this force to calculate acceleration $a_p$, and velocity $v_p$, and finally the new position of the particle $x_p$. By default, this uses the swanky new integration scheme we just learnt - symplectic Eluer. I added a control to switch it to explicit Euler, the integration scheme we learnt in the previous section.
 
 > Compare both the integration schemes in `Controls > Scheme` and try observing the differences between them. Notice how the system blows up using explicit Euler with low sub-step count. Contrast it with symplectic Euler's stability. Observe the tracked _Total Mechanical Energy_ of the system. Note the slight wobbles in the energy with symplectic Euler, and the blow up with explicit Euler methods.
 
-Now that we know how to affect mass with spring forces, we have unlocked a nifty ability to model quite a few relatively complex behaviors. Let's now look at what happens if we connect a bunch of these points with springs!
+Now that we know how to affect mass with spring forces, we have unlocked a nifty ability to model quite a few relatively complex behaviors. Let's now look at what happens if we connect a bunch of these particles with springs!
 
-## 
+
+## _Soft_ skills {#soft}
+
+Let's now connect a bunch of particles together using springs. The simulation playbook is still the same, we accumulate the total force on each particle, calculate acceleration from it, integrate it twice to get the new position. The trickiest part is actually making the structure of springs to represent something. If we're making a box, the springs don't just constitute the outside edges, but also diagonals to prevent shear.
+
+<!-- LERP: Add svg showing a box with edge springs, and diagonal springs -->
+
+Similarly, for more complex shapes with a lot more particles, just having distance springs will invert some of the triangles. One quick way to prevent them based on only what we know is applying a similar spring force, but for the angle between two edges:
+
+$$
+
+$$
+
+<!-- LERP: the angle-spring formula, as the stage code computes it (`angle`, `applyAngleSpring` in code/soft/js/index.ts).
+  The angle at particle j, between its threads to i and to k, with a = x_i − x_j and b = x_k − x_j:
+    θ = atan2(a × b, a · b)                (a × b = a_x b_y − a_y b_x; atan2 gives a signed angle with no seam at 0)
+  Like Hooke's law, but for the angle (a torque-like spring):
+    E = ½ κ (θ − θ₀)²
+    F_i = −κ (θ − θ₀) ∂θ/∂x_i = κ (θ − θ₀) · (−a_y, a_x) / |a|²     (sideways to thread a)
+    F_k = −κ (θ − θ₀) ∂θ/∂x_k = κ (θ − θ₀) · ( b_y, −b_x) / |b|²    (sideways to thread b)
+    F_j = −(F_i + F_k)                                             (the forces sum to zero, so the body is not pushed as a whole)
+  θ − θ₀ is wrapped into (−π, π] so a bend across ±π doesn't jump.
+  κ = 0.5 · k · (the shorter thread's rest length)². Points to make: the push on an end is about κ (θ − θ₀)/|a|, so with κ
+  using the shorter thread, no thread is much stiffer than k. A short thread meeting a long one would otherwise ring faster
+  than the time step can follow.
+  The rest angle θ₀ is the angle in the file, since the body is loaded at rest (the same as each spring's rest length L₀). -->
+
+<!-- LERP: add svg that show inverted issue and angular springs. -->
+
+<!-- LERP: damping, new in this chapter. Without it the jelly wobbles for ever: the springs only trade energy back and forth, as
+  in the spring chapter. A dashpot on each spring resists how fast it is stretching:
+    F = k (L − L₀) + c (v_b − v_a) · û       (û the unit vector from a to b, c the Damping slider)
+  It acts along the spring and only on the stretching speed. A body that moves or spins as a whole is not slowed; only
+  wobbling is. Critical damping for a pair of masses is c = 2√(k μ) with μ = m_a m_b / (m_a + m_b), about 90 at k = 4000.
+  The default is 15, so it still wobbles a little. Suggested exercise: Damping = 0, pull and let go (it rings for a long time);
+  then Damping = 40. The pointer pulls the held particle on the same kind of spring: k toward the pointer, −c v against its velocity. -->
+
+<!-- LERP: the body file (code/soft/assets/stapler.txt) is a tiny OBJ-like format: `p x y mass` a particle, `f x y mass` a particle
+  fixed to the plate, `s a b` a spring, `a i j k` an angle spring at j, `t a b c` a triangle that carries the picture, and
+  `picture left bottom right top` where the picture sits. The stage reads it, sets each rest length and rest angle from it,
+  and runs the same playbook: clear forces, add spring forces, add angle-spring forces, symplectic Euler. Making the web
+  (rings and spokes traced from the picture's outline, cross links, long links) happened offline. It could be its own aside
+  or a later chapter. -->
+
+<!-- LERP: the box figure above: the stapler's web uses three kinds of spring. Threads run along the rings and spokes, cross links
+  run across each cell (the box's diagonals), and long links skip a particle. Show the web (Controls > Show the web) to see them. -->

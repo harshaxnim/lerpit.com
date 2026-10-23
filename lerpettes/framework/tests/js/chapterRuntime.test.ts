@@ -77,8 +77,15 @@ function fakePanel(name: string, options: { cadence?: 'frame' | 'change'; scoped
         }
       : {})
   };
-  const box = { addEventListener: vi.fn(), getBoundingClientRect: () => ({ left: 0, top: 0 }) };
-  return { mounted: { panel, target, box }, log };
+  const listeners = new Map<string, (event: unknown) => void>();
+  const box = {
+    addEventListener: vi.fn((type: string, fn: (event: unknown) => void) => listeners.set(type, fn)),
+    setPointerCapture: vi.fn(),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 300, height: 200 })
+  };
+  /** A pointer event on this panel's box, at a point in its pixels. */
+  const fire = (type: string, clientX = 0, clientY = 0) => listeners.get(type)?.({ clientX, clientY, pointerId: 1 });
+  return { mounted: { panel, target, box }, log, fire };
 }
 
 function fakeStack(panels: ReturnType<typeof fakePanel>[], unknown: string[] = []) {
@@ -540,5 +547,81 @@ describe('an editor chapter', () => {
     const before = editor.run.mock.calls.length;
     stage.restart!();
     expect(editor.run.mock.calls.length).toBe(before + 1);
+  });
+});
+
+describe('the pointer', () => {
+  type Seen = { x: number; y: number; ux: number; uy: number; down: boolean; inside: boolean; pressed: boolean; released: boolean };
+
+  async function pointerChapter() {
+    const seen: Seen[] = [];
+    const panel = fakePanel('viewport2d');
+    const stack = fakeStack([panel]);
+    const runtime = createChapterRuntime({
+      step: (_s, _dt, ctx) => seen.push({ ...ctx.input }),
+      viewport2d: { draw: () => undefined }
+    });
+    const ctx = context(stack);
+    await runtime.mount(ctx);
+    runtime.enter?.(ctx);
+    runFrame(16); // primes the clock
+    return { seen, fire: panel.fire, box: panel.mounted.box };
+  }
+
+  it('keeps a click shorter than a frame for the next step, then clears it', async () => {
+    const { seen, fire } = await pointerChapter();
+    fire('pointerdown', 50, 60);
+    fire('pointerup', 50, 60);
+    runFrame(16);
+    runFrame(16);
+
+    expect(seen[0]).toMatchObject({ pressed: true, released: true, down: false, x: 50, y: 60 });
+    expect(seen[1]).toMatchObject({ pressed: false, released: false, down: false });
+  });
+
+  it('holds a press that leaves the panel until it is let go', async () => {
+    const { seen, fire, box } = await pointerChapter();
+    fire('pointerdown', 150, 100);
+    runFrame(16);
+    fire('pointermove', 420, -30);
+    fire('pointerleave');
+    runFrame(16);
+    fire('pointerup', 450, -40);
+    runFrame(16);
+
+    expect(box.setPointerCapture).toHaveBeenCalledWith(1);
+    expect(seen[0]).toMatchObject({ pressed: true, down: true, inside: true });
+    expect(seen[1]).toMatchObject({ pressed: false, down: true, inside: false, x: 420, y: -30 });
+    expect(seen[2]).toMatchObject({ released: true, down: false, x: 450, y: -40 });
+  });
+
+  it('gives the point in units too: the origin mid-panel, x −1..1 across, y up', async () => {
+    const { seen, fire } = await pointerChapter();
+    fire('pointermove', 150, 100);
+    runFrame(16);
+    fire('pointermove', 0, 0);
+    runFrame(16);
+    fire('pointermove', 300, 200);
+    runFrame(16);
+
+    // The fake panel is 300 by 200, so y reaches 200 / 300 above and below the middle.
+    expect(seen[0]).toMatchObject({ ux: 0, uy: 0 });
+    expect(seen[1].ux).toBeCloseTo(-1);
+    expect(seen[1].uy).toBeCloseTo(2 / 3);
+    expect(seen[2].ux).toBeCloseTo(1);
+    expect(seen[2].uy).toBeCloseTo(-2 / 3);
+  });
+
+  it('treats a cancelled press as a release, once', async () => {
+    const { seen, fire } = await pointerChapter();
+    fire('pointerdown', 10, 10);
+    runFrame(16);
+    fire('pointercancel', 10, 10);
+    fire('pointerup', 10, 10);
+    runFrame(16);
+    runFrame(16);
+
+    expect(seen[1]).toMatchObject({ released: true, down: false });
+    expect(seen[2]).toMatchObject({ released: false });
   });
 });

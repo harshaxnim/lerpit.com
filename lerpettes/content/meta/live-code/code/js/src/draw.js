@@ -16,7 +16,7 @@ export const viewport2d = {
     const scale = Math.min(ctx.view.height / 2 - 16, 90);
     const clamp = (x) => Math.max(-2, Math.min(2, x));
 
-    sketch.pixels.line(0, midY, ctx.view.width, midY, 0x5183ad, 1);
+    sketch.pixels.line(0, midY, ctx.view.width, midY, { color: 0x5183ad, width: 1 });
 
     const past = s.past;
     past.push(s.x);
@@ -27,11 +27,11 @@ export const viewport2d = {
       ctx.view.width - (past.length - 1 - i) * stride,
       midY - clamp(x) * scale
     ]);
-    sketch.pixels.path(trail, 0x2e6da4, 1.5);
+    sketch.pixels.path(trail, { color: 0x2e6da4, width: 1.5 });
 
     const bobY = midY - clamp(s.x) * scale;
-    sketch.pixels.line(48, midY, 48, bobY, 0x20313f, 1.4);
-    sketch.pixels.circle(48, bobY, 11, 0xd17041);
+    sketch.pixels.line(48, midY, 48, bobY, { color: 0x20313f, width: 1.4 });
+    sketch.pixels.circle(48, bobY, 11, { color: 0xd17041 });
 
     sketch.caption(`x = ${s.x.toFixed(3)}`);
   }

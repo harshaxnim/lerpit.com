@@ -69,14 +69,14 @@ export default createStage({
       for (let x = -halfWidth + SPACING / 2; x < halfWidth; x += SPACING) {
         for (let y = -halfHeight + SPACING / 2; y < halfHeight; y += SPACING) {
           const [vx, vy] = velocityField(x, y, s.maxSpeed, ctx.time);
-          sketch.arrow(x - vx * reach, y - vy * reach, x + vx * reach, y + vy * reach, colors.gray, 1);
-          sketch.circle(x - vx * reach, y - vy * reach, .5, colors.orange);
+          sketch.arrow(x - vx * reach, y - vy * reach, x + vx * reach, y + vy * reach, { color: colors.gray, width: 1 });
+          sketch.circle(x - vx * reach, y - vy * reach, .5, { color: colors.orange });
         }
       }
 
       // Particles
       for (const p of s.particles) sketch.trail(p.trail, { color: colors.orange, width: 2, fade: false });
-      for (const p of s.particles) sketch.circle(p.x, p.y, RADIUS, colors.orange);
+      for (const p of s.particles) sketch.circle(p.x, p.y, RADIUS, { color: colors.orange });
     },
   },
 });

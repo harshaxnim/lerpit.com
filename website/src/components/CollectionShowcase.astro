@@ -1,32 +1,48 @@
 ---
 import type { LerpetteCollection } from '@lerpit/framework/types';
+import { paletteBands } from '../lib/paletteBands';
 import CassetteCard from './CassetteCard.astro';
 import ContentProblems from './ContentProblems.astro';
 
 interface Props {
   collection: LerpetteCollection;
-  showLink?: boolean;
 }
 
-const { collection, showLink = false } = Astro.props as Props;
+const { collection } = Astro.props as Props;
+const count = collection.mixtapes.length;
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 ---
 
-<section class="archive-collection" aria-labelledby={`collection-${collection.slug}`} data-collection={collection.slug}>
-  <div class="section-heading">
-    <div>
-      <p class="eyebrow">Collection</p>
-      <h2 id={`collection-${collection.slug}`}>{collection.title}</h2>
-    </div>
-    {showLink && <a class="button" href={collection.href}>Open collection</a>}
-  </div>
+<!-- The collection page: its library label, larger and pinned, beside its lerpettes as a
+     track list. Each track numbers itself the way a chapter header does. -->
+<section class="archive-collection collection-page" aria-labelledby={`collection-${collection.slug}`} data-collection={collection.slug}>
+  <aside class="collection-row__label collection-page__label">
+    <span class="collection-row__bands" style={`background: ${paletteBands(collection.colors)}`}></span>
+    <h1 id={`collection-${collection.slug}`}>{collection.title}</h1>
+    <div class="collection-copy prose-block" set:html={collection.bodyHtml}></div>
+    <p class="collection-row__count"><b>{plural(count, 'lerpette')}</b></p>
+  </aside>
 
-  <ContentProblems problems={collection.problems} title="This collection is unfinished" />
-
-  <div class="collection-copy prose-block" set:html={collection.bodyHtml}></div>
-
-  <div class="cassette-grid">
-    {collection.mixtapes.map((mixtape) => (
-      <CassetteCard mixtape={mixtape} />
-    ))}
+  <div class="collection-page__list">
+    <ContentProblems problems={collection.problems} title="This collection is unfinished" />
+    <ol class="collection-tracks">
+      {collection.mixtapes.map((mixtape, i) => (
+        <li class="collection-track">
+          <CassetteCard mixtape={mixtape} />
+          <div class="collection-track__text">
+            <div class="collection-track__head">
+              <h2><a href={mixtape.href}>{mixtape.title}</a></h2>
+              <span class="lerpette-head__index-row">
+                <span class="lerpette-head__index">{String(i + 1).padStart(2, '0')}</span>
+              </span>
+            </div>
+            {mixtape.summary && <p class="collection-track__summary">{mixtape.summary}</p>}
+            <p class="collection-track__meta">
+              {plural(mixtape.steps.length, 'chapter')} · <span>{mixtape.publishedOn.slice(0, 10)}</span>
+            </p>
+          </div>
+        </li>
+      ))}
+    </ol>
   </div>
 </section>

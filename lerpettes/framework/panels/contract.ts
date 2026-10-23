@@ -37,12 +37,30 @@ export type WasmExports = Record<string, unknown>;
 
 /** Where the pointer is, in the coordinates of the panel being drawn. */
 export type PointerState = {
+  /** In pixels, from the panel's top left, y down: for laying out against its edges. */
   x: number;
   y: number;
-  /** Whether a button is held. */
+  /**
+   * The same point in units, as a chapter simulates and draws: the origin mid-panel, x −1
+   * to 1 across, y up to `ctx.view.halfHeight`.
+   */
+  ux: number;
+  uy: number;
+  /**
+   * Whether a button is held. A press on the panel holds until it is let go, even if the
+   * pointer leaves the panel on the way, and `x` and `y` keep following it out there.
+   */
   down: boolean;
   /** Whether the pointer is over this panel at all. */
   inside: boolean;
+  /**
+   * A press began since the last frame. Kept until a frame has seen it, so a click
+   * shorter than a frame is never missed; check this rather than comparing `down` with
+   * the last frame's.
+   */
+  pressed: boolean;
+  /** A press ended since the last frame, by letting go or by the browser cancelling it. */
+  released: boolean;
 };
 
 /** The panel's box in layout pixels, and the backing-store scale it is drawn at. */

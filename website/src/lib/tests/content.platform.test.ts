@@ -183,6 +183,17 @@ describe('control.toml fields', () => {
     expect(collection.mixtapes.map((m) => m.slug)).toEqual(['first', 'second', 'newest', 'older']);
   });
 
+  it('the meta collection and its lerpettes list last, even when newest', async () => {
+    const make = (collection: string, slug: string, date: string) => ({
+      [`lerpettes/content/${collection}/collection.md`]: `# ${collection}\n\nS.\n`,
+      [`lerpettes/content/${collection}/${slug}/mixtape.md`]: `Author: H | Date: ${date}\n\n# ${slug}\n\nS.\n\n## One {#one +canvas}\n\nT.\n`
+    });
+    await writeTree({ ...make('meta', 'devlog', '2026-12-01'), ...make('physics-engine', 'old', '2025-01-01'), ...make('zebra', 'mid', '2026-01-01') });
+    const library = await loadLibrary();
+    expect(library.collections.map((c) => c.slug)).toEqual(['physics-engine', 'zebra', 'meta']);
+    expect(library.mixtapes.map((m) => m.slug)).toEqual(['mid', 'old', 'devlog']);
+  });
+
   it('landing = true picks the home page, and two of them is reported', async () => {
     const make = (slug: string, date: string, landing: boolean) => ({
       [`lerpettes/content/physics-engine/${slug}/mixtape.md`]: `Author: H | Date: ${date}\n\n# ${slug}\n\nS.\n\n## One {#one +canvas}\n\nT.\n`,

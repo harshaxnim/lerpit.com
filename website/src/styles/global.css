@@ -481,10 +481,9 @@ nav {
   background: var(--warn-soft);
 }
 
-/* The panels: the sheet, the lesson player and the shelf, whose heading is a panel of
-   its own. Library sections and collection headers sit on the sheet without one. */
+/* The panels: the sheet, the lesson player and the shelf. Headings, library sections
+   and collection headers sit on them without one of their own. */
 .lerpette-shelf,
-.lerpette-shelf .section-heading,
 .lerpette-player,
 .sheet {
   padding: 1.1rem;
@@ -581,21 +580,276 @@ nav {
   margin-top: 1rem;
 }
 
+/* Every page title (the library's, a collection's, a lesson's) at one size, about
+   1 : 1.62 to the wordmark above it on a desktop: the page name, under the site's. */
 .site-shell > .sheet > .collection-header h2 {
-  font-size: clamp(1.9rem, 3.8vw, 2.35rem);
+  font-size: clamp(1.6rem, 2.8vw, 2.35rem);
   font-weight: 500;
 }
 
-.library-separator {
-  margin: 1.25rem 0 1.1rem;
-  border: 0;
+.library-header {
+  padding-bottom: 0.4rem;
+}
+
+.library-header__facts,
+.collection-row__count {
+  font: 0.76rem var(--font-sans);
+  color: var(--muted);
+}
+
+.library-header__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.library-header__facts b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* One collection label and one cassette size on the library, a collection page and the
+   collections shelf, so opening a collection keeps its label where it was and only
+   lets its name and description grow. The card is 220px, above the 200px its caption
+   is laid out for. */
+:root {
+  --collection-label-width: 18rem;
+  --collection-card-width: 13.75rem;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --collection-card-width: 10rem;
+  }
+}
+
+/* The library's shelf rows: each collection's label on the left, its cassettes on the right. */
+.site-shell > .sheet > .collection-row {
+  display: grid;
+  grid-template-columns: var(--collection-label-width) minmax(0, 1fr);
+  gap: 1.4rem;
+  margin-top: 1.4rem;
+  padding-top: 1.4rem;
   border-top: 1px solid var(--line-strong);
 }
 
-.site-shell > .sheet > .archive-collection + .archive-collection {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--line-strong);
+.collection-row__label {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  padding-bottom: 1rem;
+  border: 1px solid var(--line);
+  background: var(--paper-veil);
+}
+
+.collection-row__label > :not(.collection-row__bands) {
+  margin-inline: 1rem;
+}
+
+.collection-row__bands {
+  display: block;
+  height: 4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+/* A collection's or lerpette's name in a list, one step under the page title as the
+   page title is one under the wordmark: library rows, shelf labels and tracks. */
+.site-shell > .sheet > .collection-row h2,
+.collection-labels h3,
+.sheet .collection-track__head h2 {
+  margin-top: 0.2rem;
+  margin-bottom: 0;
+  font-size: clamp(1.35rem, 2.6vw, 1.65rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+/* Every summary and description beside a label or a track at body size. */
+.archive-collection .collection-row__summary,
+.lerpette-shelf .collection-row__summary,
+.archive-collection .collection-track__summary,
+.collection-page__label .prose-block p {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.archive-collection .collection-row__summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.collection-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.collection-row__cards {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.collection-row__cards .cassette-grid {
+  grid-template-columns: repeat(auto-fill, var(--collection-card-width));
+  justify-items: start;
+}
+
+.collection-row__cards .cassette-card {
+  width: var(--collection-card-width);
+  max-width: none;
+}
+
+/* The collection page: the same label, pinned, beside a track list. */
+.site-shell > .sheet > .collection-page {
+  display: grid;
+  grid-template-columns: var(--collection-label-width) minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: start;
+  margin-top: 1rem;
+}
+
+.collection-page__label {
+  position: sticky;
+  top: 1rem;
+}
+
+.sheet .collection-page__label h1 {
+  margin-top: 0.2rem;
+  /* The page title size; see .collection-header h2. */
+  font-size: clamp(1.6rem, 2.8vw, 2.35rem);
+  font-weight: 500;
+}
+
+.collection-page__label .collection-copy {
+  margin-bottom: 0;
+}
+
+.collection-page__label .prose-block p + p {
+  margin-top: 0.6rem;
+}
+
+.collection-row__count b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.collection-page__list {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.collection-tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.collection-track {
+  display: grid;
+  grid-template-columns: var(--collection-card-width) minmax(0, 1fr);
+  gap: 1.2rem;
+  align-items: start;
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.collection-track:first-child {
+  padding-top: 0;
+}
+
+.collection-track .cassette-card {
+  width: var(--collection-card-width);
+  max-width: none;
+}
+
+.collection-track__text {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+/* Title and number as a chapter header has them: the number set vertically at the
+   right end (.lerpette-head__index-row orders it there). */
+.collection-track__head {
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+}
+
+.collection-track__head h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.collection-track__head h2 a:hover,
+.collection-track__head h2 a:focus-visible {
+  color: var(--accent);
+}
+
+.collection-track__head .lerpette-head__index-row {
+  align-self: start;
+}
+
+.archive-collection .collection-track__summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.collection-track__meta {
+  font: 0.76rem var(--font-sans);
+  color: var(--muted);
+}
+
+.collection-track__meta span {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .site-shell > .sheet > .collection-row,
+  .site-shell > .sheet > .collection-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .collection-page__label {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  /* The phone 2-up grid's card size; the title stands beside it and the rest of the
+     text runs under both, where it has the full width. */
+  .collection-track {
+    gap: 0.9rem;
+  }
+
+  .collection-track__text {
+    display: contents;
+  }
+
+  .collection-track__summary,
+  .collection-track__meta {
+    grid-column: 1 / -1;
+  }
+}
+
+/* While editing, the label holds the text editor and needs the full width. */
+.ed-on .site-shell > .sheet > .collection-page {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ed-on .collection-page__label {
+  position: static;
 }
 
 .collection-header h1 {
@@ -696,9 +950,8 @@ nav {
   /* The sans the site's other small labels use, at every size; the phone block only
      makes it smaller. */
   font-family: var(--font-sans);
-  font-size: 0.76rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
@@ -1342,10 +1595,30 @@ html .katex {
   color: var(--accent);
 }
 
-.collections-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
+/* The collections shelf: each collection's library label, side by side. */
+.collection-labels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(0, var(--collection-label-width)));
+  gap: 1rem;
+}
+
+.collection-labels .collection-row__label {
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.collection-labels .collection-row__label:hover,
+.collection-labels .collection-row__label:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(32, 49, 63, 0.14);
+}
+
+.lerpette-shelf .collection-row__summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cassette-card {

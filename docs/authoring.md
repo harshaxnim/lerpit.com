@@ -77,7 +77,7 @@ What the `#` title names, every chapter inherits. So `# Title {#intro +viewport2
 | panel | what a view draws with | redraws |
 | --- | --- | --- |
 | `canvas` | `{ canvas, context2d() }`: a bare canvas; the 2D context is cleared and in layout pixels each frame | every frame |
-| `viewport2d` | a `sketch`: `line`, `arrow`, `path`, `trail`, `circle`, `rect`, `text`, `axes(ticks)`, `caption`. Positions are units (origin in the middle, x −1..1 across, y up to `ctx.view.halfHeight`); sizes (radius, width, text) are pixels. `sketch.pixels.*` is the same calls in pixels, y down; `sketch.px(x)`, `sketch.py(y)` convert | every frame |
+| `viewport2d` | a `sketch`: `line`, `arrow`, `path`, `trail`, `circle`, `rect`, `text`, `axes(ticks)`, `caption`. Positions are units (origin in the middle, x −1..1 across, y up to `ctx.view.halfHeight`); sizes (radius, width, arrowheads) are pixels as drawn on a 600px-wide panel and scale with the panel (`sketch.scale`), so a phone shows the same picture smaller; text stays in pixels. Where and how big are arguments, everything else an options object: `sketch.line(x1, y1, x2, y2, { color, width, dotted })`, `sketch.circle(x, y, r, { color })`, `sketch.text('a', x, y, { color, size })`. `dotted: true` draws a stroke as a row of dots, a circle or rect as a dotted outline. `sketch.pixels.*` is the same calls in plain, unscaled pixels, y down; `sketch.px(x)`, `sketch.py(y)` convert. `sketch.scene` is the chapter's own three.js scene: add meshes to it in `build`, and they are emptied when the chapter runs again and never show in another chapter | every frame |
 | `viewport3d` | `{ scene, camera, controls, lights, flatLight(), orthographic(w, h), axes(size), caption() }`, a scene of the chapter's own | every frame |
 | `table` | `out.row({ column: value })`, once per row | when the state changes |
 | `readout` | `out.line('text')`, once per line | when the state changes |
@@ -109,7 +109,7 @@ a view shows it and should not change it. Each run starts from a fresh copy of `
 | | |
 | --- | --- |
 | `ctx.view` | `{ width, height, dpr, halfWidth, halfHeight }` of the panel being drawn (the one on screen during `step`); the halves are how far it reaches in units (`g.px`/`g.py`'s): x −1..1 always, y ± height over width |
-| `ctx.input` | `{ x, y, down, inside }`, the pointer over that panel |
+| `ctx.input` | `{ x, y, ux, uy, down, inside, pressed, released }`, the pointer over that panel. `x`, `y` are pixels from the top left, y down; `ux`, `uy` are the same point in units, as a chapter draws (origin in the middle, x −1..1, y up). A press holds `down` until it is let go, even when the pointer leaves the panel, and `x`, `y` keep following it. `pressed` and `released` are true for the one frame after a press began or ended, so a click shorter than a frame is never missed: start a drag on `pressed`, end it on `released` |
 | `ctx.time` | seconds this run has been running; stops while the chapter is off screen |
 | `ctx.wasm` | the chapter's C++ module, or null |
 | `ctx.controls(opts?)` | the stage's controls card: a [tweakpane](https://tweakpane.github.io/docs/). Folded unless `{ expanded: true }` |
@@ -144,14 +144,14 @@ export default createStage({
   },
   viewport2d: {
     draw(sketch, s) {
-      sketch.circle(0, s.x * 0.3, 10, 0xd17041);
+      sketch.circle(0, s.x * 0.3, 10, { color: 0xd17041 });
     }
   }
 });
 ```
 
 Helpers beside it: `@lerpit/framework/math` (`clamp`, `lerp`, `wrap`),
-`@lerpit/framework/trail` (`Trail.create(max)` in the state, `Trail.push(t, x, y)`, `Trail.clear(t)`, drawn with `sketch.trail(points, { color, width, fade })`, fading unless `fade: false`, as dots rather than a line with `style: 'dots'`), and
+`@lerpit/framework/trail` (`Trail.create(max)` in the state, `Trail.push(t, x, y)`, `Trail.clear(t)`, drawn with `sketch.trail(points, { color, width, fade })`, fading unless `fade: false`, a dot per sample with `style: 'dots'`, evenly dotted with `dotted: true`), and
 `@lerpit/framework/linalg` (ml-matrix: `Matrix`, `solve`, `inverse`, `determinant`, and the
 LU, QR, Cholesky, eigenvalue and SVD decompositions; its own import because it is ~150 KB).
 
@@ -257,6 +257,11 @@ cpp = "Press run to fetch the toolchain and build."
 
 Every key is optional and a bad value falls back to the default, so a broken file can
 never unpublish anything; it is reported instead.
+
+Collections list alphabetically by folder name, except those named in
+`lastCollections` in `website/src/site.config.ts` (`meta`), which come after all the
+others everywhere: the library, the shelves, the home page and the editor. Their
+lerpettes also come after everyone else's in lists that mix collections.
 
 A collection can have its own `control.toml` too, beside `collection.md`:
 

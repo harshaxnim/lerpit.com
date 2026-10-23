@@ -47,9 +47,6 @@ if (props.kind === 'collection') {
 
 const otherLerpettes = mixtape ? libraryMixtapes.filter((entry) => entry.href !== mixtape?.href) : [];
 const otherCollections = collection ? allCollections.filter((entry) => entry.slug !== collection.slug) : [];
-const otherCollectionMixtapes = collection
-  ? libraryMixtapes.filter((entry) => entry.collectionSlug !== collection.slug)
-  : [];
 ---
 
 {
@@ -60,18 +57,9 @@ const otherCollectionMixtapes = collection
           <SiteHeader />
           <CollectionShowcase collection={collection} />
         </section>
-        <Shelf
-          eyebrow="Other lerpettes"
-          mixtapes={otherCollectionMixtapes}
-          headingId="other-mixtapes-heading"
-          heading="Mixtapes from other collections"
-        />
-        <Shelf
-          eyebrow="Other collections"
-          collections={otherCollections}
-          headingId="other-collections-heading"
-          heading="Explore more collections"
-        />
+        {otherCollections.length > 0 && (
+          <Shelf collections={otherCollections} headingId="other-collections-heading" heading="More collections" />
+        )}
       </main>
     </BaseLayout>
   ) : (

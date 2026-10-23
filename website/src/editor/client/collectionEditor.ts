@@ -126,11 +126,15 @@ function newCollectionForm(sheet: Sheet, tree: Tree) {
 }
 
 function addNewCards(showcase: HTMLElement, onClick: () => void) {
-  const grid = showcase.querySelector('.cassette-grid');
-  grid?.append(h('button.ed-new-card', { type: 'button', onclick: onClick },
+  const button = h('button.ed-new-card', { type: 'button', onclick: onClick },
     h('span.ed-new-card__plus', { text: '+' }),
     h('span', { text: 'New lerpette' }),
-    h('small', { text: 'starts as a draft' })));
+    h('small', { text: 'starts as a draft' }));
+  // The library's rows end their card grid with it; the collection page's track list,
+  // being a list, takes it after itself.
+  const grid = showcase.querySelector('.cassette-grid');
+  if (grid) grid.append(button);
+  else showcase.querySelector('.collection-tracks')?.after(button);
 }
 
 // ------------------------------------------------------------------ the library
@@ -149,7 +153,7 @@ export async function startLibrary() {
     const taken = [...showcase.querySelectorAll<HTMLAnchorElement>('.cassette-card')].map((card) => card.pathname.split('/').filter(Boolean)[1]);
     addNewCards(showcase, () => newLerpetteForm(sheet, c, entry?.title ?? c, tree.author, taken));
     // Beside "Open collection", in the same button: the same page, already in edit mode.
-    const open = showcase.querySelector<HTMLAnchorElement>('.section-heading a.button');
+    const open = showcase.querySelector<HTMLAnchorElement>('a.collection-open');
     const href = `/${c}/`;
     const edit = h('a.button.ed-edit-collection', {
       href,

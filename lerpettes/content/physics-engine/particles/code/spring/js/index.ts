@@ -26,6 +26,7 @@ export default createStage({
       options: { 'Symplectic Euler': 'symplectic', 'Explicit Euler': 'explicit' },
     });
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
+    ctx.controls().addBinding(s, 'k', { label: 'Spring Constant k', min: 0, max: 50, step: 1 } );
 
     const energy = () => {
       const stretch = ANCHOR_Y - s.y - s.restLength;
@@ -48,7 +49,7 @@ export default createStage({
         // the step, so the spring's energy grows a little every step.
         s.y += s.v * sdt;
         s.v += a * sdt;
-      } else {
+      } else if (s.integrationScheme === 'symplectic') {
         // Symplectic Euler: the velocity update comes first, and the new velocity
         // is what moves the mass, so the energy oscillates around one value.
         s.v += a * sdt;
@@ -61,18 +62,18 @@ export default createStage({
     draw(sketch, s) {
       // The ceiling: a solid bar with hatching above it (the solid side), the
       // textbook symbol for a fixed support — hatching below would read as ground.
-      sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y, CEILING_HALF_WIDTH, ANCHOR_Y, colors.charcoal, 2.5);
+      sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y, CEILING_HALF_WIDTH, ANCHOR_Y, { color: colors.charcoal, width: 2.5 });
       for (let i = 0; i <= HATCH_COUNT; i += 1) {
         const x = -CEILING_HALF_WIDTH + (i / HATCH_COUNT) * (2 * CEILING_HALF_WIDTH);
-        sketch.line(x, ANCHOR_Y, x + HATCH_LEN/3, ANCHOR_Y + HATCH_LEN, colors.charcoal, 1.5);
+        sketch.line(x, ANCHOR_Y, x + HATCH_LEN/3, ANCHOR_Y + HATCH_LEN, { color: colors.charcoal, width: 1.5 });
       }
 
       // The spring: a zigzag between the ceiling and the mass, the textbook symbol
       // for a Hookean spring. The span is signed, so a mass pushed above the ceiling
       // still gets a coil, just pointing up, and drawn in cyan to mark the flip.
       // It hooks onto the edge of the mass facing the ceiling, not its centre: the
-      // radius is in pixels, so it is turned into units first.
-      const radius = RADIUS / (sketch.px(1) - sketch.px(0));
+      // radius is in pixels, scaled with the panel, so it is turned into units first.
+      const radius = (RADIUS * sketch.scale) / sketch.unit;
       const facing = Math.sign(ANCHOR_Y - s.y) || 1;
       const end = s.y + facing * radius;
       const span = ANCHOR_Y - end;
@@ -83,10 +84,13 @@ export default createStage({
         points.push([i % 2 === 1 ? SPRING_AMPLITUDE : -SPRING_AMPLITUDE, y]);
       }
       points.push([0, end + lead], [0, end]);
-      sketch.path(points, facing < 0 ? colors.light.cyan : colors.blue, 2);
+      sketch.path(points, { color: facing < 0 ? colors.light.cyan : colors.blue, width: 2 });
+
+      // Rest Length
+      sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y - s.restLength, CEILING_HALF_WIDTH, ANCHOR_Y - s.restLength, { color: colors.gray, width: 1, dotted: true });
 
       // The mass.
-      sketch.circle(0, s.y, RADIUS, colors.orange);
+      sketch.circle(0, s.y, RADIUS, { color: colors.orange });
     },
   },
 });

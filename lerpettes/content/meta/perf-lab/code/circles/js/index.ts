@@ -16,7 +16,7 @@ export default createStage({
       const w = ctx.view.width, h = ctx.view.height;
       for (let i = 0; i < N; i += 1) {
         const a = s.t * (0.5 + (i % 7) * 0.1) + i;
-        sketch.pixels.circle(w / 2 + Math.sin(a * 1.3) * w * 0.45, h / 2 + Math.cos(a) * h * 0.45, 3 + (i % 5), COLORS[i]);
+        sketch.pixels.circle(w / 2 + Math.sin(a * 1.3) * w * 0.45, h / 2 + Math.cos(a) * h * 0.45, 3 + (i % 5), { color: COLORS[i] });
       }
     }
   }

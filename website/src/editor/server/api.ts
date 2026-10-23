@@ -324,7 +324,7 @@ export default createStage({
   },
   viewport2d: {
     draw(sketch, s) {
-      sketch.circle(s.x * 0.3, 0, 12, 0xd17041);
+      sketch.circle(s.x * 0.3, 0, 12, { color: 0xd17041 });
     }
   }
 });

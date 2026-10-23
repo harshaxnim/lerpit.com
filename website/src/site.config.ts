@@ -22,6 +22,9 @@ export const site = {
   year: 2026,
   /** The collection whose newest published lerpette is served at '/'. */
   landingCollection: 'physics-engine',
+  /** Collections listed after every other one, in this order, wherever collections
+   *  or lerpettes are listed: the site's notes about itself come after what it is about. */
+  lastCollections: ['meta'] as readonly string[],
   /** The crumb shown for a lerpette that belongs to no collection. */
   looseCollectionLabel: 'Issue Zero',
   headerLinks: [

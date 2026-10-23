@@ -103,7 +103,7 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
   let faults = 0;
   let listeners: AbortController | null = null;
   const pointers = new Map<string, PointerState>();
-  const idlePointer: PointerState = { x: 0, y: 0, down: false, inside: false };
+  const idlePointer: PointerState = { x: 0, y: 0, ux: 0, uy: 0, down: false, inside: false, pressed: false, released: false };
 
   const fault = (where: string, error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
@@ -162,7 +162,8 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
 
   /** One frame: advance the model, show it on the panel on screen, sample the readings. */
   const tick = (dt: number) => {
-    if (dt > 0 && live) {
+    const advancing = dt > 0 && live;
+    if (advancing) {
       time += dt;
       if (model.step) {
         try {
@@ -178,6 +179,13 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     const active = stack?.active();
     if (active && (active.panel.cadence === 'frame' || dirty)) drawPanel(active);
     dirty = false;
+    // A press or release has now been seen by a step and a draw. While paused, it waits.
+    if (advancing) {
+      pointers.forEach((pointer) => {
+        pointer.pressed = false;
+        pointer.released = false;
+      });
+    }
     if (live) ctx?.stage.tick(performance.now());
   };
 
@@ -215,22 +223,44 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
   const watchPointers = (panels: MountedPanel[], signal: AbortSignal) => {
     for (const mounted of panels) {
       const name = mounted.panel.name;
-      const pointer: PointerState = { x: 0, y: 0, down: false, inside: false };
+      const pointer: PointerState = { x: 0, y: 0, ux: 0, uy: 0, down: false, inside: false, pressed: false, released: false };
       pointers.set(name, pointer);
       const read = (event: PointerEvent) => {
         const at = mounted.panel.locate?.(mounted.target as never, event.clientX, event.clientY);
         const box = mounted.box.getBoundingClientRect();
         pointer.x = at ? at.x : event.clientX - box.left;
         pointer.y = at ? at.y : event.clientY - box.top;
+        // Half the width is one unit, the same mapping `ctx.view`'s halves describe.
+        const unit = box.width / 2 || 1;
+        pointer.ux = pointer.x / unit - 1;
+        pointer.uy = (box.height / 2 - pointer.y) / unit;
+        // Worked out rather than left to enter and leave, which a captured pointer does not fire.
+        const inX = event.clientX >= box.left && event.clientX < box.left + box.width;
+        const inY = event.clientY >= box.top && event.clientY < box.top + box.height;
+        pointer.inside = inX && inY;
         // A `change` panel would otherwise not notice a drag at all.
         dirty = true;
       };
+      const press = (event: PointerEvent) => {
+        // Captured, so the drag's moves and its release keep coming once it leaves the panel.
+        mounted.box.setPointerCapture?.(event.pointerId);
+        pointer.down = true;
+        pointer.pressed = true;
+        read(event);
+      };
+      const release = (event: PointerEvent) => {
+        if (!pointer.down) return;
+        pointer.down = false;
+        pointer.released = true;
+        read(event);
+      };
       const options = { signal };
       mounted.box.addEventListener('pointermove', read, options);
-      mounted.box.addEventListener('pointerdown', (event) => ((pointer.down = true), read(event)), options);
-      mounted.box.addEventListener('pointerup', () => ((pointer.down = false), (dirty = true)), options);
+      mounted.box.addEventListener('pointerdown', press, options);
+      mounted.box.addEventListener('pointerup', release, options);
+      mounted.box.addEventListener('pointercancel', release, options);
       mounted.box.addEventListener('pointerenter', () => (pointer.inside = true), options);
-      mounted.box.addEventListener('pointerleave', () => ((pointer.inside = false), (pointer.down = false), (dirty = true)), options);
+      mounted.box.addEventListener('pointerleave', () => ((pointer.inside = false), (dirty = true)), options);
     }
   };
 

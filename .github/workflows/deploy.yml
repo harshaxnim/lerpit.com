@@ -45,9 +45,11 @@ jobs:
         if: success()
         env:
           NTFY_TOPIC: lerpit
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           curl -fsS -X POST "https://ntfy.sh/${NTFY_TOPIC}" \
             -H "Title: Lerpit deployed" \
+            -H "Click: ${PAGE_URL}" \
             -H "Priority: default" \
             -H "Tags: rocket" \
             -d "Yay!"
