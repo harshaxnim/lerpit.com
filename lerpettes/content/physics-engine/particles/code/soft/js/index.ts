@@ -8,9 +8,15 @@ const JELLY_PICTURE = new URL('../assets/jelly.png', import.meta.url).href;
 const PLATE_PICTURE = new URL('../assets/plate.png', import.meta.url).href;
 
 const ANGLE_K = 0.5; // angle springs' stiffness, as a share of k
-const REACH = 0.12; // how near a press must be to a particle to pull it
+const PLATE = { x: 0, y: -0.154, rx: 0.56, ry: 0.19 }; // the plate at rest, roughly an ellipse
 
 const distance = (a: Particle, b: Particle) => Math.hypot(b.x - a.x, b.y - a.y);
+
+// Whether (x, y) is inside the triangle abc: on the same side of all three edges.
+const insideTriangle = (x: number, y: number, a: Particle, b: Particle, c: Particle) => {
+  const side = (p: Particle, q: Particle) => Math.sign((q.x - p.x) * (y - p.y) - (q.y - p.y) * (x - p.x));
+  return side(a, b) === side(b, c) && side(b, c) === side(c, a);
+};
 
 // The angle at j, from the thread j→i round to the thread j→k.
 const angle = (i: Particle, j: Particle, k: Particle) => {
@@ -69,22 +75,32 @@ export default createStage({
     ctx.readings().fps();
   },
 
-  step(s, dt, ctx) {
-    const { particles, springs, angles } = s.body;
-
-    // A press near a particle pulls it; anywhere else drags the plate.
+  // A press on the jelly pulls its nearest particle; a press on the plate drags the plate.
+  grab(s, ctx) {
+    const { particles, triangles } = s.body;
     const { ux: x, uy: y } = ctx.input;
-    if (ctx.input.pressed) {
-      s.held = null;
-      let nearest = REACH;
+    const onJelly = triangles.some(([a, b, c]) => insideTriangle(x, y, particles[a], particles[b], particles[c]));
+    const px = (x - s.plate.x - PLATE.x) / PLATE.rx, py = (y - s.plate.y - PLATE.y) / PLATE.ry;
+    const onPlate = px * px + py * py < 1;
+
+    s.held = null;
+    if (onJelly) {
+      let nearest = Infinity;
       for (const p of particles) {
         const d = Math.hypot(p.x - x, p.y - y);
         if (!p.fixed && d < nearest) { nearest = d; s.held = p; }
       }
-      s.draggingPlate = !s.held;
-      const grabbed = s.held ?? s.plate;
-      s.grip = { x: grabbed.x - x, y: grabbed.y - y };
     }
+    s.draggingPlate = !s.held && onPlate;
+    const grabbed = s.held ?? s.plate;
+    s.grip = { x: grabbed.x - x, y: grabbed.y - y };
+    return s.held !== null || s.draggingPlate;
+  },
+
+  step(s, dt, ctx) {
+    const { particles, springs, angles } = s.body;
+
+    const { ux: x, uy: y } = ctx.input;
     if (ctx.input.released) { s.held = null; s.draggingPlate = false; }
 
     if (s.draggingPlate) s.plate = { x: x + s.grip.x, y: y + s.grip.y };

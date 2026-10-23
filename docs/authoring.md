@@ -93,6 +93,7 @@ Every chapter is the same shape, whoever writes it and wherever it comes from:
 export const state = { x: 1, v: 0 };                 // where a run starts
 export function setup(s, ctx) { }                    // once per run, may be async
 export function step(s, dt, ctx) { }                 // every frame; dt in seconds, clamped
+export function grab(s, ctx) { return false }        // a press lands; true if it took hold of something
 export function dispose(s, ctx) { }                  // the run is ending
 export const viewport2d = {                          // a view: one per panel, by name
   build(g, s, ctx) { },                              //   once per run, after setup
@@ -101,8 +102,34 @@ export const viewport2d = {                          // a view: one per panel, b
 export const table = { draw(out, s, ctx) { out.row({ x: s.x }) } };
 ```
 
-Everything is optional. The model (`state`, `setup`, `step`, `dispose`) owns the state;
+Everything is optional. The model (`state`, `setup`, `step`, `grab`, `dispose`) owns the state;
 a view shows it and should not change it. Each run starts from a fresh copy of `state`.
+
+### Dragging things
+
+To let the reader drag something, give the chapter a `grab`. It runs the moment a press
+lands, with `ctx.input` at the press. Pick what is under the pointer, keep it in the state,
+and return `true`; return `false` for empty space. Let go in `step` when
+`ctx.input.released` is true.
+
+```js
+export function grab(s, ctx) {
+  s.held = s.balls.find((b) => Math.hypot(b.x - ctx.input.ux, b.y - ctx.input.uy) < 0.05) ?? null;
+  return s.held !== null;
+}
+export function step(s, dt, ctx) {
+  if (ctx.input.released) s.held = null;
+  if (s.held) { s.held.x = ctx.input.ux; s.held.y = ctx.input.uy; }
+}
+```
+
+What `grab` returns decides what a touch does on a phone:
+- a touch that grabbed something drags it, and the page stays still;
+- any other touch on the panel scrolls the page, so a reader can still scroll past the stage.
+
+A chapter without `grab` never stops the page scrolling. A mouse doesn't scroll by
+dragging, so on a computer the answer only matters to the chapter. Only the first finger is
+followed.
 
 `ctx`, the last argument to everything:
 

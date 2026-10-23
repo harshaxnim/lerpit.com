@@ -39,13 +39,13 @@ import type { EditorFile, FileEditor } from '@lerpit/libs/live-code/js';
 /** What the dev step button advances by: one frame at 60 fps. */
 const STEP_DT = 1 / 60;
 
-type Model<S extends SceneState = SceneState> = Pick<ChapterDefinition<S>, 'setup' | 'step' | 'dispose'>;
+type Model<S extends SceneState = SceneState> = Pick<ChapterDefinition<S>, 'setup' | 'step' | 'grab' | 'dispose'>;
 
 /** The names of a definition that are code rather than configuration. */
 function codeOf(source: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(source)) {
-    if (name === 'state' || name === 'setup' || name === 'step' || name === 'dispose' || name === 'wasm') out[name] = value;
+    if (name === 'state' || name === 'setup' || name === 'step' || name === 'grab' || name === 'dispose' || name === 'wasm') out[name] = value;
     else if (!(MODEL_NAMES as readonly string[]).includes(name) && value && typeof value === 'object') out[name] = value;
   }
   return out;
@@ -220,6 +220,18 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     }
   }
 
+  /** The chapter's grab for a press on this panel: whether it took hold of something. */
+  const grab = (mounted: MountedPanel) => {
+    if (!live || !model.grab) return false;
+    try {
+      return Boolean(model.grab(state, ctxFor(mounted)));
+    } catch (error) {
+      model.grab = undefined;
+      fault('grab', error);
+      return false;
+    }
+  };
+
   const watchPointers = (panels: MountedPanel[], signal: AbortSignal) => {
     for (const mounted of panels) {
       const name = mounted.panel.name;
@@ -241,24 +253,41 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
         // A `change` panel would otherwise not notice a drag at all.
         dirty = true;
       };
+      /** Whether the chapter's grab took hold of something with the press now down. */
+      let holding = false;
+      const move = (event: PointerEvent) => {
+        // The first finger only: a second one would make the point jump between them.
+        if (event.isPrimary) read(event);
+      };
       const press = (event: PointerEvent) => {
+        if (!event.isPrimary) return;
         // Captured, so the drag's moves and its release keep coming once it leaves the panel.
         mounted.box.setPointerCapture?.(event.pointerId);
         pointer.down = true;
         pointer.pressed = true;
         read(event);
+        holding = grab(mounted);
       };
       const release = (event: PointerEvent) => {
-        if (!pointer.down) return;
+        if (!event.isPrimary || !pointer.down) return;
         pointer.down = false;
         pointer.released = true;
+        holding = false;
         read(event);
       };
+      // A touch scrolls the page unless the press grabbed something. pointerdown comes
+      // before touchstart, so grab has answered by the time the browser asks.
+      const holdTouch = (event: TouchEvent) => {
+        if (holding && event.cancelable) event.preventDefault();
+      };
       const options = { signal };
-      mounted.box.addEventListener('pointermove', read, options);
+      const touchOptions = { signal, passive: false };
+      mounted.box.addEventListener('pointermove', move, options);
       mounted.box.addEventListener('pointerdown', press, options);
       mounted.box.addEventListener('pointerup', release, options);
       mounted.box.addEventListener('pointercancel', release, options);
+      mounted.box.addEventListener('touchstart', holdTouch, touchOptions);
+      mounted.box.addEventListener('touchmove', holdTouch, touchOptions);
       mounted.box.addEventListener('pointerenter', () => (pointer.inside = true), options);
       mounted.box.addEventListener('pointerleave', () => ((pointer.inside = false), (dirty = true)), options);
     }
@@ -304,6 +333,7 @@ export function createChapterRuntime<S extends SceneState = SceneState>(
     model = {
       setup: typeof code.setup === 'function' ? (code.setup as Model['setup']) : undefined,
       step: typeof code.step === 'function' ? (code.step as Model['step']) : undefined,
+      grab: typeof code.grab === 'function' ? (code.grab as Model['grab']) : undefined,
       dispose: typeof code.dispose === 'function' ? (code.dispose as Model['dispose']) : undefined
     };
     views = new Map();

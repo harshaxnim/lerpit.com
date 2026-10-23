@@ -144,6 +144,13 @@ export type ChapterDefinition<S extends SceneState = SceneState> = {
   setup?: (state: S, ctx: LerpetteCtx) => void | Promise<void>;
   /** Advance the state. `dt` is seconds, already clamped. */
   step?: (state: S, dt: number, ctx: LerpetteCtx) => void;
+  /**
+   * A press on a panel, the moment it lands, with `ctx.input` at the press. Take hold of
+   * whatever is under it in the state and return true, or return false for empty space.
+   * On a phone a touch that grabbed something drags it, and any other touch scrolls the
+   * page, so a reader can still scroll past the stage. Without `grab`, touches always scroll.
+   */
+  grab?: (state: S, ctx: LerpetteCtx) => boolean;
   /** The run is ending (restart, a new build, the chapter going away). */
   dispose?: (state: S, ctx: LerpetteCtx) => void;
   /** Whether the stage offers restart. Defaults to whether the chapter has a `step`. */
@@ -158,4 +165,4 @@ export type ChapterDefinition<S extends SceneState = SceneState> = {
 } & { [panel: string]: unknown };
 
 /** The model names, which can never be a panel's name. */
-export const MODEL_NAMES = ['panels', 'caption', 'wasm', 'state', 'setup', 'step', 'dispose', 'restart'] as const;
+export const MODEL_NAMES = ['panels', 'caption', 'wasm', 'state', 'setup', 'step', 'grab', 'dispose', 'restart'] as const;

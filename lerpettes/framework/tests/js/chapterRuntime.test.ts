@@ -84,8 +84,15 @@ function fakePanel(name: string, options: { cadence?: 'frame' | 'change'; scoped
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 300, height: 200 })
   };
   /** A pointer event on this panel's box, at a point in its pixels. */
-  const fire = (type: string, clientX = 0, clientY = 0) => listeners.get(type)?.({ clientX, clientY, pointerId: 1 });
-  return { mounted: { panel, target, box }, log, fire };
+  const fire = (type: string, clientX = 0, clientY = 0, isPrimary = true) =>
+    listeners.get(type)?.({ clientX, clientY, pointerId: isPrimary ? 1 : 2, isPrimary });
+  /** A touch on the box: whether the runtime stopped it scrolling the page. */
+  const touch = (type: 'touchstart' | 'touchmove') => {
+    const event = { cancelable: true, preventDefault: vi.fn() };
+    listeners.get(type)?.(event);
+    return event.preventDefault.mock.calls.length > 0;
+  };
+  return { mounted: { panel, target, box }, log, fire, touch };
 }
 
 function fakeStack(panels: ReturnType<typeof fakePanel>[], unknown: string[] = []) {
@@ -553,19 +560,20 @@ describe('an editor chapter', () => {
 describe('the pointer', () => {
   type Seen = { x: number; y: number; ux: number; uy: number; down: boolean; inside: boolean; pressed: boolean; released: boolean };
 
-  async function pointerChapter() {
+  async function pointerChapter(grab?: (s: Record<string, unknown>, ctx: { input: Seen }) => boolean) {
     const seen: Seen[] = [];
     const panel = fakePanel('viewport2d');
     const stack = fakeStack([panel]);
     const runtime = createChapterRuntime({
       step: (_s, _dt, ctx) => seen.push({ ...ctx.input }),
+      ...(grab ? { grab } : {}),
       viewport2d: { draw: () => undefined }
     });
     const ctx = context(stack);
     await runtime.mount(ctx);
     runtime.enter?.(ctx);
     runFrame(16); // primes the clock
-    return { seen, fire: panel.fire, box: panel.mounted.box };
+    return { seen, fire: panel.fire, touch: panel.touch, box: panel.mounted.box };
   }
 
   it('keeps a click shorter than a frame for the next step, then clears it', async () => {
@@ -623,5 +631,41 @@ describe('the pointer', () => {
 
     expect(seen[1]).toMatchObject({ released: true, down: false });
     expect(seen[2]).toMatchObject({ released: false });
+  });
+
+  it('asks grab at the press, in units, and holds the touch only when it grabbed something', async () => {
+    const presses: Array<[number, number]> = [];
+    // Something to grab on the right half of the panel only.
+    const { fire, touch } = await pointerChapter((_s, ctx) => {
+      presses.push([ctx.input.ux, ctx.input.uy]);
+      return ctx.input.ux > 0;
+    });
+
+    fire('pointerdown', 225, 100);
+    expect(presses[0][0]).toBeCloseTo(0.5);
+    expect(touch('touchstart')).toBe(true);
+    expect(touch('touchmove')).toBe(true);
+    fire('pointerup', 225, 100);
+    expect(touch('touchmove')).toBe(false);
+
+    fire('pointerdown', 75, 100);
+    expect(touch('touchstart')).toBe(false);
+  });
+
+  it('lets every touch scroll the page when the chapter has no grab', async () => {
+    const { fire, touch } = await pointerChapter();
+    fire('pointerdown', 150, 100);
+    expect(touch('touchstart')).toBe(false);
+  });
+
+  it('follows the first finger only', async () => {
+    const { seen, fire } = await pointerChapter();
+    fire('pointerdown', 30, 40);
+    fire('pointerdown', 250, 150, false);
+    fire('pointermove', 260, 160, false);
+    fire('pointerup', 260, 160, false);
+    runFrame(16);
+
+    expect(seen[0]).toMatchObject({ x: 30, y: 40, down: true, released: false });
   });
 });
