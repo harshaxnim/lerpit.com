@@ -48,7 +48,7 @@ const applyAngleSpring = ({ i, j, k, rest, stiffness }: AngleSpring, springK: nu
 };
 
 export default createStage({
-  caption: 'A stapler set in jelly\n\nEvery line of the web is a spring. Pull the jelly, or drag the plate.',
+  caption: 'A stapler set in jelly\nDrag the plate, or pull the jelly.',
 
   state: () => ({
     k: 4000, damping: 40, substeps: 8, web: false,
