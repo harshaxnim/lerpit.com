@@ -48,14 +48,13 @@ const applyAngleSpring = ({ i, j, k, rest, stiffness }: AngleSpring, springK: nu
 };
 
 export default createStage({
-  caption: 'A stapler set in jelly\nDrag the plate, or pull the jelly.',
+  caption: 'A stapler set in jelly\nDrag the plate.',
 
   state: () => ({
     k: 4000, damping: 40, substeps: 8, web: false,
     body: readSoftBody(STAPLER),
     plate: { x: 0, y: 0 },
-    held: null as Particle | null,
-    draggingPlate: false,
+    dragging: false,
     grip: { x: 0, y: 0 },
     pictures: null as { jelly: Picture; plate: Picture } | null,
   }),
@@ -75,7 +74,7 @@ export default createStage({
     ctx.readings().fps();
   },
 
-  // A press on the jelly pulls its nearest particle; a press on the plate drags the plate.
+  // A press on the jelly or the plate drags the plate.
   grab(s, ctx) {
     const { particles, triangles } = s.body;
     const { ux: x, uy: y } = ctx.input;
@@ -83,27 +82,16 @@ export default createStage({
     const px = (x - s.plate.x - PLATE.x) / PLATE.rx, py = (y - s.plate.y - PLATE.y) / PLATE.ry;
     const onPlate = px * px + py * py < 1;
 
-    s.held = null;
-    if (onJelly) {
-      let nearest = Infinity;
-      for (const p of particles) {
-        const d = Math.hypot(p.x - x, p.y - y);
-        if (!p.fixed && d < nearest) { nearest = d; s.held = p; }
-      }
-    }
-    s.draggingPlate = !s.held && onPlate;
-    const grabbed = s.held ?? s.plate;
-    s.grip = { x: grabbed.x - x, y: grabbed.y - y };
-    return s.held !== null || s.draggingPlate;
+    s.dragging = onJelly || onPlate;
+    s.grip = { x: s.plate.x - x, y: s.plate.y - y };
+    return s.dragging;
   },
 
   step(s, dt, ctx) {
     const { particles, springs, angles } = s.body;
 
-    const { ux: x, uy: y } = ctx.input;
-    if (ctx.input.released) { s.held = null; s.draggingPlate = false; }
-
-    if (s.draggingPlate) s.plate = { x: x + s.grip.x, y: y + s.grip.y };
+    if (ctx.input.released) s.dragging = false;
+    if (s.dragging) s.plate = { x: ctx.input.ux + s.grip.x, y: ctx.input.uy + s.grip.y };
     for (const p of particles) {
       if (p.fixed) { p.x = p.x0 + s.plate.x; p.y = p.y0 + s.plate.y; }
     }
@@ -113,10 +101,6 @@ export default createStage({
       for (const p of particles) { p.fx = 0; p.fy = 0; }
       for (const spring of springs) applySpring(spring, s.k, s.damping);
       for (const corner of angles) applyAngleSpring(corner, s.k);
-      if (s.held) {
-        s.held.fx += s.k * (x + s.grip.x - s.held.x) - s.damping * s.held.vx;
-        s.held.fy += s.k * (y + s.grip.y - s.held.y) - s.damping * s.held.vy;
-      }
 
       for (const p of particles) {
         if (p.fixed) continue;

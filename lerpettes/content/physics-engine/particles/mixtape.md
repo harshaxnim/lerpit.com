@@ -160,8 +160,10 @@ $$
     F = k (L − L₀) + c (v_b − v_a) · û       (û the unit vector from a to b, c the Damping slider)
   It acts along the spring and only on the stretching speed. A body that moves or spins as a whole is not slowed; only
   wobbling is. Critical damping for a pair of masses is c = 2√(k μ) with μ = m_a m_b / (m_a + m_b), about 90 at k = 4000.
-  The default is 15, so it still wobbles a little. Suggested exercise: Damping = 0, pull and let go (it rings for a long time);
-  then Damping = 40. The pointer pulls the held particle on the same kind of spring: k toward the pointer, −c v against its velocity. -->
+  The default is 40, below critical, so it still wobbles a little. Suggested exercise: Damping = 0, shake the plate and stop
+  (it rings for a long time); then Damping = 40. Dragging the plate moves the fixed particles, and the springs carry the
+  motion into the rest of the jelly. -->
+
 
 <!-- LERP: the body file (code/soft/assets/stapler.txt) is a tiny OBJ-like format: `p x y mass` a particle, `f x y mass` a particle
   fixed to the plate, `s a b` a spring, `a i j k` an angle spring at j, `t a b c` a triangle that carries the picture, and
