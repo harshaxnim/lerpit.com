@@ -56,6 +56,8 @@ Prose for the second.
 
 - The first line is the byline, exactly in that form. An undated lerpette sorts last.
 - The `#` title is chapter 00, the intro. The first paragraph after it is the summary.
+  The intro shows the first chapter's stage, or, if the title's id names a chapter
+  (`# Particles {#soft}`), that chapter's stage.
 - Each `##` is a chapter. `{#id}` names it: its anchor, and its folder under `code/`.
 - Maths (`$x$`, `$$…$$`), tables, footnotes and images all work. A lone image with alt
   text becomes a figure with a caption. Raw HTML is switched off (comments are fine).

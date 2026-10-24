@@ -561,7 +561,7 @@ async function parseMixtapeDocument(mixtapeDir: string, report: Report, control:
   return {
     title: titleSpec.title,
     titleHtml: headingTitleHtml(h1Index >= 0 ? root.children[h1Index] : undefined, titleSpec.title, mixtapeDir, report),
-    // Links already point at #intro, so only an author who writes an explicit id moves it.
+    // An explicit id that names a chapter makes the intro show that chapter's stage.
     introId: titleSpec.explicit ? titleSpec.id : 'intro',
     introPanels: defaultPanels,
     summary,

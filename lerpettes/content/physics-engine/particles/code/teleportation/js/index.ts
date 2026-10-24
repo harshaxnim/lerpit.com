@@ -5,11 +5,11 @@ import { Trail } from '@lerpit/framework/trail';
 // A starting point: a ball on a spring. Replace it with this chapter's own code.
 export default createStage({
   caption: 'A particle on the function:\n$(x,y) = (sin(4t), sin(3t))$',
-  state: { x: 0, y: 0, t: 0, h: Trail.create(500), skip: 0, count: 0 },
+  state: { x: 0, y: 0, t: 0, h: Trail.create(500), skip: 1, count: 0 },
   setup(s, ctx) {
     let previous = s.skip;
     const clearMaybe = () => {
-      if (previous > 0 && s.skip === 0) {
+      if (previous > 1 && (s.skip-1) === 0) {
         Trail.clear(s.h);
       }
       previous = s.skip;
@@ -32,7 +32,7 @@ export default createStage({
   viewport2d: {
     draw(sketch, s, ctx) {
       const k = 0.65 * Math.min(1, ctx.view.halfHeight);
-      if (s.skip == 0)
+      if ((s.skip-1) == 0)
       {
         sketch.trail(s.h.points.map(([x, y]) => [k * x, k * y] as [number, number]), { color: colors.orange, width: 2, fade: true});
       }

@@ -1,8 +1,12 @@
 Author: Harsha | Date: 2026-10-18
 
-# Particles {#intro =viewport2d}
+# Particles {#soft =viewport2d}
 
-Let's start off by creating a physics engine for point particles because [points are the best](https://life.inspirho.com/cg/with-just-one-polka-dot-nothing-can-be-achieved/)! We can learn a bit about first order and second order ODEs, numerical integration techniques. We will add a spring to a fixed wall, then add springs between two particles, and finally simulate a soft body by adding a lot of particles connected by springs. Such a system is often called a mass-spring system and is quite powerful for how simple it is.
+Let's start off by creating a physics engine for point particles because [points are the best](https://life.inspirho.com/cg/with-just-one-polka-dot-nothing-can-be-achieved/)! We can learn a bit about first order and second order ODEs, numerical integration techniques. We will add a spring to a fixed wall, then add springs between two particles, and finally simulate a soft body by adding a lot of particles connected by springs. Such a system is often called a mass-spring system and as you can see to your right, is quite powerful for how simple it is.
+
+> Try moving the plate with jelly around.
+
+We will build up to it in small steps and see how easy creating something like this is.
 
 ## Movement by _Teleportation_ {#teleportation}
 
@@ -68,7 +72,7 @@ $$
 
 We're using an integration scheme to find a particle's position in the next timestep given the current position, velocity and step size. This particular scheme is called explicit Euler. Intuitively you may observe that the smaller the timestep, the more accurate the output is in following the circle. If you look into the panel you should see how our paritcles aren't actually following a circle, but are rather spiraling out. This is because we are using the velocity at timestep $t$ and using the same velocity over $\Delta{t}$. The velocity, being tangential at curves, will put the particle slightly outside the curved path in that timestep, and it keeps accumulating over time resulting in this spiraling out behavior.
 
-> Check out the `Controls > Sub-steps`, and observe how changing the number of sub-steps impacts the particle's trajectory. Contrast with the previous solution where we had a closed form solution for particle positions, where the step size doesn't throw the particle out of trajectory path.
+> Check out the `Controls > Sub-steps`, and observe how changing the number of sub-steps impacts the particle's trajectory. Contrast with the previous solution where we had a closed form solution for particle positions and big step sizes do not throw the particle out of trajectory path, they get teleported to the right place at the right time.
 
 We shall later look at other kinds of integration schemes with higher accuracy in a future lerpette where we will explore the math and the numerical methods that are applicable and relevant for various types of simulations.
 
@@ -96,15 +100,11 @@ for every timestep:
 ```
 
 $$
-a_{n+1} = \frac{f(x_n,\,t)}{m}
-$$
-
-$$
-v_{n+1} = v_n + \Delta{t}\,a_{n+1}
-$$
-
-$$
-x_{n+1} = x_n + \Delta{t}\,v_{n+1}
+\begin{aligned}
+a_{n+1} &= \frac{f(x_n,\,t)}{m}\\
+v_{n+1} &= v_n + \Delta{t}\,a_{n+1}\\
+x_{n+1} &= x_n + \Delta{t}\,v_{n+1}\\
+\end{aligned}
 $$
 
 This integration scheme is called symplectic Euler, and we will learn more about it and a few other methods in an upcoming chapter. For now, notice how we're using $v_{n+1}$ in calcualting $x_{n+1}$.
@@ -114,30 +114,56 @@ Let's put it to work by simulating the notorious 3-body problem. It's been prove
 
 ## _Spring_ to life {#spring}
 
-Let's now take a look at an isolated case of a single particle of mass $m$ attached to a spring with spring-constant $k$. On the right, we see such a setup with the spring attached to a wall on one side, and mass on the other. Let's start with the spring compressed by ~33%. The force the particle is going to experience due to the spring is:
+Let's now take a look at an isolated case of a single particle of mass $m$ attached to a _Hookean_ spring with spring-constant $k$. On the right, we see such a setup with the spring attached to a wall on one side, and mass on the other. Let's start with the spring compressed by ~33%. The force the particle is going to experience due to the spring is:
 
 $$
-F_p = -kx^2
+F_p = -k\,(x-x_0)
 $$
 
 Like before, we use this force to calculate acceleration $a_p$, and velocity $v_p$, and finally the new position of the particle $x_p$. By default, this uses the swanky new integration scheme we just learnt - symplectic Eluer. I added a control to switch it to explicit Euler, the integration scheme we learnt in the previous section.
 
 > Compare both the integration schemes in `Controls > Scheme` and try observing the differences between them. Notice how the system blows up using explicit Euler with low sub-step count. Contrast it with symplectic Euler's stability. Observe the tracked _Total Mechanical Energy_ of the system. Note the slight wobbles in the energy with symplectic Euler, and the blow up with explicit Euler methods.
 
-Now that we know how to affect mass with spring forces, we have unlocked a nifty ability to model quite a few relatively complex behaviors. Let's now look at what happens if we connect a bunch of these particles with springs!
+Let's add one more thing to our model, _damping_, a force similar to friction that depends on velocity and opposes the current motion. Think the resistive force you feel when wading your hands in water. It is modeled using:
+
+$$
+F_d = -b\,v
+$$
+
+> Increase damping force in `Controls > Damping` and observe the energy decrease and the oscillation die down over time.
+
+A particle experices a sum of all these force vectors as total force. Now that we know how to affect mass with spring forces, we have unlocked a nifty ability to model quite a few relatively complex behaviors. Let's now look at what happens if we connect a bunch of these particles with springs!
 
 
 ## _Soft_ skills {#soft}
 
-Let's now connect a bunch of particles together using springs. The simulation playbook is still the same, we accumulate the total force on each particle, calculate acceleration from it, integrate it twice to get the new position. The trickiest part is actually making the structure of springs to represent something. If we're making a box, the springs don't just constitute the outside edges, but also diagonals to prevent shear.
+Let's now connect a bunch of such particles together using springs. The simulation playbook is still the same, we accumulate the total force on each particle, calculate the acceleration of the particle, integrate it twice to get the new position. The trickiest part is actually making the structure of springs represent something, a.k.a., becoming the artist. If we're making a box, the springs don't just constitute the outside edges, but also diagonals to prevent shear.
 
 <!-- LERP: Add svg showing a box with edge springs, and diagonal springs -->
 
-Similarly, for more complex shapes with a lot more particles, just having distance springs will invert some of the triangles. One quick way to prevent them based on only what we know is applying a similar spring force, but for the angle between two edges:
+We have one subtle problem here that's not overtly obvious. Say we have a spring of length $x_0=1\,m$ with spring constant $k=100\frac{N}{m}$. For a deformation of $0.1m$, the spring force is $-10N$. Now we can image this spring as made up of 4 smaller springs. Ideally this should not change the behavior because it's the same spring at the end of the day. So what would $k$ have to be to create the same force? Let's calculate it:
 
 $$
+\begin{aligned}
+F_p &= -k\,(x-x_0)\\
+-10\,N &= -k\times0.025\,m\\
+k &= \frac{10}{0.025}\,\frac{N}{m}\\
+k &= 400\,\frac{N}{m}\\
+\end{aligned}
+$$
+
+So, we see that $k$ is dependent on the size of springs we're using to model the exact same setup, which is a bit inconvenient especially when we're putting together a bunch of springs together of various lengths. So we introduce a strain metric and eliminate the dependency of the rest length of our springs on the constant. With this, our spring force calculation is going to be:
 
 $$
+F_p = -k' \frac{x-x_0}{x_0}
+$$
+
+And with damping, the total force would be:
+
+$$
+F_p = \left[ k' \left( \frac{\lVert x_q - x_p \rVert}{x_0} - 1 \right) + k_d \left( \frac{(v_q - v_p) \cdot (x_q - x_p)}{x_0 \, \lVert x_q - x_p \rVert} \right) \right] \frac{x_q - x_p}{\lVert x_q - x_p \rVert}
+$$
+
 
 <!-- LERP: the angle-spring formula, as the stage code computes it (`angle`, `applyAngleSpring` in code/soft/js/index.ts).
   The angle at particle j, between its threads to i and to k, with a = x_i − x_j and b = x_k − x_j:
@@ -174,3 +200,7 @@ $$
 
 <!-- LERP: the box figure above: the stapler's web uses three kinds of spring. Threads run along the rings and spokes, cross links
   run across each cell (the box's diagonals), and long links skip a particle. Show the web (Controls > Show the web) to see them. -->
+
+
+## 
+

@@ -29,14 +29,14 @@ const velocityField = (x: number, y: number, maxSpeed: number, t: number=1.) =>
 export default createStage({
   caption: 'Particles drifting along:\n$v = s\\,(-y, x)$',
   
-  state: { maxSpeed:2, count: 2, particles: [] as Particle[], substeps: 1},
+  state: { maxSpeed:2, count: 3, particles: [] as Particle[], substeps: 1},
 
   setup(s, ctx) {
     spread(s, ctx.view);
 
     ctx.controls().addBinding(s, 'substeps', {label: 'Sub-steps', min: 1, max: 50, step: 1});
     ctx.controls().addBinding(s, 'maxSpeed', { label: 'Max Speed', min: 1e-6, max: 5, step: .1 });
-    ctx.controls().addBinding(s, 'count', { label: 'Particles', min: 2, max: 200, step: 1 }).on('change', () => spread(s, ctx.view));
+    ctx.controls().addBinding(s, 'count', { label: 'Particles', min: 2, max: 5, step: 1 }).on('change', () => spread(s, ctx.view));
 
     ctx.readings().fps();
   },

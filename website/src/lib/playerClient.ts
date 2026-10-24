@@ -14,6 +14,8 @@ import { createStagePlayer, initialPanelLabel, type ClientStep } from './player/
 
 type PlayerConfig = {
   lessonTitle: string;
+  /** The title's id: the chapter whose stage the intro shows, if one has that id. */
+  introId?: string;
   steps: ClientStep[];
   /** The colours of this lesson's collection, for randomColor's 'collection' family. */
   collectionColors?: string[];
@@ -64,6 +66,7 @@ function initPlayer(root: HTMLElement, host: HTMLElement, config: PlayerConfig) 
   const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-section-id]'));
   const caption = root.querySelector<HTMLElement>('[data-stage-status]');
   const firstStepId = steps[0].id;
+  const introStepId = config.introId && stepIds.has(config.introId) ? config.introId : firstStepId;
 
   const stage = createStagePlayer({
     host,
@@ -110,8 +113,8 @@ function initPlayer(root: HTMLElement, host: HTMLElement, config: PlayerConfig) 
 
   const onSection = (sectionId: string) => {
     page.setActive(sectionId);
-    // The intro shows the first chapter's stage: it is what the article opens on.
-    void activate(sectionId === 'intro' || !stepIds.has(sectionId) ? firstStepId : sectionId);
+    // The intro shows the stage of the chapter its title names, else the first chapter's.
+    void activate(sectionId === 'intro' || !stepIds.has(sectionId) ? introStepId : sectionId);
   };
 
   const page = createPageChrome({

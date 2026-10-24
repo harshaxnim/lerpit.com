@@ -31,7 +31,7 @@ const clientSteps = lerpette.steps.map((step) => ({
 }));
 // The collection's colours go with the page, so a panel's randomColor(i, { from: 'collection' })
 // draws in the same palette as everything else in the collection.
-const playerConfig = JSON.stringify({ lessonTitle: lerpette.title, steps: clientSteps, collectionColors: lerpette.collectionColors ?? [] });
+const playerConfig = JSON.stringify({ lessonTitle: lerpette.title, introId: lerpette.introId, steps: clientSteps, collectionColors: lerpette.collectionColors ?? [] });
 // With nothing to run anywhere in the lerpette the stage has nothing to show, so it is
 // not rendered at all; the player sees no panel host and leaves the page as prose.
 const hasRuntime = lerpette.steps.some((step) => step.hasOwnRuntime);

@@ -127,7 +127,7 @@ export type LerpetteMixtape = {
   publishedOn: string;
   author: string;
   introHtml: string;
-  /** Anchor of the opening section, chapter 00. `intro` unless the title names one. */
+  /** The title's id, `intro` unless it names one. Naming a chapter's id makes the intro show that chapter's stage. */
   introId: string;
   /** Panels the title declares, which every chapter inherits. */
   introPanels: string[];

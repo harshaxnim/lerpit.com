@@ -16,9 +16,9 @@ const SPRING_AMPLITUDE = 0.045;
 const SPRING_LEAD = 0.035;
 
 export default createStage({
-  caption: 'A mass attached to a spring\n$F = -k(l-l_0)$',
+  caption: 'A mass attached to a spring\n$F = -k(x-x_0)$',
 
-  state: { mass: 1, k: 20, restLength: 0.3, y: ANCHOR_Y - 0.2, v: 0, integrationScheme: 'symplectic', substeps: 3 },
+  state: { mass: 1, k: 20, b: 0, restLength: 0.3, y: ANCHOR_Y - 0.2, v: 0, integrationScheme: 'symplectic', substeps: 3 },
 
   setup(s, ctx) {
     ctx.controls().addBinding(s, 'integrationScheme', {
@@ -27,6 +27,7 @@ export default createStage({
     });
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
     ctx.controls().addBinding(s, 'k', { label: 'Spring Constant k', min: 0, max: 50, step: 1 } );
+    ctx.controls().addBinding(s, 'b', { label: 'Damping Constant b', min: 0, max: 1, step: .1 } );
 
     const energy = () => {
       const stretch = ANCHOR_Y - s.y - s.restLength;
@@ -40,18 +41,18 @@ export default createStage({
   step(s, dt) {
     for (let i = 0; i < s.substeps; i += 1) {
       const sdt = dt / s.substeps;
-      // Hooke's law pulls the mass back toward the ceiling by however far the
-      // spring is stretched past its rest length; gravity pulls it down.
-      const stretch = ANCHOR_Y - s.y - s.restLength;
-      const a = (s.k * stretch) / s.mass;
+      
+      // Accumulate Forces
+      const stretch = s.y - (ANCHOR_Y - s.restLength);
+      const fk = -s.k * stretch;
+      const fd = -s.b * s.v;
+      const a = (fk + fd) / s.mass;
+      
+      // Integrate
       if (s.integrationScheme === 'explicit') {
-        // Explicit Euler: the mass moves with the velocity it had at the start of
-        // the step, so the spring's energy grows a little every step.
         s.y += s.v * sdt;
         s.v += a * sdt;
       } else if (s.integrationScheme === 'symplectic') {
-        // Symplectic Euler: the velocity update comes first, and the new velocity
-        // is what moves the mass, so the energy oscillates around one value.
         s.v += a * sdt;
         s.y += s.v * sdt;
       }
@@ -60,19 +61,14 @@ export default createStage({
 
   viewport2d: {
     draw(sketch, s) {
-      // The ceiling: a solid bar with hatching above it (the solid side), the
-      // textbook symbol for a fixed support — hatching below would read as ground.
+      // The ceiling
       sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y, CEILING_HALF_WIDTH, ANCHOR_Y, { color: colors.charcoal, width: 2.5 });
       for (let i = 0; i <= HATCH_COUNT; i += 1) {
         const x = -CEILING_HALF_WIDTH + (i / HATCH_COUNT) * (2 * CEILING_HALF_WIDTH);
         sketch.line(x, ANCHOR_Y, x + HATCH_LEN/3, ANCHOR_Y + HATCH_LEN, { color: colors.charcoal, width: 1.5 });
       }
 
-      // The spring: a zigzag between the ceiling and the mass, the textbook symbol
-      // for a Hookean spring. The span is signed, so a mass pushed above the ceiling
-      // still gets a coil, just pointing up, and drawn in cyan to mark the flip.
-      // It hooks onto the edge of the mass facing the ceiling, not its centre: the
-      // radius is in pixels, scaled with the panel, so it is turned into units first.
+      // Spring
       const radius = (RADIUS * sketch.scale) / sketch.unit;
       const facing = Math.sign(ANCHOR_Y - s.y) || 1;
       const end = s.y + facing * radius;
@@ -86,10 +82,10 @@ export default createStage({
       points.push([0, end + lead], [0, end]);
       sketch.path(points, { color: facing < 0 ? colors.light.cyan : colors.blue, width: 2 });
 
-      // Rest Length
+      // Rest Length dotted line
       sketch.line(-CEILING_HALF_WIDTH, ANCHOR_Y - s.restLength, CEILING_HALF_WIDTH, ANCHOR_Y - s.restLength, { color: colors.gray, width: 1, dotted: true });
 
-      // The mass.
+      // The mass
       sketch.circle(0, s.y, RADIUS, { color: colors.orange });
     },
   },
