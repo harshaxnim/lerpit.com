@@ -1,5 +1,6 @@
 import { formatReading, fraction, graphRange, vectorComponents } from './format';
 import { resolveReadingsView, type ReadingsView } from './view';
+import { plainText, setMathText } from '../stage/mathText';
 
 /*
  * Readings: the stage's top-left card, for what a step reports rather than what the
@@ -94,7 +95,9 @@ function element<K extends keyof HTMLElementTagNameMap>(tag: K, className?: stri
 function headRow(row: HTMLElement, label: string): HTMLElement {
   const line = element('div', 'lerpette-reading__row');
   const value = element('span', 'lerpette-reading__value');
-  line.append(element('span', 'lerpette-reading__label', label), value);
+  const name = element('span', 'lerpette-reading__label');
+  setMathText(name, label);
+  line.append(name, value);
   row.append(line);
   return value;
 }
@@ -317,7 +320,7 @@ export function createReadingsCard(
     for (const row of rows) {
       const alone = next.mode === 'mini' && row.label === next.mini;
       row.node.classList.toggle('is-mini', alone);
-      row.node.setAttribute('aria-label', alone ? `${row.label}: show all readings` : `${row.label}: show only this reading`);
+      row.node.setAttribute('aria-label', `${plainText(row.label)}: ${alone ? 'show all readings' : 'show only this reading'}`);
     }
   };
 
@@ -343,10 +346,10 @@ export function createReadingsCard(
   const add = (name: KindName, label: string, read: () => unknown, options: AnyOptions = {}, everyFrame = false): Reading => {
     const node = element('div', 'lerpette-reading');
     node.classList.toggle('has-mini-label', options.miniLabel !== false);
-    node.title = label;
+    node.title = plainText(label);
     node.tabIndex = 0;
     node.setAttribute('role', 'button');
-    node.setAttribute('aria-label', `${label}: show only this reading`);
+    node.setAttribute('aria-label', `${plainText(label)}: show only this reading`);
     const kind = KINDS[name] as Kind<any>;
     const row: Row = { label, kind, state: kind.build(node, label, options), read, options, everyFrame: everyFrame || !!kind.everyFrame, node, failed: false };
     rows.push(row);

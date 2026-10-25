@@ -1,5 +1,7 @@
-import { Pause, Play, RotateCcw, StepForward } from 'lucide-static';
-import { Pane } from 'tweakpane';
+import { ChevronDown, ChevronUp, Pause, Play, RotateCcw, StepForward } from 'lucide-static';
+import { Pane, type BaseBladeParams, type BindingParams, type BladeApi, type ButtonApi, type ButtonParams, type FolderApi, type FolderParams } from 'tweakpane';
+import type { Bindable, BindingApi } from '@tweakpane/core';
+import { hasMath, mathHtml } from './mathText';
 import { createReadingsCard, type Readings, type ReadingsCard } from '../readings/readings';
 import type { ReadingsView } from '../readings/view';
 import './chrome.css';
@@ -25,10 +27,28 @@ export type ControlsOptions = {
   expanded?: boolean;
 };
 
+/** What the stage reads off one control. Tweakpane gets the rest of its params. */
+export type ControlOptions = {
+  /** Keep this control showing when the card is folded. */
+  pinned?: boolean;
+};
+
+/**
+ * The controls card: a tweakpane whose controls take ControlOptions beside their own
+ * params. Only controls added straight to the card do; a folder can be pinned as a
+ * whole, but what goes inside it takes tweakpane's params alone.
+ */
+export interface Controls extends Pane {
+  addBinding<O extends Bindable, Key extends keyof O>(object: O, key: Key, params?: BindingParams & ControlOptions): BindingApi<unknown, O[Key]>;
+  addButton(params: ButtonParams & ControlOptions): ButtonApi;
+  addFolder(params: FolderParams & ControlOptions): FolderApi;
+  addBlade(params: BaseBladeParams & ControlOptions): BladeApi;
+}
+
 /** What a chapter's code reaches the stage through. */
 export type StageOwner = {
   /** The tweakpane in the top-right card, made on first call. Starts folded. */
-  controls(options?: ControlsOptions): Pane;
+  controls(options?: ControlsOptions): Controls;
   /** The readings in the top-left card, made on first call. See readings/readings.ts. */
   readings(): Readings;
   /**
@@ -89,6 +109,48 @@ const KEY = {
 
 let controlsIds = 0;
 
+/** Tweakpane's own text: binding labels, button titles and labels, folder and tab titles. */
+const PANE_TEXT = '.tp-lblv_l, .tp-btnv_t, .tp-fldv_t, .tp-tbiv_t';
+
+/**
+ * Typesets `$...$` math in the pane's labels. Tweakpane writes them as text, on add and on
+ * every `label =`, so this watches for that text rather than wrapping each call. Typeset
+ * labels have no dollar signs left, so writing them back does not trigger this again.
+ */
+const typesetLabels = (container: HTMLElement) => {
+  const typeset = () => {
+    container.querySelectorAll<HTMLElement>(PANE_TEXT).forEach((node) => {
+      const text = node.textContent ?? '';
+      if (hasMath(text)) node.innerHTML = mathHtml(text);
+    });
+  };
+  new MutationObserver(typeset).observe(container, { childList: true, subtree: true, characterData: true });
+  typeset();
+};
+
+/**
+ * Teaches a pane to read `pinned` off each control added straight to it. A pinned
+ * control's row is marked, and chrome.css keeps marked rows showing in a folded card.
+ * `added` runs after every control, so the card can follow what it holds.
+ */
+const pinnable = (pane: Pane, added: () => void): Controls => {
+  const mark = <A extends BladeApi>(api: A, pinned = false) => {
+    api.element.classList.toggle('is-pinned', pinned);
+    added();
+    return api;
+  };
+  const addBinding = pane.addBinding.bind(pane);
+  const addButton = pane.addButton.bind(pane);
+  const addFolder = pane.addFolder.bind(pane);
+  const addBlade = pane.addBlade.bind(pane);
+  const controls = pane as Controls;
+  controls.addBinding = (object, key, { pinned, ...params } = {}) => mark(addBinding(object, key, params as BindingParams), pinned);
+  controls.addButton = ({ pinned, ...params }) => mark(addButton(params), pinned);
+  controls.addFolder = ({ pinned, ...params }) => mark(addFolder(params), pinned);
+  controls.addBlade = ({ pinned, ...params }) => mark(addBlade(params), pinned);
+  return controls;
+};
+
 export function createStageChrome(options: StageChromeOptions): StageChrome {
   const owners = new Map<string, StageOwner & { dispose(): void }>();
   let shown: string | null = null;
@@ -118,7 +180,7 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
     let pauseButton: HTMLButtonElement | null = null;
     let stepButton: HTMLButtonElement | null = null;
     let stepRun: (() => void) | null = null;
-    let pane: Pane | null = null;
+    let pane: Controls | null = null;
     let readingsCard: ReadingsCard | null = null;
 
     const ensureCard = () => {
@@ -240,18 +302,33 @@ export function createStageChrome(options: StageChromeOptions): StageChrome {
         title.className = 'lerpette-stage__card-title';
         title.textContent = 'Controls';
         title.setAttribute('aria-controls', container.id);
-        const setCollapsed = (collapsed: boolean) => {
-          parts.card.classList.toggle('is-collapsed', collapsed);
+
+        // With pinned controls showing, the title says what folding hides; once every
+        // control is pinned, folding would hide nothing, so there is no title at all.
+        const syncToggle = () => {
+          const collapsed = parts.card.classList.contains('is-collapsed');
+          const rows = [...(pane?.element.querySelector('.tp-rotv_c')?.children ?? [])];
+          const pinned = rows.some((row) => row.classList.contains('is-pinned'));
+          const allPinned = pinned && rows.every((row) => row.classList.contains('is-pinned'));
+          title.hidden = allPinned;
           title.setAttribute('aria-expanded', String(!collapsed));
           title.title = collapsed ? 'Show controls' : 'Hide controls';
+          if (!pinned) title.textContent = 'Controls';
+          else title.innerHTML = collapsed ? `${ChevronDown}<span>More Controls</span>` : `${ChevronUp}<span>Fewer Controls</span>`;
+          title.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+        };
+        const setCollapsed = (collapsed: boolean) => {
+          parts.card.classList.toggle('is-collapsed', collapsed);
           choices.set(KEY.controlsCollapsed, collapsed);
+          syncToggle();
         };
         title.addEventListener('click', () => setCollapsed(!parts.card.classList.contains('is-collapsed')));
         parts.head.prepend(title);
         const restored = choices.get(KEY.controlsCollapsed) as boolean | undefined;
         setCollapsed(restored ?? !opts.expanded);
 
-        pane = new Pane({ container });
+        pane = pinnable(new Pane({ container }), syncToggle);
+        typesetLabels(container);
         return pane;
       },
 

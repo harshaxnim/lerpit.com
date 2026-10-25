@@ -29,3 +29,4 @@ export function createStage<S extends SceneState = SceneState>(definition: Chapt
 }
 
 export type { ChapterDefinition, LerpetteCtx, SceneState, ViewExports, ViewSize, PointerState, WasmExports } from './panels/contract';
+export type { Controls, ControlOptions, ControlsOptions } from './stage/chrome';

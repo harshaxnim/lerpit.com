@@ -141,8 +141,14 @@ followed.
 | `ctx.input` | `{ x, y, ux, uy, down, inside, pressed, released }`, the pointer over that panel. `x`, `y` are pixels from the top left, y down; `ux`, `uy` are the same point in units, as a chapter draws (origin in the middle, x −1..1, y up). A press holds `down` until it is let go, even when the pointer leaves the panel, and `x`, `y` keep following it. `pressed` and `released` are true for the one frame after a press began or ended, so a click shorter than a frame is never missed: start a drag on `pressed`, end it on `released` |
 | `ctx.time` | seconds this run has been running; stops while the chapter is off screen |
 | `ctx.wasm` | the chapter's C++ module, or null |
-| `ctx.controls(opts?)` | the stage's controls card: a [tweakpane](https://tweakpane.github.io/docs/). Folded unless `{ expanded: true }` |
+| `ctx.controls(opts?)` | the stage's controls card: a [tweakpane](https://tweakpane.github.io/docs/). Folded unless `{ expanded: true }`. A control added with `pinned: true` (`addBinding(s, 'k', { min: 0, max: 5, pinned: true })`, and the same on `addButton`, `addFolder`, `addBlade`) stays showing while the card is folded, and the card's title becomes "More Controls", which opens the rest, in the order they were added. Pin the one or two controls the chapter is about, and add them first, so that opening the card does not push them down. Controls inside a folder cannot be pinned on their own; pin the folder |
 | `ctx.readings()` | the stage's readings card: `.number`, `.vector`, `.graph` (scale follows the data; `min`/`max` fix an edge, `keepInView: 0` keeps zero in view while still fitting), `.meter`, `.text`, `.fps`, each returning that one reading (no chaining, like `addBinding`), and on the card `.expand()` (every reading) or `.mini(label)` (one reading alone, the default). A reading shown alone keeps its label; `miniLabel: false` hides it |
+
+Labels on both cards may carry inline math between dollar signs, as captions do:
+`addBinding(s, 'kd', { label: 'Damping Constant $k_d$' })`, `readings().number('$v_x$', ...)`.
+This covers binding labels, button titles and labels, folder titles, and labels changed
+later with `binding.label = ...`. A formula that fails to typeset is shown as written, and a
+lone `$` stays a dollar sign. Dropdown options are plain text.
 | `ctx.caption(text)` | the line under the panel |
 
 Controls, readings, pause and restart are the stage's, so every chapter has them whatever

@@ -1,0 +1,46 @@
+# Dwight as a bobblehead: particles, springs and the picture's corners, like an OBJ file.
+# Positions are in the stage's units, y up. Made with the bobblehead editor.
+#
+#   picture <left> <bottom> <right> <top>   where the picture sits on the stage
+#   p <x> <y> <mass>                        a particle
+#   f <x> <y> <mass>                        a particle fixed to the base
+#   s <a> <b> [stiffness]                   a spring between particles a and b; stiffness is its
+#                                           share of k' (1 when left out)
+#   v <x> <y> <a> [<b> [<c>]]               a corner of the picture carried by particle a alone, by
+#                                           the line a b (moving and turning with it, at a fixed size),
+#                                           or by the triangle a b c (stretching with it)
+#   t <a> <b> <c>                           a triangle of the picture; corners are counted particles
+#                                           first, then the v lines
+#
+# The head is two particles (0 and 1), joined to each other and to the particles fixed to the
+# base: 2 at the root of the neck, and 3 and 4 on the shoulders.
+# The picture is cut in two at y 0.0161: the head piece above rides on the line between the head
+# particles at a fixed size, and the body piece below rides on the root. Nothing stretches.
+
+picture -0.317 -0.6 0.317 0.6
+
+p -0.0387 0.1379 2
+p 0.0413 0.1379 2
+f -0.0005 0.4665 1
+f -0.2554 0.2495 1
+f 0.2554 0.2495 1
+
+s 0 1 6
+s 0 2 2
+s 1 2 2
+s 0 3 2
+s 1 4 2
+
+v -0.317 0.6 0 1
+v 0.317 0.6 0 1
+v 0.317 0.0161 0 1
+v -0.317 0.0161 0 1
+v 0.317 0.0161 2
+v -0.317 0.0161 2
+v 0.317 -0.6 2
+v -0.317 -0.6 2
+
+t 5 6 7
+t 5 7 8
+t 10 9 11
+t 10 11 12

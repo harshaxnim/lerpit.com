@@ -24,6 +24,7 @@ export default createStage({
     ctx.controls().addBinding(s, 'integrationScheme', {
       label: 'Scheme',
       options: { 'Symplectic Euler': 'symplectic', 'Explicit Euler': 'explicit' },
+      pinned: true
     });
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
     ctx.controls().addBinding(s, 'k', { label: 'Spring Constant k', min: 0, max: 50, step: 1 } );

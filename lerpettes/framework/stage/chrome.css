@@ -64,7 +64,8 @@
 
 /* A fixed width capped by the corner, not a percentage: the corner shrinks to fit its
    card, so a percentage here would have nothing to resolve against. */
-.lerpette-stage__card:has(.lerpette-stage__card-body):not(.is-collapsed, .is-mini) {
+.lerpette-stage__card:has(.lerpette-stage__card-body):not(.is-collapsed, .is-mini),
+.lerpette-stage__card.is-collapsed:has(.is-pinned) {
   width: 15rem;
   max-width: 100%;
 }
@@ -102,6 +103,38 @@
 .lerpette-stage__card-title:hover {
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* With pinned controls, the title reads "More Controls" or "Fewer Controls" and carries a
+   chevron. Once every control is pinned it is gone, and pause, step and restart keep to
+   the corner. */
+/* A row centred like the icon buttons beside it: an inline chevron would make the line
+   taller and push the text half a pixel down. */
+.lerpette-stage__card-title:has(svg) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
+}
+
+.lerpette-stage__card-title[hidden] {
+  display: none;
+}
+
+.lerpette-stage__card-title svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.lerpette-stage__card-title span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lerpette-panel__tray .lerpette-stage__card-head {
+  justify-content: flex-end;
 }
 
 .lerpette-stage__card-title:focus-visible,
@@ -144,6 +177,15 @@
   display: none;
 }
 
+/* A folded controls card keeps the controls its chapter pinned, and only those. */
+.lerpette-stage__card.is-collapsed .lerpette-stage__controls:has(.is-pinned) {
+  display: block;
+}
+
+.lerpette-stage__card.is-collapsed .lerpette-stage__controls .tp-rotv_c > :not(.is-pinned) {
+  display: none;
+}
+
 /* ---- Readings: one row per reading, label left, value right in tabular figures
    with a fixed number of digits, so a changing number never jitters sideways. */
 .lerpette-reading {
@@ -177,6 +219,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Math in a label (`$k_d$`, see mathText.ts) at the size of the words around it, rather
+   than KaTeX's larger default. */
+.lerpette-stage__card .katex {
+  font-size: 1.1em;
 }
 
 .lerpette-reading__value {

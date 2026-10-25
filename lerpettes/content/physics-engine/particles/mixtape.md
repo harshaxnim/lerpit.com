@@ -1,10 +1,10 @@
 Author: Harsha | Date: 2026-10-18
 
-# Particles {#soft =viewport2d}
+# Particles {#jellostapler =viewport2d}
 
 Let's start off by creating a physics engine for point particles because [points are the best](https://life.inspirho.com/cg/with-just-one-polka-dot-nothing-can-be-achieved/)! We can learn a bit about first order and second order ODEs, numerical integration techniques. We will add a spring to a fixed wall, then add springs between two particles, and finally simulate a soft body by adding a lot of particles connected by springs. Such a system is often called a mass-spring system and as you can see to your right, is quite powerful for how simple it is.
 
-> Try moving the plate with jelly around.
+> Try moving the plate with jello around.
 
 We will build up to it in small steps and see how easy creating something like this is.
 
@@ -164,43 +164,27 @@ $$
 F_p = \left[ k' \left( \frac{\lVert x_q - x_p \rVert}{x_0} - 1 \right) + k_d \left( \frac{(v_q - v_p) \cdot (x_q - x_p)}{x_0 \, \lVert x_q - x_p \rVert} \right) \right] \frac{x_q - x_p}{\lVert x_q - x_p \rVert}
 $$
 
-
-<!-- LERP: the angle-spring formula, as the stage code computes it (`angle`, `applyAngleSpring` in code/soft/js/index.ts).
-  The angle at particle j, between its threads to i and to k, with a = x_i − x_j and b = x_k − x_j:
-    θ = atan2(a × b, a · b)                (a × b = a_x b_y − a_y b_x; atan2 gives a signed angle with no seam at 0)
-  Like Hooke's law, but for the angle (a torque-like spring):
-    E = ½ κ (θ − θ₀)²
-    F_i = −κ (θ − θ₀) ∂θ/∂x_i = κ (θ − θ₀) · (−a_y, a_x) / |a|²     (sideways to thread a)
-    F_k = −κ (θ − θ₀) ∂θ/∂x_k = κ (θ − θ₀) · ( b_y, −b_x) / |b|²    (sideways to thread b)
-    F_j = −(F_i + F_k)                                             (the forces sum to zero, so the body is not pushed as a whole)
-  θ − θ₀ is wrapped into (−π, π] so a bend across ±π doesn't jump.
-  κ = 0.5 · k · (the shorter thread's rest length)². Points to make: the push on an end is about κ (θ − θ₀)/|a|, so with κ
-  using the shorter thread, no thread is much stiffer than k. A short thread meeting a long one would otherwise ring faster
-  than the time step can follow.
-  The rest angle θ₀ is the angle in the file, since the body is loaded at rest (the same as each spring's rest length L₀). -->
-
-<!-- LERP: add svg that show inverted issue and angular springs. -->
-
-<!-- LERP: damping, new in this chapter. Without it the jelly wobbles for ever: the springs only trade energy back and forth, as
-  in the spring chapter. A dashpot on each spring resists how fast it is stretching:
-    F = k (L − L₀) + c (v_b − v_a) · û       (û the unit vector from a to b, c the Damping slider)
-  It acts along the spring and only on the stretching speed. A body that moves or spins as a whole is not slowed; only
-  wobbling is. Critical damping for a pair of masses is c = 2√(k μ) with μ = m_a m_b / (m_a + m_b), about 90 at k = 4000.
-  The default is 40, below critical, so it still wobbles a little. Suggested exercise: Damping = 0, shake the plate and stop
-  (it rings for a long time); then Damping = 40. Dragging the plate moves the fixed particles, and the springs carry the
-  motion into the rest of the jelly. -->
+Let's put it all to test. We will create a bunch of points connected to each other and observe their behavior.
 
 
-<!-- LERP: the body file (code/soft/assets/stapler.txt) is a tiny OBJ-like format: `p x y mass` a particle, `f x y mass` a particle
-  fixed to the plate, `s a b` a spring, `a i j k` an angle spring at j, `t a b c` a triangle that carries the picture, and
-  `picture left bottom right top` where the picture sits. The stage reads it, sets each rest length and rest angle from it,
-  and runs the same playbook: clear forces, add spring forces, add angle-spring forces, symplectic Euler. Making the web
+## Finale {#finale}
+
+This is the grand finale, we shall 
+<!-- LERP: the body file (code/jellostapler/assets/stapler.txt) is a tiny OBJ-like format: `p x y mass` a particle, `f x y mass`
+  a particle fixed to the plate, `s a b` a spring, `t a b c` a triangle that carries the picture, and
+  `picture left bottom right top` where the picture sits. The stage reads it, sets each rest length from it, and runs the
+  same playbook: clear forces, add spring forces (the strain form with damping), symplectic Euler. Making the web
   (rings and spokes traced from the picture's outline, cross links, long links) happened offline. It could be its own aside
   or a later chapter. -->
-
-<!-- LERP: the box figure above: the stapler's web uses three kinds of spring. Threads run along the rings and spokes, cross links
-  run across each cell (the box's diagonals), and long links skip a particle. Show the web (Controls > Show the web) to see them. -->
-
-
-## 
-
+<!-- LERP: the "Simulate" dropdown (the one control left showing when the controls are folded) swaps the jello for Dwight
+  as a bobblehead (code/jellostapler/assets/bobblehead.txt). Same file format, same playbook, no new code: the body and
+  base are three fixed particles (the root of the neck and the two shoulders) that move with the hand, and the head is
+  just two particles, joined to each other, both to the root, and each to the shoulder on its side. The picture is not tied to particles
+  alone: a `v` line is a corner of the picture carried by one particle, by the line between two, or by a triangle of
+  three, keeping its place relative to them, even outside them. So the head picture rides on the line between the two
+  head particles, turning with it, and the body picture on the root, cut apart along one line through the neck. Points to make:
+  with one fixed particle the head can turn freely about it (turning stretches no spring), which is why there are three;
+  and the same spring solver gives both the wobbling jelly and the bobbing head. -->
+<!-- LERP: a figure idea: the two head particles with the head picture's rectangle around them, showing that any point
+  can be written as "this much along the line between them, plus this much square to it". A point to make: the behaviour comes entirely from which particles
+  are fixed and how stiff each spring is, so one solver gives a wobbling jelly and a bobbing head. -->

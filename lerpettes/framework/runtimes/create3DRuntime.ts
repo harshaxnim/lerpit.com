@@ -1,9 +1,8 @@
 import type * as THREE from 'three';
-import type { Pane } from 'tweakpane';
 import type { Readings } from '../readings/readings';
 import type { LerpetteCtx } from '../panels/contract';
 import type { Viewport3dTarget } from '../panels/viewport3d/viewport3dPanel';
-import type { ControlsOptions } from '../stage/chrome';
+import type { Controls, ControlsOptions } from '../stage/chrome';
 import type { LerpetteStepRuntime } from '../types';
 import { createChapterRuntime } from './createChapterRuntime';
 
@@ -19,8 +18,8 @@ import { createChapterRuntime } from './createChapterRuntime';
 export type Setup3DContext = {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
-  /** The stage's controls card. Starts folded unless { expanded: true }. */
-  controls: (options?: ControlsOptions) => Pane;
+  /** The stage's controls card. Starts folded unless { expanded: true }; `pinned: true` controls show either way. */
+  controls: (options?: ControlsOptions) => Controls;
   /** The stage's readings card. See readings/readings.ts. */
   readings: () => Readings;
   /** Every frame, with the frame's `dt` and the run's time, both in seconds. */
@@ -29,7 +28,7 @@ export type Setup3DContext = {
   onTeardown: (cb: () => void) => void;
 };
 
-export type { ControlsOptions };
+export type { Controls, ControlsOptions };
 
 export type Step3DConfig = {
   caption: string;

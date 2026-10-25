@@ -34,7 +34,7 @@ export default createStage({
   setup(s, ctx) {
     spread(s, ctx.view);
 
-    ctx.controls().addBinding(s, 'substeps', {label: 'Sub-steps', min: 1, max: 50, step: 1});
+    ctx.controls().addBinding(s, 'substeps', {label: 'Sub-steps', min: 1, max: 50, step: 1, pinned: true});
     ctx.controls().addBinding(s, 'maxSpeed', { label: 'Max Speed', min: 1e-6, max: 5, step: .1 });
     ctx.controls().addBinding(s, 'count', { label: 'Particles', min: 2, max: 5, step: 1 }).on('change', () => spread(s, ctx.view));
 

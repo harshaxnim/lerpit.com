@@ -1,6 +1,5 @@
-import type { Pane } from 'tweakpane';
 import type { Readings } from '../readings/readings';
-import type { ControlsOptions } from '../stage/chrome';
+import type { Controls, ControlsOptions } from '../stage/chrome';
 import type { CanvasTarget } from './canvas/canvasPanel';
 import type { Viewport2dTarget } from './viewport2d/viewport2dPanel';
 import type { Viewport3dTarget } from './viewport3d/viewport3dPanel';
@@ -96,8 +95,11 @@ export type LerpetteCtx = {
   input: PointerState;
   /** Seconds this run has been running. Stops while the chapter is off screen. */
   time: number;
-  /** The stage's controls card: a tweakpane, folded unless asked otherwise. */
-  controls(options?: ControlsOptions): Pane;
+  /**
+   * The stage's controls card: a tweakpane, folded unless asked otherwise. A control
+   * added with `pinned: true` stays showing while the card is folded.
+   */
+  controls(options?: ControlsOptions): Controls;
   /** The stage's readings card. See readings/readings.ts. */
   readings(): Readings;
   /** The band at the foot of the stage. */
