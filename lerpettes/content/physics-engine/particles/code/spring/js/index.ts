@@ -27,8 +27,8 @@ export default createStage({
       pinned: true
     });
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
-    ctx.controls().addBinding(s, 'k', { label: 'Spring Constant k', min: 0, max: 50, step: 1 } );
-    ctx.controls().addBinding(s, 'b', { label: 'Damping Constant b', min: 0, max: 1, step: .1 } );
+    ctx.controls().addBinding(s, 'k', { label: 'Spring Constant $k_s$', min: 0, max: 50, step: 1 } );
+    ctx.controls().addBinding(s, 'b', { label: 'Damping Constant $k_b$', min: 0, max: 1, step: .1 } );
 
     const energy = () => {
       const stretch = ANCHOR_Y - s.y - s.restLength;

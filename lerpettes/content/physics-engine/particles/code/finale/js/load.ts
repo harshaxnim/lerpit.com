@@ -10,6 +10,8 @@ import type { Sketch2D } from '@lerpit/framework/panels/viewport2d/sketch2d';
 export type Particle = { x: number; y: number; vx: number; vy: number; fx: number; fy: number; mass: number; fixed: boolean; x0: number; y0: number };
 /** `stiffness` is the spring's share of k′: 1 unless the file gives another. */
 export type Spring = { a: Particle; b: Particle; rest: number; stiffness: number };
+/** An angle spring at `j`, keeping the angle between the threads j→i and j→k. */
+export type AngleSpring = { i: Particle; j: Particle; k: Particle; rest: number; stiffness: number };
 export type Box = { left: number; bottom: number; right: number; top: number };
 /**
  * A corner of the picture that is not a particle. It is carried by
@@ -21,11 +23,11 @@ export type Box = { left: number; bottom: number; right: number; top: number };
  *   it: `along` of the way from `by[0]` towards `by[1]`, plus `up` of the way towards `by[2]`.
  */
 export type PicturePoint = { by: Particle[]; dx: number; dy: number; along: number; up: number };
-export type SoftBody = { particles: Particle[]; springs: Spring[]; points: PicturePoint[]; triangles: [number, number, number][]; picture: Box };
+export type SoftBody = { particles: Particle[]; springs: Spring[]; angles: AngleSpring[]; points: PicturePoint[]; triangles: [number, number, number][]; picture: Box };
 
-/** The body as the file has it. Rest lengths are left at 0 for the stage to fill in. */
+/** The body as the file has it. Rest lengths, rest angles and angle stiffness are left at 0 for the stage to fill in. */
 export function readSoftBody(text: string): SoftBody {
-  const body: SoftBody = { particles: [], springs: [], points: [], triangles: [], picture: { left: -1, bottom: -1, right: 1, top: 1 } };
+  const body: SoftBody = { particles: [], springs: [], angles: [], points: [], triangles: [], picture: { left: -1, bottom: -1, right: 1, top: 1 } };
   const p = body.particles;
   for (const line of text.split('\n')) {
     const [kind, ...rest] = line.trim().split(/\s+/);
@@ -33,7 +35,8 @@ export function readSoftBody(text: string): SoftBody {
     if (kind === 'picture') body.picture = { left: n[0], bottom: n[1], right: n[2], top: n[3] };
     if (kind === 'p' || kind === 'f') p.push({ x: n[0], y: n[1], vx: 0, vy: 0, fx: 0, fy: 0, mass: n[2], fixed: kind === 'f', x0: n[0], y0: n[1] });
     if (kind === 's') body.springs.push({ a: p[n[0]], b: p[n[1]], rest: 0, stiffness: n.length > 2 ? n[2] : 1 });
-    if (kind === 'v') body.points.push(pictureAt(n[0], n[1], n.slice(2).map((i) => p[i])));
+    if (kind === 'a') body.angles.push({ i: p[n[0]], j: p[n[1]], k: p[n[2]], rest: 0, stiffness: 0 });
+    if (kind === 'v')body.points.push(pictureAt(n[0], n[1], n.slice(2).map((i) => p[i])));
     if (kind === 't') body.triangles.push([n[0], n[1], n[2]]);
   }
   return body;

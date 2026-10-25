@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { createStage } from '@lerpit/framework/chapter';
 import { colors } from '@lerpit/framework/theme';
-import { readSoftBody, picturePoints, addPicture, corners, type Particle, type Spring, type Picture, type SoftBody } from './load';
+import { readSoftBody, picturePoints, addPicture, corners, type Particle, type Spring, type AngleSpring, type Picture, type SoftBody } from './load';
 import STAPLER from '../assets/stapler.txt?raw';
 import BOBBLEHEAD from '../assets/bobblehead.txt?raw';
 
@@ -17,6 +17,7 @@ const THINGS: Record<'jello' | 'bobblehead', Thing> = {
 };
 type ThingName = keyof typeof THINGS;
 
+const ANGLE_K = 0.5; // angle springs' stiffness, as a share of k'
 const PLATE = { x: 0, y: -0.154, rx: 0.56, ry: 0.19 }; // the plate at rest, roughly an ellipse
 
 // Until someone grabs the plate, it shakes by itself, and it starts again 10 s after they let go.
@@ -51,6 +52,27 @@ const applySpring = ({ a, b, rest, stiffness }: Spring, k: number, damping: numb
   b.fx -= f * ux; b.fy -= f * uy;
 };
 
+// The angle at j, from the thread j→i round to the thread j→k.
+const angle = (i: Particle, j: Particle, k: Particle) => {
+  const ax = i.x - j.x, ay = i.y - j.y;
+  const bx = k.x - j.x, by = k.y - j.y;
+  return Math.atan2(ax * by - ay * bx, ax * bx + ay * by);
+};
+
+// Turn i and k back towards the rest angle, pushing each square to its thread, and j the other way.
+const applyAngleSpring = ({ i, j, k, rest, stiffness }: AngleSpring, springK: number) => {
+  const change = angle(i, j, k) - rest;
+  const bend = Math.atan2(Math.sin(change), Math.cos(change));
+  const torque = springK * stiffness * bend;
+  const ax = i.x - j.x, ay = i.y - j.y, la2 = ax * ax + ay * ay;
+  const bx = k.x - j.x, by = k.y - j.y, lb2 = bx * bx + by * by;
+  const fix = (-ay * torque) / la2, fiy = (ax * torque) / la2;
+  const fkx = (by * torque) / lb2, fky = (-bx * torque) / lb2;
+  i.fx += fix; i.fy += fiy;
+  k.fx += fkx; k.fy += fky;
+  j.fx -= fix + fkx; j.fy -= fiy + fky;
+};
+
 export default createStage({
   caption: THINGS.jello.caption,
 
@@ -70,6 +92,10 @@ export default createStage({
     // Each body in its file is at rest.
     for (const body of Object.values(s.bodies)) {
       for (const spring of body.springs) spring.rest = distance(spring.a, spring.b);
+      for (const corner of body.angles) {
+        corner.rest = angle(corner.i, corner.j, corner.k);
+        corner.stiffness = ANGLE_K * Math.min(distance(corner.i, corner.j), distance(corner.k, corner.j));
+      }
     }
 
     ctx.controls().addBinding(s, 'thing', {
@@ -80,8 +106,8 @@ export default createStage({
       s.plate = { x: 0, y: 0 };
       ctx.caption(THINGS[s.thing].caption);
     });
-    ctx.controls().addBinding(s, 'k', { label: "Spring Constant k'", min: 50, max: 2000, step: 50 });
-    ctx.controls().addBinding(s, 'damping', { label: 'Damping Constant k_d', min: 0, max: 20, step: 0.5 });
+    ctx.controls().addBinding(s, 'k', { label: 'Spring Constant $k_s$', min: 50, max: 2000, step: 50 });
+    ctx.controls().addBinding(s, 'damping', { label: 'Damping Constant $k_d$', min: 0, max: 20, step: 0.5 });
     ctx.controls().addBinding(s, 'showSprings', { label: 'Show Springs' });
     ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
     ctx.readings().fps();
@@ -102,7 +128,7 @@ export default createStage({
   },
 
   step(s, dt, ctx) {
-    const { particles, springs } = s.bodies[s.thing];
+    const { particles, springs, angles } = s.bodies[s.thing];
 
     s.time += dt;
     if (ctx.input.released) s.dragging = false;
@@ -123,6 +149,7 @@ export default createStage({
     for (let n = 0; n < s.substeps; n++) {
       for (const p of particles) { p.fx = 0; p.fy = 0; }
       for (const spring of springs) applySpring(spring, s.k, s.damping);
+      for (const corner of angles) applyAngleSpring(corner, s.k);
 
       for (const p of particles) {
         if (p.fixed) continue;
