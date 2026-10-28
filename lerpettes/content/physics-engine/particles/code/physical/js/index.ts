@@ -22,12 +22,12 @@ function start(s: { particles: Particle[]; G: number }) {
 export default createStage({
   caption: 'A solution to the three body problem\n\nThree particles with carefully crafted initial conditions under gravity\n$$\\frac{G\\,m_1\\,m_2}{r^2}$$',
 
-  state: { particles: [] as Particle[], substeps: 50, G: 0.001, trail: true, field: false },
+  state: { particles: [] as Particle[], stepMs: 0.3, leftover: 0, G: 0.001, trail: true, field: false },
 
   setup(s, ctx) {
     start(s);
 
-    ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
+    ctx.controls().addBinding(s, 'stepMs', { label: 'Step Size $\\Delta t$ (ms)', min: 0.1, max: 20, step: 0.1 });
     ctx.controls().addBinding(s, 'trail', { label: 'Trail'});
     ctx.controls().addBinding(s, 'field', { label: 'Acceleration field' });
 
@@ -42,9 +42,13 @@ export default createStage({
   },
 
   step(s, dt) {
-    const sdt = dt / s.substeps;
+    // Steps of the same length whatever the frame rate; time short of a whole step waits for the next frame.
+    const sdt = s.stepMs / 1000;
+    s.leftover += dt;
 
-    for (let i = 0; i < s.substeps; i += 1) {
+    while (s.leftover >= sdt) {
+      s.leftover -= sdt;
+
       // Accumulate forces on every body from the current state
       for (let pi = 0; pi < s.particles.length; pi += 1) {
         const p = s.particles[pi];

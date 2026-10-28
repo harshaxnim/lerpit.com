@@ -1,6 +1,6 @@
 Author: Harsha | Date: 2026-10-18
 
-# Particles {#jellostapler =viewport2d}
+# Particles {#finale =viewport2d}
 
 Let's start off by creating a physics engine for point particles because [points are the best](https://life.inspirho.com/cg/with-just-one-polka-dot-nothing-can-be-achieved/)! We can learn a bit about first order and second order ODEs, numerical integration techniques. We will add a spring to a fixed wall, then add springs between two particles, and finally simulate a soft body by adding a lot of particles connected by springs. Such a system is often called a mass-spring system and as you can see to your right, is quite powerful for how simple it is.
 
@@ -72,7 +72,7 @@ $$
 
 We're using an integration scheme to find a particle's position in the next timestep given the current position, velocity and step size. This particular scheme is called explicit Euler. Intuitively you may observe that the smaller the timestep, the more accurate the output is in following the circle. If you look into the panel you should see how our paritcles aren't actually following a circle, but are rather spiraling out. This is because we are using the velocity at timestep $t$ and using the same velocity over $\Delta{t}$. The velocity, being tangential at curves, will put the particle slightly outside the curved path in that timestep, and it keeps accumulating over time resulting in this spiraling out behavior.
 
-> Check out the `Controls > Sub-steps`, and observe how changing the number of sub-steps impacts the particle's trajectory. Contrast with the previous solution where we had a closed form solution for particle positions and big step sizes do not throw the particle out of trajectory path, they get teleported to the right place at the right time.
+> Check out the `Controls > Step Size`, and observe how changing the step size impacts the particle's trajectory. Contrast with the previous solution where we had a closed form solution for particle positions and big step sizes do not throw the particle out of trajectory path, they get teleported to the right place at the right time.
 
 We shall later look at other kinds of integration schemes with higher accuracy in a future lerpette where we will explore the math and the numerical methods that are applicable and relevant for various types of simulations.
 
@@ -122,7 +122,7 @@ $$
 
 Like before, we use this force to calculate acceleration $a_p$, and velocity $v_p$, and finally the new position of the particle $x_p$. By default, this uses the swanky new integration scheme we just learnt - symplectic Eluer. I added a control to switch it to explicit Euler, the integration scheme we learnt in the previous section.
 
-> Compare both the integration schemes in `Controls > Scheme` and try observing the differences between them. Notice how the system blows up using explicit Euler with low sub-step count. Contrast it with symplectic Euler's stability. Observe the tracked _Total Mechanical Energy_ of the system. Note the slight wobbles in the energy with symplectic Euler, and the blow up with explicit Euler methods.
+> Compare both the integration schemes in `Controls > Scheme` and try observing the differences between them. Notice how the system blows up sooner using explicit Euler with higher step sizes. Contrast it with symplectic Euler's stability. Observe the tracked _Total Mechanical Energy_ of the system. Note the slight wobbles in the energy with symplectic Euler, and the blow up with explicit Euler methods.
 
 Let's add one more thing to our model, _damping_, a force similar to friction that depends on velocity and opposes the current motion. Think the resistive force you feel when wading your hands in water. It is modeled using:
 
@@ -139,7 +139,7 @@ A particle experices a sum of all these force vectors as total force. Now that w
 
 Let's now connect a bunch of such particles together using springs. The simulation playbook is still the same, we accumulate the total force on each particle, calculate the acceleration of the particle, integrate it twice to get the new position. The trickiest part is actually making the structure of springs represent something, a.k.a., becoming the artist. If we're making a box, the springs don't just constitute the outside edges, but also diagonals to prevent shear.
 
-<!-- LERP: Add svg showing a box with edge springs, and diagonal springs -->
+![On the left we see a box of four particles with springs along its edges which shears when pushed. On the right, we add the diagonal springs as well to resist the shear.](./box-springs.svg)
 
 We have one subtle problem here that's not overtly obvious. Say we have a spring of length $x_0=1\,m$ with spring constant $k=100\frac{N}{m}$. For a deformation of $0.1m$, the spring force is $-10N$. Now we can image this spring as made up of 4 smaller springs. Ideally this should not change the behavior because it's the same spring at the end of the day. So what would $k$ have to be to create the same force? Let's calculate it:
 
@@ -169,22 +169,12 @@ Let's put it all to test. We will create a bunch of points connected to each oth
 
 ## Finale {#finale}
 
-This is the grand finale, we shall 
-<!-- LERP: the body file (code/jellostapler/assets/stapler.txt) is a tiny OBJ-like format: `p x y mass` a particle, `f x y mass`
-  a particle fixed to the plate, `s a b` a spring, `t a b c` a triangle that carries the picture, and
-  `picture left bottom right top` where the picture sits. The stage reads it, sets each rest length from it, and runs the
-  same playbook: clear forces, add spring forces (the strain form with damping), symplectic Euler. Making the web
-  (rings and spokes traced from the picture's outline, cross links, long links) happened offline. It could be its own aside
-  or a later chapter. -->
-<!-- LERP: the "Simulate" dropdown (the one control left showing when the controls are folded) swaps the jello for Dwight
-  as a bobblehead (code/jellostapler/assets/bobblehead.txt). Same file format, same playbook, no new code: the body and
-  base are three fixed particles (the root of the neck and the two shoulders) that move with the hand, and the head is
-  just two particles, joined to each other, both to the root, and each to the shoulder on its side. The picture is not tied to particles
-  alone: a `v` line is a corner of the picture carried by one particle, by the line between two, or by a triangle of
-  three, keeping its place relative to them, even outside them. So the head picture rides on the line between the two
-  head particles, turning with it, and the body picture on the root, cut apart along one line through the neck. Points to make:
-  with one fixed particle the head can turn freely about it (turning stretches no spring), which is why there are three;
-  and the same spring solver gives both the wobbling jelly and the bobbing head. -->
-<!-- LERP: a figure idea: the two head particles with the head picture's rectangle around them, showing that any point
-  can be written as "this much along the line between them, plus this much square to it". A point to make: the behaviour comes entirely from which particles
-  are fixed and how stiff each spring is, so one solver gives a wobbling jelly and a bobbing head. -->
+This is the grand finale. We will apply everything we learnt so far into a simple mass-spring based soft body solver. We will pick a picture of our choice, come up with an arrangement of particles and springs to model the picture of our choice where we can control the distribution, spring connections, their strength and damping to get the desired output.
+
+I implemented the picture to draw over the mass-spring mesh using a larger triangular mesh and the particles serve as anchors on that mesh. When the particles move around, the surrounding image carrying triangle mesh also reorients and optionally scales to match these underlying points' barycentric coordinates.
+
+We can simulate cloth, ragdolls, and many more using the mass spring technique. However it does come with its set of limitations.
+
+> Switch to `Bobblehead` and observe how Dwight's head moves quite far when shaking the body vigorously. This would be quite shocking if it happens in reality! For games this might still be okay, but for areas like robotics simulations, it's a no go.
+
+Later in the series, we shall explore ways to handle this with various degrees of success bounded by varying levels of required computation.

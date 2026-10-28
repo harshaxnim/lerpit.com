@@ -29,12 +29,12 @@ const velocityField = (x: number, y: number, maxSpeed: number, t: number=1.) =>
 export default createStage({
   caption: 'Particles drifting along:\n$v = s\\,(-y, x)$',
   
-  state: { maxSpeed:2, count: 3, particles: [] as Particle[], substeps: 1},
+  state: { maxSpeed:2, count: 3, particles: [] as Particle[], stepMs: 16, leftover: 0 },
 
   setup(s, ctx) {
     spread(s, ctx.view);
 
-    ctx.controls().addBinding(s, 'substeps', {label: 'Sub-steps', min: 1, max: 50, step: 1, pinned: true});
+    ctx.controls().addBinding(s, 'stepMs', { label: 'Step Size $\\Delta t$ (ms)', min: 0.5, max: 100, step: 0.5, pinned: true });
     ctx.controls().addBinding(s, 'maxSpeed', { label: 'Max Speed', min: 1e-6, max: 5, step: .1 });
     ctx.controls().addBinding(s, 'count', { label: 'Particles', min: 2, max: 5, step: 1 }).on('change', () => spread(s, ctx.view));
 
@@ -43,14 +43,19 @@ export default createStage({
   
   step(s, dt, ctx) {
     const { halfWidth, halfHeight } = ctx.view;
-    let escaped = true;
-    for (const p of s.particles) {
-      for (let i = 0; i < s.substeps; i += 1)
-      {
+    // Steps of the same length whatever the frame rate; time short of a whole step waits for the next frame.
+    const sdt = s.stepMs / 1000;
+    s.leftover += dt;
+    while (s.leftover >= sdt) {
+      s.leftover -= sdt;
+      for (const p of s.particles) {
         const [vx, vy] = velocityField(p.x, p.y, s.maxSpeed, ctx.time);
-        const sdt = dt/s.substeps;
         p.x += vx * sdt, p.y += vy * sdt;
       }
+    }
+
+    let escaped = true;
+    for (const p of s.particles) {
       Trail.push(p.trail, p.x, p.y);
       if (Math.abs(p.x) <= ESCAPE * halfWidth && Math.abs(p.y) <= ESCAPE * halfHeight) escaped = false;
     }

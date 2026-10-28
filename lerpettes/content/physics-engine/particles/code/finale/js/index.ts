@@ -77,13 +77,14 @@ export default createStage({
   caption: THINGS.jello.caption,
 
   state: () => ({
-    thing: 'bobblehead' as ThingName,
-    k: 750, damping: 13, substeps: 32, showSprings: false,
+    thing: 'jello' as ThingName,
+    k: 750, damping: 13, stepMs: 0.5, showSprings: false,
     bodies: { jello: readSoftBody(THINGS.jello.body), bobblehead: readSoftBody(THINGS.bobblehead.body) } as Record<ThingName, SoftBody>,
     plate: { x: 0, y: 0 },
     dragging: false,
     grip: { x: 0, y: 0 },
     time: 0,
+    leftover: 0, // time not yet simulated, less than one step
     lastTouched: -IDLE_SECONDS,
     pictures: null as Record<ThingName, { body: Picture; plate: Picture | null }> | null,
   }),
@@ -108,8 +109,7 @@ export default createStage({
     });
     ctx.controls().addBinding(s, 'k', { label: 'Spring Constant $k_s$', min: 50, max: 2000, step: 50 });
     ctx.controls().addBinding(s, 'damping', { label: 'Damping Constant $k_d$', min: 0, max: 20, step: 0.5 });
-    ctx.controls().addBinding(s, 'showSprings', { label: 'Show Springs' });
-    ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
+    ctx.controls().addBinding(s, 'showSprings', { label: 'Show Springs' });    ctx.controls().addBinding(s, 'stepMs', { label: 'Step Size $\\Delta t$ (ms)', min: 0.1, max: 2, step: 0.05 });
     ctx.readings().fps();
   },
 
@@ -130,23 +130,29 @@ export default createStage({
   step(s, dt, ctx) {
     const { particles, springs, angles } = s.bodies[s.thing];
 
-    s.time += dt;
     if (ctx.input.released) s.dragging = false;
-    if (s.dragging) {
-      s.plate = { x: ctx.input.ux + s.grip.x, y: ctx.input.uy + s.grip.y };
-      s.lastTouched = s.time;
-    } else if (s.time - s.lastTouched > IDLE_SECONDS) {
-      // Glide towards the shake rather than jump, so the plate eases back from wherever it was left.
-      const glide = Math.min(1, dt * 20);
-      s.plate.x += (shakeX(s.time - s.lastTouched - IDLE_SECONDS) - s.plate.x) * glide;
-      s.plate.y += (0 - s.plate.y) * glide;
-    }
-    for (const p of particles) {
-      if (p.fixed) { p.x = p.x0 + s.plate.x; p.y = p.y0 + s.plate.y; }
-    }
 
-    const sdt = dt / s.substeps;
-    for (let n = 0; n < s.substeps; n++) {
+    // Every step is the same length of time, whatever the frame rate: a frame adds its time to
+    // what is left over, and we take whole steps until less than one step remains.
+    const sdt = s.stepMs / 1000;
+    s.leftover += dt;
+    while (s.leftover >= sdt) {
+      s.leftover -= sdt;
+      s.time += sdt;
+
+      if (s.dragging) {
+        s.plate = { x: ctx.input.ux + s.grip.x, y: ctx.input.uy + s.grip.y };
+        s.lastTouched = s.time;
+      } else if (s.time - s.lastTouched > IDLE_SECONDS) {
+        // Glide towards the shake rather than jump, so the plate eases back from wherever it was left.
+        const glide = sdt * 20;
+        s.plate.x += (shakeX(s.time - s.lastTouched - IDLE_SECONDS) - s.plate.x) * glide;
+        s.plate.y += (0 - s.plate.y) * glide;
+      }
+      for (const p of particles) {
+        if (p.fixed) { p.x = p.x0 + s.plate.x; p.y = p.y0 + s.plate.y; }
+      }
+
       for (const p of particles) { p.fx = 0; p.fy = 0; }
       for (const spring of springs) applySpring(spring, s.k, s.damping);
       for (const corner of angles) applyAngleSpring(corner, s.k);

@@ -364,7 +364,9 @@
 }
 
 /* Tweakpane's theme. The card draws the frame and the paper, so the pane's own
-   background is clear. */
+   background is clear. Anything that holds a value (a list, a checkbox, a number, a text
+   field) shares the buttons' accent ladder, so none of them vanishes into the paper, and
+   every 2px line (a slider's track, a separator) is the groove. */
 .lerpette-stage__controls {
   --tp-base-background-color: transparent;
   --tp-base-border-radius: 0px;
@@ -381,15 +383,21 @@
   --tp-container-background-color-focus: var(--accent-strong);
   --tp-container-background-color-hover: var(--accent-soft);
   --tp-container-foreground-color: var(--ink);
-  --tp-groove-foreground-color: var(--line-faint);
-  --tp-input-background-color: var(--paper);
-  --tp-input-background-color-active: var(--accent-strong);
-  --tp-input-background-color-focus: var(--accent-soft);
-  --tp-input-background-color-hover: var(--accent-faint);
+  --tp-groove-foreground-color: var(--accent-line);
+  --tp-input-background-color: var(--accent-soft);
+  --tp-input-background-color-active: var(--accent-line);
+  --tp-input-background-color-focus: var(--accent-strong);
+  --tp-input-background-color-hover: var(--accent-strong);
   --tp-input-foreground-color: var(--ink);
   --tp-label-foreground-color: var(--muted);
   --tp-monitor-background-color: var(--paper);
   --tp-monitor-foreground-color: var(--ink);
+}
+
+/* Tweakpane draws a slider's empty track in the input colour; it is a groove like a
+   separator, so it takes the groove's colour. */
+.lerpette-stage__controls .tp-sldv_t::before {
+  background-color: var(--tp-groove-foreground-color);
 }
 
 .lerpette-stage__controls .tp-lblv_l,

@@ -18,7 +18,7 @@ const SPRING_LEAD = 0.035;
 export default createStage({
   caption: 'A mass attached to a spring\n$F = -k(x-x_0)$',
 
-  state: { mass: 1, k: 20, b: 0, restLength: 0.3, y: ANCHOR_Y - 0.2, v: 0, integrationScheme: 'symplectic', substeps: 3 },
+  state: { mass: 1, k: 20, b: 0, restLength: 0.3, y: ANCHOR_Y - 0.2, v: 0, integrationScheme: 'symplectic', stepMs: 5, leftover: 0 },
 
   setup(s, ctx) {
     ctx.controls().addBinding(s, 'integrationScheme', {
@@ -26,7 +26,7 @@ export default createStage({
       options: { 'Symplectic Euler': 'symplectic', 'Explicit Euler': 'explicit' },
       pinned: true
     });
-    ctx.controls().addBinding(s, 'substeps', { label: 'Sub-steps', min: 1, max: 50, step: 1 });
+    ctx.controls().addBinding(s, 'stepMs', { label: 'Step Size $\\Delta t$ (ms)', min: 1, max: 100, step: 1 });
     ctx.controls().addBinding(s, 'k', { label: 'Spring Constant $k_s$', min: 0, max: 50, step: 1 } );
     ctx.controls().addBinding(s, 'b', { label: 'Damping Constant $k_b$', min: 0, max: 1, step: .1 } );
 
@@ -40,9 +40,13 @@ export default createStage({
   },
 
   step(s, dt) {
-    for (let i = 0; i < s.substeps; i += 1) {
-      const sdt = dt / s.substeps;
-      
+    // Steps of the same length whatever the frame rate; time short of a whole step waits for the next frame.
+    const sdt = s.stepMs / 1000;
+    s.leftover += dt;
+
+    while (s.leftover >= sdt) {
+      s.leftover -= sdt;
+
       // Accumulate Forces
       const stretch = s.y - (ANCHOR_Y - s.restLength);
       const fk = -s.k * stretch;

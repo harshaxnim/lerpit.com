@@ -99,5 +99,5 @@ unit test. Adding one would mean a new dev dependency.
   pinned row.
 - Rows are matched by element, so a control moved with tweakpane's `index` param keeps its
   pin.
-- Tweakpane checkboxes are invisible on the stage: `--tp-input-background-color` is the
-  card's own paper colour. This is a separate bug, recorded in the gap ledger.
+- Tweakpane checkboxes were invisible on the stage, because `--tp-input-background-color`
+  was the card's own paper colour. Fixed on 2026-10-27; see the gap ledger entry.
