@@ -1,0 +1,150 @@
+---
+import SiteHeader from '../components/SiteHeader.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../site.config';
+
+// The numbers come from the stats Worker (stats-worker/ in the repo root) in the browser,
+// so the page stays static and the counts stay fresh.
+const lists = [
+  { id: 'referrers', title: 'Where readers come from' },
+  { id: 'countries', title: 'Countries' },
+  { id: 'devices', title: 'Devices' },
+  { id: 'browsers', title: 'Browsers' }
+];
+---
+
+<BaseLayout title={`Analytics · ${site.titleSuffix}`} description="Live, public traffic numbers for lerpit.com: visits, referrers, countries and devices.">
+  <main class="site-shell">
+    <section class="sheet">
+      <SiteHeader />
+      <header class="collection-header library-header">
+        <h2>Analytics</h2>
+        <ul class="library-header__facts">
+          <li><b>Last 30 days</b></li>
+          <li>refreshed every 10 minutes</li>
+          <li data-stats-updated></li>
+        </ul>
+      </header>
+
+      <div class="analytics">
+        <p class="analytics__status" data-stats-status>Counting…</p>
+
+        <dl class="analytics__totals">
+          <div><dt>Visits, last 24 hours</dt><dd data-stat="day">—</dd></div>
+          <div><dt>Visits, last 7 days</dt><dd data-stat="week">—</dd></div>
+          <div><dt>Visits, last 30 days</dt><dd data-stat="month">—</dd></div>
+          <div><dt>Page views, last 30 days</dt><dd data-stat="views">—</dd></div>
+        </dl>
+
+        <section class="analytics__daily">
+          <h3>Visits per day</h3>
+          <div class="analytics__bars" data-stats-daily aria-label="Visits per day, last 30 days"></div>
+          <div class="analytics__axis"><span data-stats-first></span><span data-stats-last></span></div>
+        </section>
+
+        <div class="analytics__lists">
+          {lists.map((list) => (
+            <section>
+              <h3>{list.title}</h3>
+              <ol class="analytics__list" data-stats-list={list.id}></ol>
+            </section>
+          ))}
+        </div>
+
+        <p class="analytics__note">
+          Counted by Cloudflare Web Analytics: no cookies and no fingerprinting. Readers whose
+          browser blocks the counter are not counted, and it does not measure how long a visit lasts.
+        </p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  const STATS_URL = 'https://stats.lerpit.com/';
+
+  type Row = { name: string; visits: number };
+  type Stats = {
+    updated: string;
+    day: { visits: number };
+    week: { visits: number };
+    month: { visits: number; views: number };
+    daily: { date: string; visits: number }[];
+    referrers: Row[];
+    countries: Row[];
+    devices: Row[];
+    browsers: Row[];
+  };
+
+  const DEVICES: Record<string, string> = { desktop: 'Desktop', mobile: 'Mobile', tablet: 'Tablet' };
+  const format = (n: number) => n.toLocaleString('en-US');
+  const find = (selector: string) => document.querySelector<HTMLElement>(selector)!;
+
+  function fillList(list: HTMLElement, rows: Row[], label = (name: string) => name) {
+    if (!rows.length) {
+      list.innerHTML = '<li class="is-empty">Nobody yet.</li>';
+      return;
+    }
+    const most = rows[0].visits;
+    list.replaceChildren(
+      ...rows.map((row) => {
+        const item = document.createElement('li');
+        item.style.setProperty('--share', `${(row.visits / most) * 100}%`);
+        const name = document.createElement('span');
+        name.textContent = label(row.name);
+        const count = document.createElement('b');
+        count.textContent = format(row.visits);
+        item.append(name, count);
+        return item;
+      })
+    );
+  }
+
+  // Thirty bars, one per day, with the days nobody came filled in as zero.
+  function fillDaily(rows: Stats['daily']) {
+    const byDate = new Map(rows.map((row) => [row.date, row.visits]));
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+      days.push({ date, visits: byDate.get(date) ?? 0 });
+    }
+    const most = Math.max(1, ...days.map((day) => day.visits));
+    find('[data-stats-daily]').replaceChildren(
+      ...days.map((day) => {
+        const bar = document.createElement('div');
+        bar.style.setProperty('--height', `${(day.visits / most) * 100}%`);
+        bar.title = `${day.date}: ${format(day.visits)} visits`;
+        return bar;
+      })
+    );
+    const short = (date: string) =>
+      new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    find('[data-stats-first]').textContent = short(days[0].date);
+    find('[data-stats-last]').textContent = short(days[days.length - 1].date);
+  }
+
+  async function load() {
+    const status = find('[data-stats-status]');
+    try {
+      const response = await fetch(STATS_URL);
+      if (!response.ok) throw new Error(String(response.status));
+      const stats: Stats = await response.json();
+
+      find('[data-stat="day"]').textContent = format(stats.day.visits);
+      find('[data-stat="week"]').textContent = format(stats.week.visits);
+      find('[data-stat="month"]').textContent = format(stats.month.visits);
+      find('[data-stat="views"]').textContent = format(stats.month.views);
+      fillDaily(stats.daily);
+      fillList(find('[data-stats-list="referrers"]'), stats.referrers);
+      fillList(find('[data-stats-list="countries"]'), stats.countries);
+      fillList(find('[data-stats-list="devices"]'), stats.devices, (name) => DEVICES[name] ?? name);
+      fillList(find('[data-stats-list="browsers"]'), stats.browsers);
+      find('[data-stats-updated]').textContent = `updated ${new Date(stats.updated).toLocaleString()}`;
+      status.hidden = true;
+    } catch {
+      status.textContent = 'The numbers could not be loaded just now. Try again in a few minutes.';
+    }
+  }
+
+  load();
+</script>

@@ -119,3 +119,33 @@ node scripts/check-site.mjs --name after --against base   # and compare
 - `/library/` every listed lerpette, by collection
 - `/<collection-slug>/` collection page
 - `/<collection-slug>/<lerpette-slug>/` lesson page
+- `/analytics/` public traffic numbers
+
+## Analytics
+
+The site counts visits with Cloudflare Web Analytics: cookieless, no fingerprinting, no
+consent banner needed. Visitors whose browser blocks the counter are not counted, and it
+records no visit duration.
+
+- **Beacon:** `website/src/layouts/BaseLayout.astro` adds Cloudflare's `beacon.min.js`
+  to every built page (not the dev server). Its token is public by design.
+- **Stats Worker:** `stats-worker/worker.js`, deployed as `lerpit-stats` on
+  `https://stats.lerpit.com/`. It queries the Web Analytics GraphQL API with a secret
+  API token and returns public JSON (visits for 24 hours, 7 and 30 days, 30-day page
+  views, visits per day, top referrers, countries, devices and browsers), cached at the
+  edge for 10 minutes. It runs on a custom domain rather than workers.dev because
+  `caches.default` only works on custom domains.
+- **Dashboard:** `website/src/pages/analytics.astro` fetches that JSON in the browser
+  and draws it at `/analytics/`, linked from the footer.
+
+Redeploy the Worker after changing it:
+
+```bash
+bash stats-worker/deploy.sh
+```
+
+The script uses the Cloudflare REST API (no wrangler) with the token in
+`~/.cloudflare/api-token`, which needs Workers Scripts Edit, Workers Routes Edit, Zone Read
+and Account Analytics Read. `stats-worker/wrangler.toml` mirrors the same config, so
+`npx wrangler deploy` works too after `npx wrangler secret put CF_API_TOKEN`. A new
+custom domain's certificate takes a minute or two; until then requests fail to connect.

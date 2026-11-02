@@ -1,0 +1,11 @@
+# Deployed via the Cloudflare API (see README); this file mirrors that config so
+# `npx wrangler deploy` works too. Set the token with: npx wrangler secret put CF_API_TOKEN
+name = "lerpit-stats"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+routes = [{ pattern = "stats.lerpit.com", custom_domain = true }]
+
+[vars]
+ACCOUNT_ID = "03c4f9649fce0bb609deb92b5d48de54"
+SITE_TAG = "914dce54f3704511adf18dc6c9d668f0"

@@ -611,6 +611,150 @@ nav {
   font-weight: 600;
 }
 
+/* The analytics page (pages/analytics.astro): four totals, a bar a day, and four
+   ranked lists, each row backed by a bar as long as its share of the top row. */
+.analytics {
+  display: grid;
+  gap: 2rem;
+  margin-top: 1.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--line-strong);
+}
+
+.analytics h3 {
+  margin: 0 0 0.8rem;
+  font-size: clamp(1.2rem, 2.2vw, 1.4rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.analytics__status,
+.analytics__note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.analytics__note {
+  font-size: 0.95rem;
+}
+
+.analytics__totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.analytics__totals > div {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: var(--paper-veil);
+}
+
+.analytics__totals dt {
+  font: 0.76rem var(--font-sans);
+  color: var(--muted);
+}
+
+.analytics__totals dd {
+  margin: 0;
+  font: 600 clamp(1.6rem, 3vw, 2.2rem) var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.analytics__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 11rem;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.analytics__bars > div {
+  flex: 1;
+  height: max(var(--height), 2px);
+  background: var(--accent-line);
+}
+
+.analytics__bars > div:hover {
+  background: var(--accent);
+}
+
+.analytics__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font: 0.76rem var(--font-sans);
+  color: var(--muted);
+}
+
+.analytics__lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem 3rem;
+}
+
+.analytics__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.analytics__list li {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 1rem;
+}
+
+.analytics__list li::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: var(--share);
+  background: var(--accent-strong);
+}
+
+.analytics__list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics__list b {
+  font: 600 0.9rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics__list li.is-empty {
+  color: var(--muted);
+}
+
+.analytics__list li.is-empty::before {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .analytics__totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .analytics__lists {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* One collection label and one cassette size on the library, a collection page and the
    collections shelf, so opening a collection keeps its label where it was and only
    lets its name and description grow. The card is 220px, above the 200px its caption

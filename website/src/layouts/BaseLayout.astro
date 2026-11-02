@@ -143,9 +143,14 @@ const {
     <slot />
     <footer class="site-footer">
       <p class="site-footer__card">
-        <em>{site.footer} {site.author}</em> ({site.year})
+        <em>{site.footer} {site.author}</em> ({site.year}) · <a href={`${base}analytics/`}>analytics</a>
         <BrandSpine />
       </p>
     </footer>
+    {/* Cloudflare Web Analytics: cookieless page-view counts, published at /analytics/
+        (stats-worker/ in the repo root). Built pages only, so the dev server is not counted. */}
+    {import.meta.env.PROD && (
+      <script is:inline defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "140169225fa3449389dffc03723b6558"}'></script>
+    )}
   </body>
 </html>
