@@ -136,7 +136,7 @@ records no visit duration.
   browsers), cached at the edge for 10 minutes. It runs on a custom domain rather than workers.dev because
   `caches.default` only works on custom domains.
 - **Dashboard:** `website/src/pages/analytics.astro` fetches that JSON in the browser
-  and draws it at `/analytics/`, linked from the footer: a line chart, a world map and
+  and draws it at `/analytics/`, which no page links to: a line chart, a world map and
   ranked bars, all hand-written SVG and CSS with no chart library. The map is
   `website/src/assets/world-map.svg`, made by `scripts/world-map.mjs`. Design notes:
   [docs/features/analytics/dev.md](docs/features/analytics/dev.md).
