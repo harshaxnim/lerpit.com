@@ -132,11 +132,14 @@ records no visit duration.
 - **Stats Worker:** `stats-worker/worker.js`, deployed as `lerpit-stats` on
   `https://stats.lerpit.com/`. It queries the Web Analytics GraphQL API with a secret
   API token and returns public JSON (visits for 24 hours, 7 and 30 days, 30-day page
-  views, visits per day, top referrers, countries, devices and browsers), cached at the
-  edge for 10 minutes. It runs on a custom domain rather than workers.dev because
+  views, visits per day, the most-read pages, top referrers, countries, devices and
+  browsers), cached at the edge for 10 minutes. It runs on a custom domain rather than workers.dev because
   `caches.default` only works on custom domains.
 - **Dashboard:** `website/src/pages/analytics.astro` fetches that JSON in the browser
-  and draws it at `/analytics/`, linked from the footer.
+  and draws it at `/analytics/`, linked from the footer: a line chart, a world map and
+  ranked bars, all hand-written SVG and CSS with no chart library. The map is
+  `website/src/assets/world-map.svg`, made by `scripts/world-map.mjs`. Design notes:
+  [docs/features/analytics/dev.md](docs/features/analytics/dev.md).
 
 Redeploy the Worker after changing it:
 

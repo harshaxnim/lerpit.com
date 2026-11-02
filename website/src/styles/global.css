@@ -611,8 +611,9 @@ nav {
   font-weight: 600;
 }
 
-/* The analytics page (pages/analytics.astro): four totals, a bar a day, and four
-   ranked lists, each row backed by a bar as long as its share of the top row. */
+/* The analytics page (pages/analytics.astro): four totals, a line of visits per day, a
+   world map shaded by visits, a device share bar, and ranked lists, each row backed by a
+   bar as long as its share of the top row. Every figure shows a tip on hover or tap. */
 .analytics {
   display: grid;
   gap: 2rem;
@@ -666,22 +667,63 @@ nav {
   color: var(--ink);
 }
 
-.analytics__bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
+.analytics__chart,
+.analytics__map {
+  position: relative;
+  margin: 0;
+  touch-action: pan-y;
+}
+
+/* The chart's SVG is stretched to the figure, so its strokes keep their width by opting
+   out of the stretch. */
+.analytics__chart svg {
+  display: block;
+  width: 100%;
   height: 11rem;
-  border-bottom: 1px solid var(--line-strong);
+  overflow: visible;
 }
 
-.analytics__bars > div {
-  flex: 1;
-  height: max(var(--height), 2px);
-  background: var(--accent-line);
+.analytics__chart svg * {
+  vector-effect: non-scaling-stroke;
 }
 
-.analytics__bars > div:hover {
-  background: var(--accent);
+.analytics__grid {
+  stroke: var(--line-faint);
+}
+
+.analytics__base {
+  stroke: var(--line-strong);
+}
+
+.analytics__area {
+  fill: var(--accent-strong);
+}
+
+.analytics__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.analytics__cursor {
+  stroke: var(--accent-line);
+  visibility: hidden;
+}
+
+.analytics__cursor.is-on {
+  visibility: visible;
+}
+
+.analytics__max {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateY(-50%);
+  padding-right: 0.3rem;
+  background: var(--paper);
+  font: 0.76rem var(--font-sans);
+  color: var(--muted);
 }
 
 .analytics__axis {
@@ -692,10 +734,94 @@ nav {
   color: var(--muted);
 }
 
-.analytics__lists {
+.analytics__tip {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  font: 0.76rem var(--font-sans);
+  color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 0.6rem));
+}
+
+.analytics__places {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: center;
+}
+
+.analytics__map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.analytics__map path {
+  fill: var(--accent-faint);
+  stroke: var(--line);
+  stroke-width: 0.5;
+  stroke-linejoin: round;
+}
+
+.analytics__map path.is-read {
+  fill: var(--accent);
+  fill-opacity: var(--shade);
+}
+
+.analytics__map path:hover {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.analytics__pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2rem 3rem;
+}
+
+.analytics__share-bar {
+  display: flex;
+  gap: 2px;
+  height: 2.2rem;
+}
+
+.analytics__share-bar i,
+.analytics__share-legend li::before {
+  background: var(--accent);
+  opacity: var(--tone);
+}
+
+.analytics__share-bar i {
+  flex-basis: 0;
+  min-width: 2px;
+}
+
+.analytics__share-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.4rem;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 1rem;
+}
+
+.analytics__share-legend li::before {
+  content: "";
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.45rem;
+}
+
+.analytics .is-empty {
+  margin: 0;
+  color: var(--muted);
 }
 
 .analytics__list {
@@ -736,7 +862,7 @@ nav {
 }
 
 .analytics__list li.is-empty {
-  color: var(--muted);
+  padding-inline: 0;
 }
 
 .analytics__list li.is-empty::before {
@@ -747,11 +873,17 @@ nav {
   .analytics__totals {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* minmax(0, …), so a long path or referrer is cut short instead of widening the page. */
+  .analytics__places {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
 }
 
 @media (max-width: 640px) {
-  .analytics__lists {
-    grid-template-columns: 1fr;
+  .analytics__pair {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
